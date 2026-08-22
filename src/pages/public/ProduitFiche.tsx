@@ -200,11 +200,11 @@ export default function ProduitFiche() {
                 </Link>
               </p>
 
-              {p.materiau_slug ? (
+              {p.materiau_slug && p.materiau_type_slug ? (
                 <p className="mt-2 text-legende text-muted-foreground">
                   Référence commune :{" "}
                   <Link
-                    to={"/materiaux/" + p.categorie_slug + "/" + p.materiau_slug}
+                    to={`/materiaux/${p.categorie_slug}/${p.materiau_type_slug}/${p.materiau_slug}`}
                     className="lien-souligne"
                   >
                     {p.materiau_nom as string}

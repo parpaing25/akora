@@ -31,16 +31,19 @@ const TRIS: { cle: CritereTri; libelle: string }[] = [
 ];
 
 export default function Comparateur() {
-  const { categorie, refSlug } = useParams<{ categorie: string; refSlug: string }>();
+  // Trois segments desormais : /materiaux/:famille/:type/:format. Le
+  // comparateur reste le dernier niveau — celui ou les fournisseurs se font
+  // face sur une meme reference.
+  const { famille, type, format } = useParams<{ famille: string; type: string; format: string }>();
   const ajouter = usePanier((e) => e.ajouter);
   const [quantite, setQuantite] = React.useState(100);
   const [tri, setTri] = React.useState<CritereTri>("rendu");
   const [verifiesUniquement, setVerifies] = React.useState(false);
 
   const materiau = useQuery({
-    queryKey: ["materiau", refSlug],
-    queryFn: () => lireMateriauParSlug(refSlug as string),
-    enabled: Boolean(refSlug),
+    queryKey: ["materiau", format],
+    queryFn: () => lireMateriauParSlug(format as string),
+    enabled: Boolean(format),
     staleTime: 30 * 60_000,
   });
 
@@ -101,13 +104,14 @@ export default function Comparateur() {
       {materiau.data ? (
         <Seo
           titre={materiau.data.nom}
-          chemin={"/materiaux/" + categorie + "/" + refSlug}
+          chemin={`/materiaux/${famille}/${type}/${format}`}
           description={`Comparez ${lignes.length} fournisseur(s) de ${materiau.data.nom.toLowerCase()} au prix rendu chantier, livraison comprise.`}
           donneesStructurees={filAriane([
             { nom: "Accueil", chemin: "/" },
             { nom: "Matériaux", chemin: "/materiaux" },
-            { nom: String(categorie), chemin: "/materiaux/" + categorie },
-            { nom: materiau.data.nom, chemin: "/materiaux/" + categorie + "/" + refSlug },
+            { nom: String(famille), chemin: `/materiaux/${famille}` },
+            { nom: String(type), chemin: `/materiaux/${famille}/${type}` },
+            { nom: materiau.data.nom, chemin: `/materiaux/${famille}/${type}/${format}` },
           ])}
         />
       ) : null}
@@ -117,8 +121,12 @@ export default function Comparateur() {
           Matériaux
         </Link>
         <ChevronRight className="mx-1 inline size-3.5" aria-hidden="true" />
-        <Link to={"/materiaux/" + categorie} className="hover:underline">
-          {categorie}
+        <Link to={`/materiaux/${famille}`} className="hover:underline">
+          {famille}
+        </Link>
+        <ChevronRight className="mx-1 inline size-3.5" aria-hidden="true" />
+        <Link to={`/materiaux/${famille}/${type}`} className="hover:underline">
+          {type}
         </Link>
       </nav>
 

@@ -6,6 +6,7 @@ import { iconeFamille } from "@/lib/icones-familles";
 import { Squelette } from "@/components/ui/skeleton";
 import { EtatErreur } from "@/components/ui/etats";
 import { SelecteurPoint } from "@/components/livraison/SelecteurPoint";
+import { RechercheMateriaux } from "@/components/materiaux/RechercheMateriaux";
 import { ENV } from "@/lib/env";
 
 /** Les 8 familles de gros œuvre. Lues en base, jamais écrites en dur ici. */
@@ -42,6 +43,10 @@ export default function Materiaux() {
         Akora ne référence que le gros œuvre : ce qui fait tenir un bâtiment. Ni quincaillerie, ni
         plomberie, ni finitions.
       </p>
+
+      <div className="mt-4 max-w-xl">
+        <RechercheMateriaux placeholder="Ciment, parpaing 15, hourdis, tôle…" />
+      </div>
 
       <div className="mt-4">
         <SelecteurPoint />

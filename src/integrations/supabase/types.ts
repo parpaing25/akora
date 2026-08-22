@@ -618,6 +618,13 @@ export type Database = {
             foreignKeyName: "demandes_materiau_materiau_ref_cree_id_fkey"
             columns: ["materiau_ref_cree_id"]
             isOneToOne: false
+            referencedRelation: "formats_vitrine"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demandes_materiau_materiau_ref_cree_id_fkey"
+            columns: ["materiau_ref_cree_id"]
+            isOneToOne: false
             referencedRelation: "materiaux_ref"
             referencedColumns: ["id"]
           },
@@ -1183,10 +1190,20 @@ export type Database = {
           attributs: Json
           categorie_id: string
           created_at: string
+          diametre_mm: number | null
+          dimensions: string | null
+          epaisseur_cm: number | null
           id: string
+          largeur_cm: number | null
+          libelle_court: string | null
+          longueur_cm: number | null
           nom: string
+          note: string | null
+          ordre_format: number | null
+          photo: string | null
           poids_kg_unite_defaut: number
           slug: string
+          type_id: string | null
           unite_defaut: Database["public"]["Enums"]["unite"]
           updated_at: string
           volume_m3_unite_defaut: number
@@ -1196,10 +1213,20 @@ export type Database = {
           attributs?: Json
           categorie_id: string
           created_at?: string
+          diametre_mm?: number | null
+          dimensions?: string | null
+          epaisseur_cm?: number | null
           id?: string
+          largeur_cm?: number | null
+          libelle_court?: string | null
+          longueur_cm?: number | null
           nom: string
+          note?: string | null
+          ordre_format?: number | null
+          photo?: string | null
           poids_kg_unite_defaut: number
           slug: string
+          type_id?: string | null
           unite_defaut: Database["public"]["Enums"]["unite"]
           updated_at?: string
           volume_m3_unite_defaut: number
@@ -1209,10 +1236,20 @@ export type Database = {
           attributs?: Json
           categorie_id?: string
           created_at?: string
+          diametre_mm?: number | null
+          dimensions?: string | null
+          epaisseur_cm?: number | null
           id?: string
+          largeur_cm?: number | null
+          libelle_court?: string | null
+          longueur_cm?: number | null
           nom?: string
+          note?: string | null
+          ordre_format?: number | null
+          photo?: string | null
           poids_kg_unite_defaut?: number
           slug?: string
+          type_id?: string | null
           unite_defaut?: Database["public"]["Enums"]["unite"]
           updated_at?: string
           volume_m3_unite_defaut?: number
@@ -1225,6 +1262,20 @@ export type Database = {
             referencedRelation: "categories"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "materiaux_ref_type_id_fkey"
+            columns: ["type_id"]
+            isOneToOne: false
+            referencedRelation: "types_materiaux"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "materiaux_ref_type_id_fkey"
+            columns: ["type_id"]
+            isOneToOne: false
+            referencedRelation: "types_vitrine"
+            referencedColumns: ["id"]
+          },
         ]
       }
       notifications: {
@@ -1235,6 +1286,7 @@ export type Database = {
           id: string
           lien: string | null
           lue: boolean
+          poussee_le: string | null
           titre: string
           user_id: string
         }
@@ -1245,6 +1297,7 @@ export type Database = {
           id?: string
           lien?: string | null
           lue?: boolean
+          poussee_le?: string | null
           titre: string
           user_id: string
         }
@@ -1255,6 +1308,7 @@ export type Database = {
           id?: string
           lien?: string | null
           lue?: boolean
+          poussee_le?: string | null
           titre?: string
           user_id?: string
         }
@@ -1547,6 +1601,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "produits_publics"
             referencedColumns: ["fournisseur_id"]
+          },
+          {
+            foreignKeyName: "produits_materiau_ref_id_fkey"
+            columns: ["materiau_ref_id"]
+            isOneToOne: false
+            referencedRelation: "formats_vitrine"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "produits_materiau_ref_id_fkey"
@@ -1943,6 +2004,59 @@ export type Database = {
         }
         Relationships: []
       }
+      types_materiaux: {
+        Row: {
+          actif: boolean
+          categorie_id: string
+          created_at: string
+          description: string | null
+          id: string
+          nom: string
+          nom_mg: string | null
+          ordre: number
+          photo: string | null
+          slug: string
+          synonymes: string[]
+          updated_at: string
+        }
+        Insert: {
+          actif?: boolean
+          categorie_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          nom: string
+          nom_mg?: string | null
+          ordre?: number
+          photo?: string | null
+          slug: string
+          synonymes?: string[]
+          updated_at?: string
+        }
+        Update: {
+          actif?: boolean
+          categorie_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          nom?: string
+          nom_mg?: string | null
+          ordre?: number
+          photo?: string | null
+          slug?: string
+          synonymes?: string[]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "types_materiaux_categorie_id_fkey"
+            columns: ["categorie_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -2206,6 +2320,34 @@ export type Database = {
         }
         Relationships: []
       }
+      formats_vitrine: {
+        Row: {
+          dimensions: string | null
+          famille_nom: string | null
+          famille_slug: string | null
+          id: string | null
+          libelle_court: string | null
+          nb_offres: number | null
+          nb_offres_verifiees: number | null
+          nom: string | null
+          note: string | null
+          offre_coef_sinuosite: number | null
+          offre_fournisseur_id: string | null
+          offre_lat: number | null
+          offre_lng: number | null
+          offre_rayon_max_km: number | null
+          ordre_format: number | null
+          photo: string | null
+          poids_kg_unite: number | null
+          prix_des: number | null
+          slug: string | null
+          type_nom: string | null
+          type_slug: string | null
+          unite: Database["public"]["Enums"]["unite"] | null
+          volume_m3_unite: number | null
+        }
+        Relationships: []
+      }
       fournisseurs_publics: {
         Row: {
           assujetti_tva: boolean | null
@@ -2329,6 +2471,13 @@ export type Database = {
             foreignKeyName: "produits_materiau_ref_id_fkey"
             columns: ["materiau_ref_id"]
             isOneToOne: false
+            referencedRelation: "formats_vitrine"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produits_materiau_ref_id_fkey"
+            columns: ["materiau_ref_id"]
+            isOneToOne: false
             referencedRelation: "materiaux_ref"
             referencedColumns: ["id"]
           },
@@ -2365,6 +2514,8 @@ export type Database = {
           materiau_nom: string | null
           materiau_ref_id: string | null
           materiau_slug: string | null
+          materiau_type_nom: string | null
+          materiau_type_slug: string | null
           nom_affiche: string | null
           photos: string[] | null
           poids_kg_unite: number | null
@@ -2397,10 +2548,37 @@ export type Database = {
             foreignKeyName: "produits_materiau_ref_id_fkey"
             columns: ["materiau_ref_id"]
             isOneToOne: false
+            referencedRelation: "formats_vitrine"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produits_materiau_ref_id_fkey"
+            columns: ["materiau_ref_id"]
+            isOneToOne: false
             referencedRelation: "materiaux_ref"
             referencedColumns: ["id"]
           },
         ]
+      }
+      types_vitrine: {
+        Row: {
+          description: string | null
+          famille_nom: string | null
+          famille_slug: string | null
+          formats_apercu: Json | null
+          id: string | null
+          nb_formats: number | null
+          nb_fournisseurs: number | null
+          nb_offres: number | null
+          nom: string | null
+          nom_mg: string | null
+          ordre: number | null
+          photo: string | null
+          prix_des: number | null
+          slug: string | null
+          unite: string | null
+        }
+        Relationships: []
       }
     }
     Functions: {
@@ -2525,6 +2703,23 @@ export type Database = {
         Args: { _fournisseur_id: string }
         Returns: Database["public"]["Enums"]["niveau_verification"]
       }
+      rechercher_referentiel: {
+        Args: { limite?: number; portee?: string; requete: string }
+        Returns: {
+          famille_nom: string
+          famille_slug: string
+          format_slug: string
+          id: string
+          kind: string
+          nb_formats: number
+          nb_offres: number
+          nom: string
+          prix_des: number
+          rang: number
+          type_nom: string
+          type_slug: string
+        }[]
+      }
       refuser_demande_materiau: {
         Args: { _demande_id: string; _motif: string }
         Returns: undefined
@@ -2541,6 +2736,7 @@ export type Database = {
         }[]
       }
       revoquer_sessions: { Args: { _user_id: string }; Returns: boolean }
+      sans_accent: { Args: { texte: string }; Returns: string }
       statuer_document: {
         Args: {
           _document_id: string

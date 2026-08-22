@@ -2,9 +2,9 @@ import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { PageTexte } from "@/components/PageTexte";
 import { filAriane } from "@/components/Seo";
+import { lireFormat } from "@/lib/donnees/referentiel";
 import { lireMateriauParSlug } from "@/lib/donnees/materiaux";
 import { chercherLocalites } from "@/lib/donnees/localites";
-import { listerFamilles } from "@/lib/donnees/categories";
 import { lirePrixMarche } from "@/lib/donnees/prix-marche";
 import { LIBELLE_UNITE } from "@/lib/types-metier";
 import { formaterAriary, formaterDate } from "@/lib/format";
@@ -48,18 +48,21 @@ export default function PrixMarche() {
     staleTime: 30 * 60_000,
   });
 
-  const familles = useQuery({
-    queryKey: ["familles"],
-    queryFn: listerFamilles,
+  const format = useQuery({
+    queryKey: ["format", slugMateriau],
+    queryFn: () => lireFormat(slugMateriau as string),
+    enabled: Boolean(slugMateriau),
     staleTime: 30 * 60_000,
   });
 
   if ((materiau.isSuccess && !materiau.data) || (localite.isSuccess && !localite.data)) return <NonTrouve />;
 
-  // Le lien vers le comparateur a besoin du slug de la famille, pas de son id.
-  const familleSlug = (familles.data ?? []).find((f) => f.id === materiau.data?.categorie_id)?.slug;
+  // Le comparateur vit sous /materiaux/:famille/:type/:format. La famille
+  // seule ne suffit plus : le format porte lui-meme les trois segments.
   const lienComparateur =
-    familleSlug && slugMateriau ? "/materiaux/" + familleSlug + "/" + slugMateriau : "/materiaux";
+    format.data
+      ? `/materiaux/${format.data.famille_slug}/${format.data.type_slug}/${format.data.slug}`
+      : "/materiaux";
 
   const nom = materiau.data?.nom ?? "";
   const lieu = localite.data?.nom ?? "";

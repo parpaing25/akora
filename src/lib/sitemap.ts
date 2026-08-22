@@ -53,13 +53,17 @@ export async function construireSitemap(): Promise<EntreeSitemap[]> {
   // cher à Fonenako.
   const { data: offres } = await supabase
     .from("produits_publics")
-    .select("materiau_slug, categorie_slug, fournisseur_slug, slug, prix_maj_le")
+    .select("materiau_slug, materiau_type_slug, categorie_slug, fournisseur_slug, slug, prix_maj_le")
     .limit(2000);
 
   const comparateurs = new Set<string>();
   for (const offre of offres ?? []) {
-    if (offre.materiau_slug && offre.categorie_slug) {
-      comparateurs.add("/materiaux/" + offre.categorie_slug + "/" + offre.materiau_slug);
+    // Trois segments depuis la navigation famille › type › format. Un
+    // comparateur sans son type mene a la page d'un type qui n'existe pas.
+    if (offre.materiau_slug && offre.materiau_type_slug && offre.categorie_slug) {
+      comparateurs.add(
+        `/materiaux/${offre.categorie_slug}/${offre.materiau_type_slug}/${offre.materiau_slug}`,
+      );
     }
     entrees.push({
       chemin: "/fournisseurs/" + offre.fournisseur_slug + "/" + offre.slug,

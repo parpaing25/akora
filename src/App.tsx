@@ -78,6 +78,7 @@ const MentionsLegales = lazy(() => import("@/pages/contenu/MentionsLegales"));
 // ── Vitrine publique, comparateur, panier et commande (etapes 4, 6, 7) ───
 const Materiaux = lazy(() => import("@/pages/public/Materiaux"));
 const MateriauxFamille = lazy(() => import("@/pages/public/MateriauxFamille"));
+const TypeMateriau = lazy(() => import("@/pages/public/TypeMateriau"));
 const Comparateur = lazy(() => import("@/pages/public/Comparateur"));
 const Fournisseurs = lazy(() => import("@/pages/public/Fournisseurs"));
 const FournisseurFiche = lazy(() => import("@/pages/public/FournisseurFiche"));
@@ -121,8 +122,15 @@ export default function App() {
           <Route index element={<Accueil />} />
 
           <Route path="materiaux" element={<Materiaux />} />
-          <Route path="materiaux/:categorie" element={<MateriauxFamille />} />
-          <Route path="materiaux/:categorie/:refSlug" element={<Comparateur />} />
+          {/*
+            Trois niveaux : la famille ouvre ses TYPES, le type ouvre ses
+            FORMATS, le format ouvre le comparateur. Une URL par niveau, toutes
+            indexables — une page par type vaut mieux qu'une liste unique de 92
+            références mélangées.
+          */}
+          <Route path="materiaux/:famille" element={<MateriauxFamille />} />
+          <Route path="materiaux/:famille/:type" element={<TypeMateriau />} />
+          <Route path="materiaux/:famille/:type/:format" element={<Comparateur />} />
           <Route path="fournisseurs" element={<Fournisseurs />} />
           <Route path="fournisseurs/:slug" element={<FournisseurFiche />} />
           <Route path="fournisseurs/:slug/:produitSlug" element={<ProduitFiche />} />

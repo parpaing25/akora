@@ -14,6 +14,8 @@ import Conditions from "@/pages/contenu/Conditions";
 import Confidentialite from "@/pages/contenu/Confidentialite";
 import Contact from "@/pages/contenu/Contact";
 import Calculateurs from "@/pages/public/Calculateurs";
+import MateriauxFamille from "@/pages/public/MateriauxFamille";
+import TypeMateriau from "@/pages/public/TypeMateriau";
 import { FournisseurAuth } from "@/hooks/useAuth";
 import { FournisseurInfobulle } from "@/components/ui/tooltip";
 
@@ -72,6 +74,9 @@ const ECRANS: [string, React.ComponentType, boolean?][] = [
   ["Politique de confidentialité", Confidentialite],
   ["Contact", Contact],
   ["Calculateurs", Calculateurs],
+  ["Matériaux — types d'une famille", MateriauxFamille],
+  ["Matériaux — formats d'un type", TypeMateriau],
+  ["Matériaux — formats, écran large", TypeMateriau, true],
 ];
 
 function html(Ecran: React.ComponentType): string {
