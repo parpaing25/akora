@@ -34,6 +34,15 @@
 
 * { box-sizing: border-box; }
 
+/* L'attribut `hidden` doit gagner, TOUJOURS.
+   Le navigateur ne lui donne qu'un `display: none` de feuille par défaut :
+   la moindre règle d'auteur qui pose `display: flex` le bat, et l'élément
+   reste à l'écran alors que le JavaScript l'a bien masqué. C'est ce qui
+   laissait le panneau de détail ouvert et vide au chargement, la bannière du
+   catalogue affichée alors qu'il était chargé, et la barre de progression
+   visible sans qu'aucune tâche tourne. */
+[hidden] { display: none !important; }
+
 body {
   margin: 0;
   background: var(--sable);

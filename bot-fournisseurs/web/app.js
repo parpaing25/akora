@@ -1026,6 +1026,11 @@ async function chargerArbre() {
 (async function demarrer() {
   await chargerArbre();
   await chargerSources();
+  // Les réglages sont chargés dès le départ, pas seulement à l'ouverture de
+  // leur onglet : la carte « Collectes automatiques » du tableau de bord lit
+  // les mêmes champs, et elle restait vide — heures en placeholder, objectif
+  // blanc, case décochée — alors que la configuration disait le contraire.
+  await chargerReglages();
   await rafraichirEtat();
   setInterval(rafraichirEtat, 2000);
 })();
