@@ -1,12 +1,9 @@
-import * as React from "react";
 import { Link } from "react-router-dom";
-import { toast } from "sonner";
 import { Heart, Phone, Truck } from "lucide-react";
 import type { Publication } from "@/lib/donnees/fil";
-import { basculerAbonnement } from "@/lib/donnees/fil";
+import { BoutonSuivre } from "@/components/fil/BoutonSuivre";
 import { useLivraisonUnique } from "@/hooks/useLivraison";
 import { usePointLivraison } from "@/lib/point-livraison";
-import { useAuth } from "@/hooks/useAuth";
 import { formaterAriary } from "@/lib/format";
 import { BadgeVerification } from "@/components/marque/BadgeVerification";
 import { LogoAkora } from "@/components/marque/LogoAkora";
@@ -49,10 +46,7 @@ export function CartePublication({ publication }: { publication: Publication }) 
 /* ── Publication d'un dépôt ─────────────────────────────────────────────── */
 
 function PostFournisseur({ publication }: { publication: Publication }) {
-  const { session } = useAuth();
   const { point } = usePointLivraison();
-  const [suivi, setSuivi] = React.useState(publication.suivi);
-  const [enCours, setEnCours] = React.useState(false);
   const produit = publication.produits[0];
 
   // Quantité de référence : celle que le dépôt exige au minimum. Afficher un
@@ -88,22 +82,6 @@ function PostFournisseur({ publication }: { publication: Publication }) {
     livraison?.statut === "estimee" ? livraison.cout : livraison?.statut === "offerte" ? 0 : null;
   const rendu = coutLivraison === null ? null : montantProduits + coutLivraison;
 
-  const suivre = async () => {
-    if (!session) {
-      toast.error("Connectez-vous pour suivre ce fournisseur");
-      return;
-    }
-    if (!publication.fournisseur_id) return;
-    setEnCours(true);
-    try {
-      setSuivi(await basculerAbonnement(publication.fournisseur_id, suivi));
-    } catch (erreur) {
-      toast.error("Impossible", { description: (erreur as Error).message });
-    } finally {
-      setEnCours(false);
-    }
-  };
-
   return (
     <article className="carte overflow-hidden p-0">
       <header className="flex items-start gap-3 px-4 pb-3 pt-3.5">
@@ -131,15 +109,12 @@ function PostFournisseur({ publication }: { publication: Publication }) {
             · {depuis(publication.publie_le)}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => void suivre()}
-          disabled={enCours}
-          aria-pressed={suivi}
-          className="min-h-9 shrink-0 rounded-md border border-foreground px-3 text-legende font-semibold disabled:opacity-60"
-        >
-          {suivi ? "Suivi" : "Suivre"}
-        </button>
+        {publication.fournisseur_id ? (
+          <BoutonSuivre
+            fournisseurId={publication.fournisseur_id}
+            suiviInitial={publication.suivi}
+          />
+        ) : null}
       </header>
 
       <p className="whitespace-pre-line px-4 pb-3 text-courant">{publication.texte}</p>

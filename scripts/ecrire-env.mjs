@@ -14,6 +14,10 @@ const contenu = [
   "VITE_UPLOAD_ENDPOINT=https://akora.fonenako.mg/api/o2upload.php",
   "VITE_DELETE_ENDPOINT=https://akora.fonenako.mg/api/o2delete.php",
   "VITE_SITE_URL=https://akora.fonenako.mg",
+  // Cle PUBLIQUE VAPID : elle est faite pour etre dans le bundle, c'est le
+  // navigateur qui s'en sert pour verifier la signature du serveur. La privee
+  // ne quitte jamais les secrets d'Edge Function.
+  ...(s.VITE_VAPID_PUBLIC_KEY ? [`VITE_VAPID_PUBLIC_KEY=${s.VITE_VAPID_PUBLIC_KEY}`] : []),
   "",
 ].join("\n");
 

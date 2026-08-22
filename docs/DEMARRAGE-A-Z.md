@@ -274,3 +274,62 @@ n'est renseigné, il n'existe pas — plutôt qu'un bouton qui mène à une erre
 
 Un compte créé par Google est vérifié d'emblée : Google a déjà prouvé
 l'adresse, la redemander serait une cérémonie.
+
+---
+
+## Mise à jour du 22/08/2026, 23 h — le fil, les push et le cron
+
+### Fait, sans action de votre part
+
+**L'accueil est devenu un fil.** Dépôts et acheteurs y publient ; le prix rendu
+chantier est calculé sur chaque carte depuis votre point de livraison.
+Deux écrans nouveaux : `/pro/publier` et `/demandes/nouvelle`.
+
+**Les notifications push fonctionnent.** Les clés VAPID sont générées et
+déposées dans les secrets ; suivre un dépôt déclenche une notification à
+chacune de ses publications. La clé publique est dans le bundle — c'est son
+rôle ; la privée n'a jamais quitté `~/.akora-secrets/vapid.txt` et les secrets
+Supabase.
+
+**Un bug qui aurait bloqué le lancement.** Aucun produit ne pouvait être créé :
+un déclencheur d'historique de prix s'exécutait avant l'insertion et référençait
+une ligne qui n'existait pas encore. Corrigé et vérifié.
+
+### ~~K.~~ Le cron — deux lignes à coller dans cPanel
+
+C'est la dernière pièce technique, et elle vous prend deux minutes.
+
+**cPanel → Tâches Cron → Ajouter une tâche Cron.**
+
+Le secret d'appel est dans `~/.akora-secrets/vapid.txt`, ligne
+`AKORA_CRON_SECRET`. Remplacez `<SECRET>` par sa valeur, et `<PROJET>` par la
+référence Supabase (visible dans `~/.akora-secrets/supabase.txt`).
+
+**1. Les notifications push, chaque minute :**
+
+```
+* * * * * curl -s -X POST -H "x-akora-secret: <SECRET>" https://<PROJET>.supabase.co/functions/v1/envoyer-push > /dev/null
+```
+
+**2. La réconciliation des paiements, chaque jour à 3 h :**
+
+```
+0 3 * * * curl -s -X POST -H "x-akora-secret: <SECRET>" https://<PROJET>.supabase.co/functions/v1/paiement-reconciliation > /dev/null
+```
+
+Pourquoi le cron plutôt qu'un déclencheur de base : appeler la fonction depuis
+un trigger SQL obligerait à écrire ce secret **en clair dans la base**. Une
+minute de latence sur l'annonce d'une baisse de parpaing n'a jamais fait perdre
+une vente ; un secret en base, si.
+
+### Ce qui reste, et qui ne dépend plus que de vous
+
+| | |
+|---|---|
+| **D** | Créer votre dépôt sur `/pro` — débloqué, le bug est corrigé |
+| **E** | Tester la boucle complète : publier, commander, payer |
+| **F** | **Recruter 2-3 vrais dépôts** — le fil restera vide sans eux |
+| **G** | Valider leurs dossiers de vérification |
+| **I** | Identifiants marchands MVola / Orange / Airtel |
+| **Google** | Créer l'ID client (voir la section précédente), puis `npm run google` |
+| **MX** | Ajouter un enregistrement MX sur `akora.fonenako.mg`, sinon personne ne peut répondre à `akora@akora.fonenako.mg` |

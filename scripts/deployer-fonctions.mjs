@@ -68,6 +68,9 @@ const SANS_JWT = new Set([
   // connecter : exiger un jeton serait un cercle.
   "mot-de-passe-code",
   "mot-de-passe-reinitialiser",
+  // Appelee par le cron d'o2switch, qui n'a pas de jeton Supabase. Elle
+  // verifie elle-meme son secret partage.
+  "envoyer-push",
 ]);
 
 for (const nom of aDeployer) {

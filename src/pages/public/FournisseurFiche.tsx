@@ -11,6 +11,7 @@ import { haversine } from "@/lib/livraison";
 import { formaterNote } from "@/lib/format";
 import { ENV } from "@/lib/env";
 import { BadgeVerification } from "@/components/marque/BadgeVerification";
+import { BoutonSuivre } from "@/components/fil/BoutonSuivre";
 import { RevelerContact } from "@/components/marque/RevelerContact";
 import { CarteProduit } from "@/components/produit/CarteProduit";
 import { CartePoint } from "@/components/carte/CartePoint";
@@ -109,7 +110,10 @@ export default function FournisseurFiche() {
               />
             ) : null}
             <div className="min-w-0 flex-1">
-              <h1 className="text-page">{f.raison_sociale as string}</h1>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <h1 className="text-page">{f.raison_sociale as string}</h1>
+                <BoutonSuivre fournisseurId={f.id as string} />
+              </div>
               <div className="mt-1.5 flex flex-wrap items-center gap-2">
                 <BadgeVerification
                   niveau={f.niveau_verification as never}

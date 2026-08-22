@@ -8,7 +8,7 @@ import { usePanier, nombreArticles } from "@/lib/panier";
  * Entrée active en latérite. Chaque cible fait au moins 44 × 44 px.
  */
 const ENTREES = [
-  { to: "/", libelle: "Accueil", Icone: Home, exact: true },
+  { to: "/", libelle: "Fil", Icone: Home, exact: true },
   { to: "/materiaux", libelle: "Matériaux", Icone: Layers, exact: false },
   { to: "/panier", libelle: "Panier", Icone: ShoppingCart, exact: false },
   { to: "/compte/commandes", libelle: "Commandes", Icone: ClipboardList, exact: false },
