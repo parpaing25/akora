@@ -4,13 +4,14 @@ Onze étapes, dans l'ordre. Les trois premières sont bloquantes, le reste peut
 attendre. À chaque fois : **où** aller, **quoi** faire, **comment savoir que
 c'est bon**.
 
-État au moment où j'écris : le code est complet et déployé, la base contient les
-référentiels (8 familles, 79 matériaux, 187 localités), et **il n'y a encore
-aucun compte, aucun dépôt, aucun produit**.
+**Mise à jour du 22/08/2026, 21 h** : les étapes A, B, C et H sont FAITES.
+Le certificat Let's Encrypt est passé, l'authentification est configurée, ton
+compte `onjaniaina27@gmail.com` est administrateur, et l'envoi d'e-mails
+fonctionne. Il reste **D à G**, plus I, J, K quand tu voudras.
 
 ---
 
-## A. Le certificat HTTPS — bloquant, 2 minutes
+## A. ~~Le certificat HTTPS~~ — FAIT le 22/08 à 16 h 05
 
 **Où** : cPanel o2switch → `SSL/TLS Status` (pas « Installer un certificat »).
 
@@ -30,7 +31,7 @@ certificat Let's Encrypt.
 
 ---
 
-## B. Confirmer les réglages d'authentification — bloquant, 2 minutes
+## B. ~~Réglages d'authentification~~ — FAIT, configurés par script
 
 **Où** : tableau de bord Supabase, **Authentication → URL Configuration**.
 
@@ -45,7 +46,7 @@ Puis **Authentication → Providers → Email** : *Confirm email* **activé**.
 
 ---
 
-## C. Créer ton compte, et me le dire — bloquant, 3 minutes
+## C. ~~Ton compte et le rôle admin~~ — FAIT
 
 **Où** : https://akora.fonenako.mg/inscription
 
@@ -138,7 +139,7 @@ le paiement en ligne se débloque pour lui.
 
 ---
 
-## H. Les numéros marchands Akora — avant tout paiement en ligne
+## H. Les numéros marchands Akora — l'envoi d'e-mails est déjà en place
 
 **Où** : Supabase, **Edge Functions → Secrets**.
 
@@ -208,9 +209,9 @@ seulement quand l'acheteur confirme lui-même sa réception.
 
 | Étape | Où | Bloquant |
 |---|---|---|
-| **A** AutoSSL | cPanel, SSL/TLS Status | **oui** |
-| **B** URL d'authentification | Supabase, Authentication | **oui** |
-| **C** Ton compte, puis rôle admin | le site, puis moi | **oui** |
+| ~~**A** AutoSSL~~ | cPanel | ✅ fait |
+| ~~**B** URL d'authentification~~ | Supabase | ✅ fait |
+| ~~**C** Ton compte, puis rôle admin~~ | fait par script | ✅ fait |
 | **D** Ton premier dépôt | `/pro` | non |
 | **E** Test de bout en bout | le site | non |
 | **F** Recruter 2-3 dépôts | téléphone | c'est la vraie étape |

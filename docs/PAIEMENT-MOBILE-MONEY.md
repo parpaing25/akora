@@ -129,6 +129,37 @@ ou 72 heures après celle-ci sans contestation. Brancher les API supprime une
 
 ---
 
+## Annexe — l'envoi d'e-mails (codes de vérification)
+
+En place depuis le 22/08/2026. Boîte créée dans cPanel o2switch, secrets
+déposés dans Supabase :
+
+| Secret | Valeur |
+|---|---|
+| `SMTP_HOST` | `mail.fonenako.mg` |
+| `SMTP_PORT` | `465` (SSL) |
+| `SMTP_USER` | `akora@akora.fonenako.mg` |
+| `SMTP_FROM` | `akora@akora.fonenako.mg` |
+| `SMTP_PASS` | dans `~/.akora-secrets/smtp.txt`, jamais versionné |
+
+**Où trouver ces réglages soi-même** : cPanel → Comptes de messagerie → bouton
+**« Connecter des appareils »** en face de la boîte. o2switch y affiche
+l'hôte, les ports et le mode de chiffrement. Le nom d'utilisateur est toujours
+l'adresse complète.
+
+`mail.akora.fonenako.mg` **ne résout pas** — il n'y a pas d'enregistrement DNS
+pour le sous-domaine d'un sous-domaine. On passe donc par `mail.fonenako.mg`,
+qui pointe sur le même serveur (109.234.166.169) et accepte la même boîte.
+
+Si le mot de passe change, une seule commande suffit :
+
+```
+node scripts/definir-secrets.mjs "SMTP_PASS=le-nouveau"
+npm run fonctions:deploy envoyer-code
+```
+
+---
+
 ## Annexe — les clés VAPID (notifications push)
 
 Rien à demander à personne : VAPID, c'est une simple paire de clés ECDSA P-256
