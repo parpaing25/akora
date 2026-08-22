@@ -32,7 +32,7 @@ export function LigneCase({
   ...reste
 }: React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root> & {
   id: string;
-  etiquette: string;
+  etiquette: React.ReactNode;
   aide?: string;
 }) {
   return (

@@ -251,6 +251,7 @@ export type Database = {
           expire_le: string
           id: string
           tentatives: number
+          usage: string
           user_id: string | null
           verifie: boolean
         }
@@ -261,6 +262,7 @@ export type Database = {
           expire_le: string
           id?: string
           tentatives?: number
+          usage?: string
           user_id?: string | null
           verifie?: boolean
         }
@@ -271,6 +273,7 @@ export type Database = {
           expire_le?: string
           id?: string
           tentatives?: number
+          usage?: string
           user_id?: string | null
           verifie?: boolean
         }
@@ -2121,6 +2124,7 @@ export type Database = {
       }
       attribuer_badges_partenaire: { Args: never; Returns: number }
       compter_vue_produit: { Args: { _produit_id: string }; Returns: undefined }
+      confirmer_email_oauth: { Args: never; Returns: boolean }
       confirmer_livraison: {
         Args: { _commande_id: string }
         Returns: undefined
@@ -2128,6 +2132,10 @@ export type Database = {
       confirmer_paiement_manuel: {
         Args: { _accepte: boolean; _motif?: string; _paiement_id: string }
         Returns: Database["public"]["Enums"]["statut_paiement"]
+      }
+      consommer_code_reinitialisation: {
+        Args: { _code: string; _email: string }
+        Returns: string
       }
       consommer_quota: {
         Args: { _cle: string; _plafond: number; _sujet: string }
@@ -2142,8 +2150,9 @@ export type Database = {
           solde_portefeuille: number
         }[]
       }
+      creer_code_reinitialisation: { Args: { _email: string }; Returns: Json }
       creer_code_verification: {
-        Args: { _email: string; _user_id: string }
+        Args: { _email: string; _usage?: string; _user_id: string }
         Returns: string
       }
       ecrire_ledger: {
@@ -2228,6 +2237,7 @@ export type Database = {
           whatsapp: string
         }[]
       }
+      revoquer_sessions: { Args: { _user_id: string }; Returns: boolean }
       statuer_document: {
         Args: {
           _document_id: string
@@ -2252,7 +2262,7 @@ export type Database = {
         Returns: boolean
       }
       verifier_code_email: {
-        Args: { _code: string; _email: string }
+        Args: { _code: string; _email: string; _usage?: string }
         Returns: boolean
       }
       verifier_solde_ledger: {

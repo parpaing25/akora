@@ -55,7 +55,10 @@ verifier("F1 · aucun select('*') sur une table à données personnelles", etoil
 const ecrituresNues = [];
 for (const fichier of sources) {
   const contenu = lire(fichier);
-  const motif = /\.(insert|update|upsert|delete)\(([\s\S]{0,400}?)\)([\s\S]{0,200}?);/g;
+  // La chaine doit partir d'un `.from("table")` : sans cette ancre, le motif
+  // attrapait n'importe quel `.update()` — celui d'un enregistrement de
+  // service worker, par exemple, qui n'ecrit rien en base.
+  const motif = /\.from\(\s*["'][^"']+["']\s*\)[\s\S]{0,160}?\.(insert|update|upsert|delete)\(([\s\S]{0,400}?)\)([\s\S]{0,200}?);/g;
   let trouve;
   while ((trouve = motif.exec(contenu)) !== null) {
     const suite = trouve[3] ?? "";

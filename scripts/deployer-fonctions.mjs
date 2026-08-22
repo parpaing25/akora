@@ -40,12 +40,14 @@ const fichiersPartages = PARTAGE.map(([nom, source]) => {
   return { name: `_partage/${nom}`, content: readFileSync(chemin, "utf8") };
 });
 
-const commun = {
-  name: "_commun.ts",
-  content: readFileSync(join(racine, "supabase/functions/_commun.ts"), "utf8"),
-};
-
 const dossierFonctions = join(racine, "supabase", "functions");
+
+// Tout fichier « _quelquechose.ts » pose a la racine des fonctions est un
+// module commun : il part avec chacune d'elles. Les enumerer un a un, c'est
+// oublier le prochain.
+const communs = readdirSync(dossierFonctions, { withFileTypes: true })
+  .filter((e) => e.isFile() && e.name.startsWith("_") && e.name.endsWith(".ts"))
+  .map((e) => ({ name: e.name, content: readFileSync(join(dossierFonctions, e.name), "utf8") }));
 const fonctions = readdirSync(dossierFonctions, { withFileTypes: true })
   .filter((e) => e.isDirectory() && !e.name.startsWith("_"))
   .map((e) => e.name);
@@ -62,6 +64,10 @@ const SANS_JWT = new Set([
   // Appelees juste apres signUp, avant toute session utilisable.
   "envoyer-code",
   "verifier-code",
+  // Un mot de passe oublie se demande justement quand on ne peut pas se
+  // connecter : exiger un jeton serait un cercle.
+  "mot-de-passe-code",
+  "mot-de-passe-reinitialiser",
 ]);
 
 for (const nom of aDeployer) {
@@ -71,11 +77,11 @@ for (const nom of aDeployer) {
   // L'API place tous les fichiers a plat, a cote de l'entree. On reecrit donc
   // les imports « ../ » du dossier local en « ./ » — le rangement local reste
   // lisible, et le bundler retrouve ses petits.
-  const aPlat = (contenu) => contenu.replaceAll('from "../_commun.ts"', 'from "./_commun.ts"').replaceAll('from "../_partage/', 'from "./_partage/');
+  const aPlat = (contenu) => contenu.replace(/from "\.\.\//g, 'from "./');
 
   const fichiers = [
     { name: "index.ts", content: aPlat(readFileSync(entree, "utf8")) },
-    { name: commun.name, content: aPlat(commun.content) },
+    ...communs.map((f) => ({ name: f.name, content: aPlat(f.content) })),
     ...fichiersPartages,
   ];
 

@@ -49,18 +49,22 @@ for (const nom of ["ecrire_ledger", "liberer_sequestre", "journaliser", "notifie
 }
 
 // ── Ce qui doit rester OUVERT ─────────────────────────────────────────────
+// Le nombre attendu est un PLANCHER, pas une égalité : ces tables
+// s'enrichissent (les 106 quartiers de Tana sont arrivés après l'écriture de
+// ce contrôle, et l'ont fait échouer alors que rien n'était cassé). Ce qu'on
+// vérifie ici, c'est que la lecture anonyme reste ouverte et non vide.
 const ouvert = [
   ["categories?select=slug,nom&limit=100", 8],
   ["materiaux_ref?select=slug&limit=200", 79],
-  ["localites?select=slug&limit=200", 81],
+  ["localites?select=slug&limit=500", 81],
   ["ratios_metre?select=cle&limit=100", 22],
   ["parametres?select=cle&limit=100", 8],
 ];
-for (const [chemin, attendu] of ouvert) {
+for (const [chemin, plancher] of ouvert) {
   const { statut, corps } = await rest(chemin);
   let n = -1;
   try { n = JSON.parse(corps).length; } catch { /* corps non JSON */ }
-  verifier(`anon lit ${chemin.split("?")[0]} (${attendu} lignes)`, statut === 200 && n === attendu, `HTTP ${statut}, ${n} ligne(s)`);
+  verifier(`anon lit ${chemin.split("?")[0]} (${plancher} lignes au moins)`, statut === 200 && n >= plancher, `HTTP ${statut}, ${n} ligne(s)`);
 }
 for (const vue of ["fournisseurs_publics", "produits_publics", "prix_marche"]) {
   const { statut } = await rest(`${vue}?select=*&limit=1`);

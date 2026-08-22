@@ -12,7 +12,13 @@ if (!existsSync(deployeur)) {
   console.error(`Déployeur introuvable : ${deployeur}`);
   process.exit(1);
 }
+// `npm.cmd` est un script de commande, pas un executable : sans `shell`,
+// Node refuse de le lancer (EINVAL) des que l'appelant n'est pas cmd.exe.
 const npm = process.platform === "win32" ? "npm.cmd" : "npm";
-execFileSync(npm, ["run", "build"], { cwd: racine, stdio: "inherit" });
+execFileSync(npm, ["run", "build"], {
+  cwd: racine,
+  stdio: "inherit",
+  shell: process.platform === "win32",
+});
 execFileSync("python", [deployeur, join(racine, "dist"), "akora.fonenako.mg"], { cwd: racine, stdio: "inherit" });
 console.log("✓ déployé sur https://akora.fonenako.mg");

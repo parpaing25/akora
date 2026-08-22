@@ -9,6 +9,21 @@ import { precacheAndRoute, cleanupOutdatedCaches } from "workbox-precaching";
 cleanupOutdatedCaches();
 precacheAndRoute(self.__WB_MANIFEST);
 
+// Prise de main IMMEDIATE de la nouvelle version.
+//
+// Par defaut, un service worker frais reste en attente jusqu'a ce que TOUS les
+// onglets du site soient fermes. Sur un telephone, ils ne le sont jamais : le
+// site reste alors fige sur la version d'hier, servie depuis le precache.
+// Vecu le 22/08/2026 — le code a six chiffres etait en ligne depuis une heure
+// et le navigateur executait encore la version qui ne le demandait pas. Un
+// deploiement qui n'atteint pas l'utilisateur n'est pas un deploiement.
+self.addEventListener("install", () => {
+  void self.skipWaiting();
+});
+self.addEventListener("activate", (evenement) => {
+  evenement.waitUntil(self.clients.claim());
+});
+
 self.addEventListener("message", (evenement) => {
   if (evenement.data && evenement.data.type === "SKIP_WAITING") self.skipWaiting();
 });

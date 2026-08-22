@@ -3,32 +3,44 @@ import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
+import { ChevronLeft, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { ENV } from "@/lib/env";
 import { schemaInscription, type ValeursInscription } from "@/lib/validation";
 import { useAntiAbus } from "@/hooks/useAntiAbus";
+import { useGrandEcran } from "@/hooks/useGrandEcran";
 import { envoyerCode } from "@/lib/donnees/otp";
 import { DialogueCode } from "@/components/auth/DialogueCode";
+import { BoutonGoogle, SeparateurOu } from "@/components/auth/BoutonGoogle";
+import { PanneauMarque, BandeauMarque } from "@/components/auth/PanneauMarque";
+import { ChampMotDePasse } from "@/components/auth/ChampMotDePasse";
+import { ChampTelephone } from "@/components/auth/ChampTelephone";
 import { Seo } from "@/components/Seo";
 import { Champ } from "@/components/ui/champ";
 import { Saisie } from "@/components/ui/input";
-import { Bouton } from "@/components/ui/button";
-import { Carte } from "@/components/ui/card";
+import { LogoAkora } from "@/components/marque/LogoAkora";
 import { GroupeRadio, OptionRadio } from "@/components/ui/radio-group";
 import { LigneCase } from "@/components/ui/checkbox";
 
 /**
  * Inscription acheteur OU fournisseur.
  *
+ * Deux mises en page pour un seul formulaire : parcours en deux étapes sur
+ * téléphone (le choix d'abord, les champs ensuite, action collante en bas),
+ * écran scindé sur ordinateur (panneau latérite à gauche, champs à droite).
+ * Une seule arborescence est rendue a la fois — cf. `useGrandEcran`.
+ *
  * Le rôle demandé n'est PAS écrit ici dans `user_roles` : le client n'a aucun
- * droit d'écriture sur cette table (règle A3). Il est transmis dans les
- * métadonnées du compte, et c'est un trigger `SECURITY DEFINER` côté base qui
- * crée le profil et attribue le rôle. Écrire un rôle depuis le navigateur,
- * ce serait offrir « admin » à qui le demande.
+ * droit d'écriture sur cette table (règle A3). Il voyage dans les métadonnées
+ * du compte, et c'est un trigger `SECURITY DEFINER` côté base qui crée le
+ * profil et attribue le rôle. Écrire un rôle depuis le navigateur, ce serait
+ * offrir « admin » à qui le demande.
  */
 export default function Inscription() {
   const naviguer = useNavigate();
   const antiAbus = useAntiAbus();
+  const grandEcran = useGrandEcran();
+  const [etape, setEtape] = React.useState<1 | 2>(1);
   const [envoiEnCours, setEnvoiEnCours] = React.useState(false);
   const [aVerifier, setAVerifier] = React.useState<{ userId: string; email: string } | null>(null);
 
@@ -41,9 +53,12 @@ export default function Inscription() {
   } = useForm<ValeursInscription>({
     resolver: zodResolver(schemaInscription),
     defaultValues: { profil: "acheteur" },
+    mode: "onBlur",
   });
 
   const profil = watch("profil");
+  const telephone = watch("telephone") ?? "";
+  const motDePasse = watch("motDePasse") ?? "";
 
   const soumettre = async (valeurs: ValeursInscription) => {
     const refus = antiAbus.verifier();
@@ -67,7 +82,11 @@ export default function Inscription() {
     });
     if (error) {
       setEnvoiEnCours(false);
-      toast.error("Inscription impossible", { description: error.message });
+      toast.error("Inscription impossible", {
+        description: error.message.includes("already registered")
+          ? "Un compte existe déjà avec cette adresse."
+          : error.message,
+      });
       return;
     }
 
@@ -83,7 +102,7 @@ export default function Inscription() {
       setAVerifier({ userId: utilisateur.id, email: valeurs.email });
     } catch (erreur) {
       // Le compte est créé : on ne le perd pas parce que le mail n'est pas
-      // parti. L'utilisateur pourra redemander un code depuis son espace.
+      // parti. La page de vérification en redemandera un.
       toast.error("Code non envoyé", { description: (erreur as Error).message });
       naviguer("/verification-email", { replace: true, state: { email: valeurs.email } });
     } finally {
@@ -91,124 +110,280 @@ export default function Inscription() {
     }
   };
 
-  return (
-    <div className="container max-w-md py-10">
-      <Seo titre="Créer un compte" chemin="/inscription" indexable={false} />
-      <h1 className="text-page">Créer un compte</h1>
-      <p className="mt-1 text-legende text-muted-foreground">
-        Gratuit. Nécessaire pour payer en ligne, suivre ses commandes et voir les numéros des
-        fournisseurs.
-      </p>
+  /* ── Fragments ──────────────────────────────────────────────────────────
+     Ce sont des ÉLÉMENTS et des fonctions de rendu, jamais des composants
+     définis dans le corps du rendu : un composant déclaré ici serait recréé à
+     chaque frappe, React démonterait l'ancien, et le champ perdrait le focus
+     à chaque caractère. */
 
-      <Carte className="mt-5 p-4">
-        <form onSubmit={handleSubmit(soumettre)} className="space-y-4" noValidate>
-          <input type="text" {...antiAbus.proprietesLeurre} readOnly={false} />
+  const choixProfil = (compact: boolean) => (
+    <fieldset className="m-0 border-0 p-0">
+      <legend className="pb-2.5 text-legende font-semibold">Je viens pour</legend>
+      <GroupeRadio
+        className={compact ? "grid-cols-1" : "sm:grid-cols-2"}
+        value={profil}
+        onValueChange={(v) => setValue("profil", v as ValeursInscription["profil"])}
+      >
+        <OptionRadio
+          id="profil-acheteur"
+          valeur="acheteur"
+          titre={compact ? "J'achète des matériaux" : "Acheter des matériaux"}
+          detail="Particulier, maçon, tâcheron ou entreprise de BTP."
+        />
+        <OptionRadio
+          id="profil-fournisseur"
+          valeur="fournisseur"
+          titre={compact ? "Je vends des matériaux" : "Vendre des matériaux"}
+          detail="Dépôt, briqueterie, carrière, scierie, cimenterie."
+        />
+      </GroupeRadio>
+    </fieldset>
+  );
 
-          <fieldset>
-            <legend className="text-legende font-semibold">Je viens pour</legend>
-            <GroupeRadio
-              className="mt-1.5"
-              value={profil}
-              onValueChange={(v) => setValue("profil", v as ValeursInscription["profil"])}
-            >
-              <OptionRadio
-                id="profil-acheteur"
-                valeur="acheteur"
-                titre="Acheter des matériaux"
-                detail="Particulier, maçon, tâcheron ou entreprise de BTP."
-              />
-              <OptionRadio
-                id="profil-fournisseur"
-                valeur="fournisseur"
-                titre="Vendre des matériaux"
-                detail="Dépôt, briqueterie, carrière, scierie, cimenterie."
-              />
-            </GroupeRadio>
-          </fieldset>
+  const champNom = (
+    <Champ etiquette="Nom et prénom" erreur={errors.nomComplet?.message} obligatoire>
+      {(attributs) => (
+        <Saisie {...attributs} {...register("nomComplet")} autoComplete="name" placeholder="Rakoto Jean" />
+      )}
+    </Champ>
+  );
 
-          <Champ etiquette="Nom et prénom" erreur={errors.nomComplet?.message} obligatoire>
-            {(attributs) => <Saisie {...attributs} {...register("nomComplet")} autoComplete="name" />}
-          </Champ>
+  const champRaisonSociale =
+    profil === "fournisseur" ? (
+      <Champ
+        etiquette="Raison sociale"
+        aide="Le nom de votre entreprise, tel qu'il figure sur votre carte fiscale."
+        erreur={errors.raisonSociale?.message}
+        obligatoire
+      >
+        {(attributs) => (
+          <Saisie {...attributs} {...register("raisonSociale")} autoComplete="organization" />
+        )}
+      </Champ>
+    ) : null;
 
-          {profil === "fournisseur" ? (
-            <Champ
-              etiquette="Raison sociale"
-              aide="Le nom de votre entreprise, tel qu'il figure sur votre carte fiscale."
-              erreur={errors.raisonSociale?.message}
-              obligatoire
-            >
-              {(attributs) => <Saisie {...attributs} {...register("raisonSociale")} autoComplete="organization" />}
-            </Champ>
-          ) : null}
+  const champEmail = (
+    <Champ
+      etiquette="Adresse e-mail"
+      aide="Pour vos reçus et la récupération de votre mot de passe."
+      erreur={errors.email?.message}
+      obligatoire
+    >
+      {(attributs) => (
+        <Saisie
+          {...attributs}
+          {...register("email")}
+          type="email"
+          autoComplete="email"
+          inputMode="email"
+          placeholder="vous@exemple.mg"
+        />
+      )}
+    </Champ>
+  );
 
-          <Champ etiquette="Adresse e-mail" erreur={errors.email?.message} obligatoire>
-            {(attributs) => (
-              <Saisie {...attributs} {...register("email")} type="email" autoComplete="email" inputMode="email" />
-            )}
-          </Champ>
+  const champTelephone = (
+    <ChampTelephone valeur={telephone} erreur={errors.telephone?.message} enregistrement={register("telephone")} />
+  );
 
-          <Champ
-            etiquette="Téléphone"
-            aide="Format 034 12 345 67. Il sert à vous joindre pour la livraison."
-            erreur={errors.telephone?.message}
-            obligatoire
-          >
-            {(attributs) => (
-              <Saisie {...attributs} {...register("telephone")} type="tel" autoComplete="tel" inputMode="tel" />
-            )}
-          </Champ>
+  const champMotDePasse = (
+    <ChampMotDePasse valeur={motDePasse} erreur={errors.motDePasse?.message} enregistrement={register("motDePasse")} />
+  );
 
-          <Champ
-            etiquette="Mot de passe"
-            aide="8 caractères minimum, avec au moins une lettre et un chiffre."
-            erreur={errors.motDePasse?.message}
-            obligatoire
-          >
-            {(attributs) => (
-              <Saisie {...attributs} {...register("motDePasse")} type="password" autoComplete="new-password" />
-            )}
-          </Champ>
+  const champConditions = (
+    <div>
+      <LigneCase
+        id="conditions"
+        etiquette={
+          <>
+            J'accepte les{" "}
+            <Link to="/conditions-utilisation" className="lien-souligne">
+              conditions d'utilisation
+            </Link>{" "}
+            et la{" "}
+            <Link to="/politique-confidentialite" className="lien-souligne">
+              politique de confidentialité
+            </Link>
+            , dont les règles de séquestre et de litige.
+          </>
+        }
+        onCheckedChange={(coche) => setValue("conditions", coche === true, { shouldValidate: true })}
+      />
+      {errors.conditions?.message ? (
+        <p role="alert" className="text-[0.78rem] text-destructive-strong">
+          {errors.conditions.message}
+        </p>
+      ) : null}
+    </div>
+  );
 
-          <Champ etiquette="Confirmer le mot de passe" erreur={errors.confirmation?.message} obligatoire>
-            {(attributs) => (
-              <Saisie {...attributs} {...register("confirmation")} type="password" autoComplete="new-password" />
-            )}
-          </Champ>
+  const dialogue = aVerifier ? (
+    <DialogueCode
+      ouvert
+      email={aVerifier.email}
+      userId={aVerifier.userId}
+      onVerifie={() => naviguer("/compte", { replace: true })}
+      onAbandon={() => {
+        void supabase.auth.signOut().then(() => naviguer("/", { replace: true }));
+      }}
+    />
+  ) : null;
 
-          <div>
-            <LigneCase
-              id="conditions"
-              etiquette="J'accepte les conditions d'utilisation et la politique de confidentialité."
-              onCheckedChange={(coche) => setValue("conditions", coche === true, { shouldValidate: true })}
+  const leurre = <input type="text" {...antiAbus.proprietesLeurre} readOnly={false} />;
+
+  /* ── Écran scindé, à partir de 1024 px ─────────────────────────────────── */
+
+  if (grandEcran) {
+    return (
+      <form onSubmit={handleSubmit(soumettre)} noValidate className="relative">
+        <Seo titre="Créer un compte" chemin="/inscription" indexable={false} />
+        {leurre}
+
+        <div className="flex min-h-[100dvh] items-center justify-center bg-muted/40 p-8">
+          <div className="carte grid w-full max-w-[1280px] grid-cols-[460px_minmax(0,1fr)] overflow-hidden p-0">
+            <PanneauMarque
+              titre="Le prix rendu chantier, pas le prix au dépôt."
+              intro="Un compte vous donne les numéros des fournisseurs vérifiés, le paiement Mvola, Orange Money et Airtel Money, et le suivi de vos livraisons."
             />
-            {errors.conditions?.message ? (
-              <p role="alert" className="text-[0.78rem] text-destructive-strong">
-                {errors.conditions.message}
+
+            <div className="min-w-0 bg-card px-12 pb-9 pt-8">
+              <p className="mb-6 text-right text-courant text-muted-foreground">
+                Déjà inscrit ?{" "}
+                <Link to="/connexion" className="lien-souligne font-semibold">
+                  Se connecter
+                </Link>
               </p>
-            ) : null}
+
+              <h1 className="mb-1.5 text-[1.6875rem] font-bold tracking-tight">Créer un compte</h1>
+              <p className="mb-6 text-courant text-muted-foreground">
+                Gratuit, deux minutes. Vous pourrez commander tout de suite.
+              </p>
+
+              <div className="mb-5 space-y-3">
+                <BoutonGoogle retour="/compte" intitule="S'inscrire avec Google" />
+                <SeparateurOu />
+              </div>
+
+              <div className="mb-5">{choixProfil(false)}</div>
+
+              <div className="grid grid-cols-2 gap-x-[18px] gap-y-4">
+                {champNom}
+                {champTelephone}
+                {champRaisonSociale ? <div className="col-span-2">{champRaisonSociale}</div> : null}
+                <div className="col-span-2">{champEmail}</div>
+                <div className="col-span-2">{champMotDePasse}</div>
+              </div>
+
+              <div className="my-5">{champConditions}</div>
+
+              <button
+                type="submit"
+                disabled={envoiEnCours}
+                className="cible-44 w-full rounded-md bg-primary px-4 text-[1rem] font-bold text-primary-foreground transition-colors hover:bg-primary-strong disabled:opacity-60"
+              >
+                {envoiEnCours ? "Création en cours" : "Créer mon compte"}
+              </button>
+
+              <p className="mt-5 flex items-center gap-2.5 border-t border-border pt-5 text-legende text-muted-foreground">
+                <ShieldCheck size={16} className="shrink-0 text-success-strong" aria-hidden="true" />
+                Nous ne demandons jamais votre code secret mobile money, ni de numéro de carte
+                bancaire.
+              </p>
+            </div>
+          </div>
+        </div>
+        {dialogue}
+      </form>
+    );
+  }
+
+  /* ── Parcours mobile, en deux étapes ───────────────────────────────────── */
+
+  return (
+    <form onSubmit={handleSubmit(soumettre)} noValidate className="relative">
+      <Seo titre="Créer un compte" chemin="/inscription" indexable={false} />
+      {leurre}
+
+      {etape === 1 ? (
+        <div className="flex min-h-[100dvh] flex-col bg-background">
+          <BandeauMarque
+            surtitre="ÉTAPE 1 SUR 2"
+            titre="Vous venez acheter ou vendre ?"
+            intro="On adapte la suite : adresses de chantier pour acheter, dossier de vérification pour vendre."
+          />
+
+          <div className="flex-1 space-y-3 px-5 py-5">
+            <BoutonGoogle retour="/compte" intitule="S'inscrire avec Google" />
+            <SeparateurOu />
+            {choixProfil(true)}
+            <p className="rounded-md bg-muted px-3.5 py-3 text-legende leading-relaxed text-muted-foreground">
+              Vous pourrez faire les deux plus tard avec le même compte.
+            </p>
           </div>
 
-          <Bouton type="submit" pleineLargeur disabled={envoiEnCours}>
-            {envoiEnCours ? "Création en cours" : "Créer mon compte"}
-          </Bouton>
-        </form>
-      </Carte>
+          <div className="sticky bottom-0 border-t border-border bg-background px-5 pb-4 pt-3">
+            <button
+              type="button"
+              onClick={() => setEtape(2)}
+              className="min-h-[52px] w-full rounded-md bg-primary text-[1.03125rem] font-bold text-primary-foreground"
+            >
+              Continuer
+            </button>
+            <p className="mt-2.5 text-center text-courant text-muted-foreground">
+              Déjà inscrit ?{" "}
+              <Link to="/connexion" className="lien-souligne font-semibold">
+                Se connecter
+              </Link>
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div className="flex min-h-[100dvh] flex-col bg-background">
+          <header className="flex items-center gap-3 border-b border-border bg-card px-4 py-3">
+            <button
+              type="button"
+              onClick={() => setEtape(1)}
+              aria-label="Revenir à l'étape précédente"
+              className="flex size-10 items-center justify-center rounded-md border border-border"
+            >
+              <ChevronLeft size={19} aria-hidden="true" />
+            </button>
+            <div className="flex-1">
+              <p className="text-produit">Vos informations</p>
+              <p className="text-legende text-muted-foreground">
+                Étape 2 sur 2 · {profil === "acheteur" ? "achat" : "vente"}
+              </p>
+            </div>
+            <LogoAkora className="size-7" />
+          </header>
+          <div className="h-1 bg-border">
+            <div className="h-full w-[62%] bg-primary" />
+          </div>
 
-      {aVerifier ? (
-        <DialogueCode
-          ouvert
-          email={aVerifier.email}
-          userId={aVerifier.userId}
-          onVerifie={() => naviguer("/compte", { replace: true })}
-        />
-      ) : null}
+          <div className="flex-1 space-y-4 px-4 py-5">
+            {champNom}
+            {champRaisonSociale}
+            {champTelephone}
+            {champEmail}
+            {champMotDePasse}
+            {champConditions}
+          </div>
 
-      <p className="mt-4 text-legende text-muted-foreground">
-        Déjà inscrit ?{" "}
-        <Link to="/connexion" className="lien-souligne">
-          Se connecter
-        </Link>
-      </p>
-    </div>
+          <div className="sticky bottom-0 border-t border-border bg-background px-4 pb-4 pt-3">
+            <button
+              type="submit"
+              disabled={envoiEnCours}
+              className="min-h-[52px] w-full rounded-md bg-primary text-[1.03125rem] font-bold text-primary-foreground disabled:opacity-60"
+            >
+              {envoiEnCours ? "Création en cours" : "Créer mon compte"}
+            </button>
+            <p className="mt-2 text-center text-legende text-muted-foreground">
+              Aucune carte bancaire n'est demandée.
+            </p>
+          </div>
+        </div>
+      )}
+      {dialogue}
+    </form>
   );
 }

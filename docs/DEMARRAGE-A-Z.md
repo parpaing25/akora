@@ -223,3 +223,54 @@ seulement quand l'acheteur confirme lui-même sa réception.
 
 **Commence par A, B, C. Ensuite dis-moi « c'est fait » avec ton e-mail, et je te
 passe administrateur.**
+
+---
+
+## Mise à jour du 22/08/2026, 22 h — authentification
+
+Ce qui a changé, et ce qu'il vous reste à faire.
+
+### Corrigé sans action de votre part
+
+**L'inscription se validait toute seule.** La page de confirmation lisait
+`email_confirmed_at`, que Supabase remplit *dès l'inscription* quand on
+désactive sa confirmation native — elle affichait donc « Adresse confirmée » à
+des comptes n'ayant jamais vu le moindre code. Elle lit désormais
+`profiles.email_verifie`, qui n'est écrit que par la saisie du code.
+
+**Votre navigateur exécutait la version de la veille.** Le service worker
+attendait la fermeture de *tous* les onglets pour céder la place. Sur un
+téléphone, cela n'arrive jamais. Il prend la main immédiatement, et un onglet
+resté ouvert se recharge de lui-même à la version suivante.
+
+**La vérification est devenue obligatoire.** Sans adresse confirmée, plus
+d'accès à `/compte`, `/pro` ni à l'administration — et le paiement en ligne
+refusait déjà côté serveur.
+
+**Mot de passe oublié** passe par un code à six chiffres, notre SMTP et notre
+gabarit, comme l'inscription. Le lien natif de Supabase partait d'un domaine
+inconnu du destinataire : il finissait en indésirables.
+
+### Ce qu'il reste à faire : activer Google (15 minutes)
+
+1. Ouvrez **console.cloud.google.com** → créez un projet (« Akora »).
+2. **APIs et services → Écran de consentement OAuth** : externe, nom « Akora »,
+   assistance `akora@akora.fonenako.mg`, domaine `akora.fonenako.mg`.
+3. **Identifiants → Créer → ID client OAuth → Application Web** :
+   - Origine JavaScript autorisée : `https://akora.fonenako.mg`
+   - URI de redirection autorisée : celle que la commande ci-dessous affiche.
+     C'est l'adresse de **Supabase**, pas celle du site — Google renvoie vers
+     Supabase, qui pose la session et nous ramène ensuite.
+4. Copiez l'identifiant et le secret, puis :
+
+```bash
+npm run google                              # affiche l'URI à coller, sans rien changer
+npm run google -- <client_id> <client_secret>
+```
+
+Le bouton « Continuer avec Google » **apparaît tout seul** sur l'inscription et
+la connexion : il interroge la configuration avant de s'afficher. Tant que rien
+n'est renseigné, il n'existe pas — plutôt qu'un bouton qui mène à une erreur.
+
+Un compte créé par Google est vérifié d'emblée : Google a déjà prouvé
+l'adresse, la redemander serait une cérémonie.

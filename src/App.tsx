@@ -19,6 +19,7 @@ const Connexion = lazy(() => import("@/pages/auth/Connexion"));
 const Inscription = lazy(() => import("@/pages/auth/Inscription"));
 const MotDePasseOublie = lazy(() => import("@/pages/auth/MotDePasseOublie"));
 const VerificationEmail = lazy(() => import("@/pages/auth/VerificationEmail"));
+const RetourOAuth = lazy(() => import("@/pages/auth/RetourOAuth"));
 
 // ── Espace fournisseur (etape 3) ─────────────────────────────────────────
 const CoquillePro = lazy(() =>
@@ -102,6 +103,18 @@ export default function App() {
     <Suspense fallback={<Attente />}>
       <Toaster />
       <Routes>
+        {/*
+          Les pages d'authentification vivent HORS de la coquille : elles
+          occupent l'écran entier — panneau latérite à gauche, formulaire à
+          droite — et l'en-tête du site n'a rien à y faire. Un menu « Panier »
+          au-dessus d'un formulaire d'inscription invite à partir ailleurs.
+        */}
+        <Route path="/connexion" element={<Connexion />} />
+        <Route path="/inscription" element={<Inscription />} />
+        <Route path="/mot-de-passe-oublie" element={<MotDePasseOublie />} />
+        <Route path="/verification-email" element={<VerificationEmail />} />
+        <Route path="/auth/retour" element={<RetourOAuth />} />
+
         <Route element={<Coquille />}>
           <Route index element={<Accueil />} />
 
@@ -128,11 +141,6 @@ export default function App() {
           <Route path="conditions-utilisation" element={<Conditions />} />
           <Route path="politique-confidentialite" element={<Confidentialite />} />
           <Route path="mentions-legales" element={<MentionsLegales />} />
-
-          <Route path="connexion" element={<Connexion />} />
-          <Route path="inscription" element={<Inscription />} />
-          <Route path="mot-de-passe-oublie" element={<MotDePasseOublie />} />
-          <Route path="verification-email" element={<VerificationEmail />} />
 
           <Route
             path="compte"

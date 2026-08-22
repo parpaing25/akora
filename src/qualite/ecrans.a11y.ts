@@ -28,9 +28,43 @@ import { FournisseurInfobulle } from "@/components/ui/tooltip";
  * contraste n'est pas évaluée ici. Elle l'a été à la conception, sur les
  * tokens (AKORA-DESIGN §1) : muted-foreground donne 5,4:1 sur le fond.
  */
-const ECRANS: [string, React.ComponentType][] = [
+/**
+ * Force la disposition « grand écran » le temps d'un rendu.
+ *
+ * Inscription et Connexion n'ont pas la même ARBORESCENCE selon la largeur :
+ * écran scindé au-delà de 1024 px, parcours en deux étapes en dessous. Sans ce
+ * leurre, la moitié du design ne serait jamais auditée — et c'est justement
+ * celle qui porte le panneau latéral et la grille à deux colonnes.
+ *
+ * On ne remplace que `matchMedia`, que jsdom n'implémente pas : toucher à
+ * l'objet `window` entier casserait le reste de l'environnement de test.
+ */
+function enGrandEcran<T>(rendu: () => T): T {
+  const fenetre = globalThis.window as (Window & typeof globalThis) | undefined;
+  if (!fenetre) return rendu();
+  const precedent = fenetre.matchMedia;
+  fenetre.matchMedia = ((requete: string) => ({
+    matches: true,
+    media: requete,
+    onchange: null,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    addListener: () => {},
+    removeListener: () => {},
+    dispatchEvent: () => false,
+  })) as typeof window.matchMedia;
+  try {
+    return rendu();
+  } finally {
+    fenetre.matchMedia = precedent;
+  }
+}
+
+const ECRANS: [string, React.ComponentType, boolean?][] = [
   ["Connexion", Connexion],
+  ["Connexion — écran scindé", Connexion, true],
   ["Inscription", Inscription],
+  ["Inscription — écran scindé", Inscription, true],
   ["Mot de passe oublié", MotDePasseOublie],
   ["Que veut dire vérifié", Verification],
   ["Devenir fournisseur", DevenirFournisseur],
@@ -62,9 +96,10 @@ function html(Ecran: React.ComponentType): string {
 }
 
 describe("accessibilité des écrans", () => {
-  for (const [nom, Ecran] of ECRANS) {
+  for (const [nom, Ecran, grandEcran] of ECRANS) {
     it(`${nom} : aucune violation critique ni sérieuse`, async () => {
-      document.body.innerHTML = `<main id="racine">${html(Ecran)}</main>`;
+      const rendu = grandEcran ? enGrandEcran(() => html(Ecran)) : html(Ecran);
+      document.body.innerHTML = `<main id="racine">${rendu}</main>`;
       const resultat = await axe.run(document.body, {
         // Le contraste ne se calcule pas en jsdom ; les régions supposent la
         // coquille complète, qui n'est pas montée ici.

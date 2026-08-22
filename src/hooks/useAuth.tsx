@@ -33,6 +33,15 @@ interface ContexteAuth {
   roles: RoleApplicatif[];
   /** Vrai tant que la session initiale n'est pas résolue. */
   chargement: boolean;
+  /**
+   * Vrai tant que le profil n'est pas revenu de la base.
+   *
+   * Distinct de `chargement` : la session arrive du stockage local en
+   * quelques millisecondes, le profil fait un aller-retour réseau. Confondre
+   * les deux ferait lire `email_verifie === false` à un compte parfaitement
+   * vérifié — et le renverrait vers l'écran de code, qui en enverrait un.
+   */
+  chargementProfil: boolean;
   aRole: (role: RoleApplicatif) => boolean;
   deconnexion: () => Promise<void>;
 }
@@ -100,13 +109,14 @@ export function FournisseurAuth({ children }: { children: React.ReactNode }) {
       profil: requeteProfil.data ?? null,
       roles,
       chargement,
+      chargementProfil: Boolean(idUtilisateur) && requeteProfil.isPending,
       aRole: (role) => roles.includes(role),
       deconnexion: async () => {
         await supabase.auth.signOut();
         client.clear();
       },
     }),
-    [session, requeteProfil.data, roles, chargement, client],
+    [session, requeteProfil.data, requeteProfil.isPending, idUtilisateur, roles, chargement, client],
   );
 
   return <Contexte.Provider value={valeur}>{children}</Contexte.Provider>;

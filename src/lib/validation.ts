@@ -42,7 +42,6 @@ export const schemaInscription = z
     email: courriel,
     telephone: telephoneMalgache,
     motDePasse,
-    confirmation: z.string(),
     profil: z.enum(["acheteur", "fournisseur"]),
     raisonSociale: z.string().trim().max(160).optional(),
     // `boolean` plutot que `literal(true)` : le champ doit pouvoir repasser a
@@ -51,10 +50,10 @@ export const schemaInscription = z
       message: "Vous devez accepter les conditions d'utilisation.",
     }),
   })
-  .refine((v) => v.motDePasse === v.confirmation, {
-    path: ["confirmation"],
-    message: "Les deux mots de passe ne sont pas identiques.",
-  })
+  // Pas de champ « confirmer le mot de passe » : l'inscription offre un
+  // bouton « afficher » et une jauge de force. Retaper a l'aveugle un mot de
+  // passe qu'on vient de taper a l'aveugle ne verifie rien — cela recopie la
+  // meme faute de frappe deux fois.
   .refine((v) => v.profil !== "fournisseur" || (v.raisonSociale ?? "").trim().length >= 2, {
     path: ["raisonSociale"],
     message: "Indiquez la raison sociale de votre entreprise.",
@@ -63,3 +62,13 @@ export type ValeursInscription = z.infer<typeof schemaInscription>;
 
 export const schemaMotDePasseOublie = z.object({ email: courriel });
 export type ValeursMotDePasseOublie = z.infer<typeof schemaMotDePasseOublie>;
+
+/** Second ecran du mot de passe oublie : le code recu contre un mot de passe. */
+export const schemaReinitialisation = z.object({
+  code: z
+    .string()
+    .trim()
+    .regex(/^\d{6}$/, "Le code compte six chiffres."),
+  motDePasse,
+});
+export type ValeursReinitialisation = z.infer<typeof schemaReinitialisation>;

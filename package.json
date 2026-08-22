@@ -21,7 +21,8 @@
     "verif:recette": "node scripts/verifier-recette.mjs",
     "fonctions:deploy": "node scripts/deployer-fonctions.mjs",
     "verifier": "npm run typecheck && npm run test && npm run test:a11y && npm run verif:recette && npm run verif:securite",
-    "admin": "node scripts/promouvoir-admin.mjs"
+    "admin": "node scripts/promouvoir-admin.mjs",
+    "google": "node scripts/configurer-google.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
