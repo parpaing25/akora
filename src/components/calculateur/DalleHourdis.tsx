@@ -31,14 +31,19 @@ import { Saisie } from "@/components/ui/input";
  */
 
 /** Les six formats du referentiel, avec leurs dimensions de pose. */
-const FORMATS: (FormatHourdis & { nom: string; portee: string; matiere: string })[] = [
-  { slug: "hourdis-12", nom: "12", entraxeCm: 60, pasCm: 20, hauteurCm: 12, portee: "portée ≤ 3,50 m", matiere: "béton" },
-  { slug: "hourdis-16", nom: "16", entraxeCm: 60, pasCm: 20, hauteurCm: 16, portee: "portée ≤ 4,50 m", matiere: "béton" },
-  { slug: "hourdis-20", nom: "20", entraxeCm: 60, pasCm: 20, hauteurCm: 20, portee: "portée ≤ 5,50 m", matiere: "béton" },
-  { slug: "hourdis-tc-12", nom: "12×33×33", entraxeCm: 33, pasCm: 33, hauteurCm: 12, portee: "portée ≤ 3,50 m", matiere: "terre cuite" },
-  { slug: "hourdis-tc-15", nom: "15×33×33", entraxeCm: 33, pasCm: 33, hauteurCm: 15, portee: "portée ≤ 4,00 m", matiere: "terre cuite" },
-  { slug: "hourdis-tc-20", nom: "20×33×33", entraxeCm: 33, pasCm: 33, hauteurCm: 20, portee: "portée ≤ 5,00 m", matiere: "terre cuite" },
+type FormatUI = FormatHourdis & { nom: string; porteeMaxM: number; matiere: string };
+
+const FORMATS: FormatUI[] = [
+  { slug: "hourdis-12", nom: "12", entraxeCm: 60, pasCm: 20, hauteurCm: 12, porteeMaxM: 3.5, matiere: "béton" },
+  { slug: "hourdis-16", nom: "16", entraxeCm: 60, pasCm: 20, hauteurCm: 16, porteeMaxM: 4.5, matiere: "béton" },
+  { slug: "hourdis-20", nom: "20", entraxeCm: 60, pasCm: 20, hauteurCm: 20, porteeMaxM: 5.5, matiere: "béton" },
+  { slug: "hourdis-tc-12", nom: "12×33×33", entraxeCm: 33, pasCm: 33, hauteurCm: 12, porteeMaxM: 3.5, matiere: "terre cuite" },
+  { slug: "hourdis-tc-15", nom: "15×33×33", entraxeCm: 33, pasCm: 33, hauteurCm: 15, porteeMaxM: 4, matiere: "terre cuite" },
+  { slug: "hourdis-tc-20", nom: "20×33×33", entraxeCm: 33, pasCm: 33, hauteurCm: 20, porteeMaxM: 5, matiere: "terre cuite" },
 ];
+
+/** Surfaces courantes : une piece, une chambre, un etage, une grande dalle. */
+const RACCOURCIS = [12, 40, 80, 120];
 
 const RESERVES = [
   "Étaiement, coffrage de rive et armatures de chaînage.",
@@ -53,9 +58,23 @@ export function DalleHourdis() {
   const { point } = usePointLivraison();
   const ajouterAuPanier = usePanier((e) => e.ajouter);
 
-  const [portee, setPortee] = React.useState(4);
-  const [largeur, setLargeur] = React.useState(5.5);
-  const [format, setFormat] = React.useState(FORMATS[1] as (typeof FORMATS)[number]);
+  // La SURFACE est la saisie immediate : c'est le chiffre que tout le monde a
+  // en tete. Mais un calepinage a besoin de deux dimensions — on ne pose pas
+  // des files entieres sur un metre carre abstrait. La portee prend donc par
+  // defaut la valeur maximale admissible du hourdis choisi, et la largeur s'en
+  // deduit. Qui connait sa portee la corrige ; qui ne la connait pas obtient
+  // quand meme un compte constructible, et sait sur quelle hypothese.
+  const [surfaceSaisie, setSurfaceSaisie] = React.useState(40);
+  const [format, setFormat] = React.useState<FormatUI>(FORMATS[1] as FormatUI);
+  const [portee, setPortee] = React.useState(FORMATS[1]!.porteeMaxM);
+
+  // Un hourdis plus bas ne franchit pas la meme portee : en changer ramene la
+  // portee sous le maximum du nouveau format, sinon la dalle ne tient pas.
+  React.useEffect(() => {
+    setPortee((p) => Math.min(p, format.porteeMaxM));
+  }, [format]);
+
+  const largeur = portee > 0 ? surfaceSaisie / portee : 0;
   const [marge, setMarge] = React.useState(5);
   const [dialogue, setDialogue] = React.useState(false);
   const [choix, setChoix] = React.useState<Record<string, string | null>>({});
@@ -307,40 +326,38 @@ export function DalleHourdis() {
           <div className="carte p-4">
             <h2 className="text-produit">Votre ouvrage</h2>
 
-            <div className="mt-3 grid grid-cols-2 gap-3">
-              <Champ etiquette="Portée (sens des poutrelles)" aide="en mètres">
-                {(a) => (
-                  <Saisie
-                    {...a}
-                    type="number"
-                    inputMode="decimal"
-                    step="0.1"
-                    min="1"
-                    max="8"
-                    value={portee}
-                    onChange={(e) => setPortee(Math.max(0, Number(e.target.value)))}
-                  />
-                )}
-              </Champ>
-              <Champ etiquette="Largeur" aide="en mètres">
-                {(a) => (
-                  <Saisie
-                    {...a}
-                    type="number"
-                    inputMode="decimal"
-                    step="0.1"
-                    min="1"
-                    max="30"
-                    value={largeur}
-                    onChange={(e) => setLargeur(Math.max(0, Number(e.target.value)))}
-                  />
-                )}
-              </Champ>
+            <Champ etiquette="Surface de la dalle" aide="en mètres carrés">
+              {(a) => (
+                <Saisie
+                  {...a}
+                  type="number"
+                  inputMode="decimal"
+                  step="1"
+                  min="1"
+                  max="2000"
+                  value={surfaceSaisie}
+                  onChange={(e) => setSurfaceSaisie(Math.max(0, Number(e.target.value)))}
+                />
+              )}
+            </Champ>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {RACCOURCIS.map((valeur) => (
+                <button
+                  key={valeur}
+                  type="button"
+                  aria-pressed={surfaceSaisie === valeur}
+                  onClick={() => setSurfaceSaisie(valeur)}
+                  className={
+                    "nombres min-h-9 rounded-md border px-3 text-legende " +
+                    (surfaceSaisie === valeur
+                      ? "border-primary bg-primary-soft font-semibold"
+                      : "border-border bg-card")
+                  }
+                >
+                  {valeur} m²
+                </button>
+              ))}
             </div>
-            <p className="mt-1.5 text-legende text-muted-foreground">
-              <span className="nombres">{nombre(surface, 1)}</span> m² de dalle. Les poutrelles
-              courent dans le sens de la portée, d'un seul tenant.
-            </p>
 
             <p className="mt-4 text-legende font-semibold">Hourdis</p>
             <div className="mt-1.5 grid grid-cols-3 gap-2">
@@ -357,7 +374,7 @@ export function DalleHourdis() {
                 >
                   <span className="nombres block text-courant font-bold">{f.nom}</span>
                   <span className="block text-[0.66rem] text-muted-foreground">{f.matiere}</span>
-                  <span className="block text-[0.66rem] text-muted-foreground">{f.portee}</span>
+                  <span className="nombres block text-[0.66rem] text-muted-foreground">≤ {nombre(f.porteeMaxM, 2)} m</span>
                 </button>
               ))}
             </div>
@@ -365,6 +382,41 @@ export function DalleHourdis() {
               <span className="nombres">{nombre(hourdisParM2(format), 2)}</span> hourdis au m² en
               théorie — le calepinage ci-contre donne le compte réel.
             </p>
+
+            {/*
+              La portee reste reglable, en second rang : une dalle se pose en
+              files entieres, et deux dalles de meme surface n'ont pas le meme
+              metre selon leurs proportions. On annonce donc l'hypothese au
+              lieu de la cacher.
+            */}
+            <div className="mt-4 rounded-md bg-muted p-3">
+              <div className="flex items-baseline justify-between gap-2">
+                <label htmlFor="portee" className="text-legende font-semibold">
+                  Portée des poutrelles
+                </label>
+                <span className="nombres text-courant font-bold text-primary">
+                  {nombre(portee, 2)} m
+                </span>
+              </div>
+              <input
+                id="portee"
+                type="range"
+                min={2}
+                max={format.porteeMaxM}
+                step={0.25}
+                value={portee}
+                onChange={(e) => setPortee(Number(e.target.value))}
+                className="mt-1.5 w-full accent-primary"
+              />
+              <p className="text-legende text-muted-foreground">
+                Dalle supposée de{" "}
+                <span className="nombres">{nombre(portee, 2)}</span> ×{" "}
+                <span className="nombres">{nombre(largeur, 2)}</span> m. Le hourdis{" "}
+                <span className="nombres">{format.nom}</span> franchit{" "}
+                <span className="nombres">{nombre(format.porteeMaxM, 2)}</span> m au maximum. Si
+                vous connaissez la portée réelle, réglez-la : le compte des files en dépend.
+              </p>
+            </div>
 
             <div className="mt-4">
               <div className="flex items-baseline justify-between gap-2">
