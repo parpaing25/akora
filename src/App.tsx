@@ -82,6 +82,7 @@ const TypeMateriau = lazy(() => import("@/pages/public/TypeMateriau"));
 const Comparateur = lazy(() => import("@/pages/public/Comparateur"));
 const Fournisseurs = lazy(() => import("@/pages/public/Fournisseurs"));
 const FournisseurFiche = lazy(() => import("@/pages/public/FournisseurFiche"));
+const LivraisonFournisseur = lazy(() => import("@/pages/public/LivraisonFournisseur"));
 const ProduitFiche = lazy(() => import("@/pages/public/ProduitFiche"));
 const Recherche = lazy(() => import("@/pages/public/Recherche"));
 const Panier = lazy(() => import("@/pages/public/Panier"));
@@ -133,6 +134,7 @@ export default function App() {
           <Route path="materiaux/:famille/:type/:format" element={<Comparateur />} />
           <Route path="fournisseurs" element={<Fournisseurs />} />
           <Route path="fournisseurs/:slug" element={<FournisseurFiche />} />
+          <Route path="fournisseurs/:slug/livraison" element={<LivraisonFournisseur />} />
           <Route path="fournisseurs/:slug/:produitSlug" element={<ProduitFiche />} />
           <Route path="recherche" element={<Recherche />} />
           <Route path="panier" element={<Panier />} />

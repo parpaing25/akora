@@ -1,7 +1,8 @@
 import { Link } from "react-router-dom";
-import { Heart, Phone, Truck } from "lucide-react";
+import { Heart, Truck } from "lucide-react";
 import type { Publication } from "@/lib/donnees/fil";
 import { BoutonSuivre } from "@/components/fil/BoutonSuivre";
+import { RevelerContact } from "@/components/marque/RevelerContact";
 import { useLivraisonUnique } from "@/hooks/useLivraison";
 import { usePointLivraison } from "@/lib/point-livraison";
 import { formaterAriary } from "@/lib/format";
@@ -203,17 +204,16 @@ function PostFournisseur({ publication }: { publication: Publication }) {
           </Link>
         ) : null}
         <Link
-          to={`/fournisseurs/${publication.fournisseur_slug}`}
+          to={`/fournisseurs/${publication.fournisseur_slug}/livraison`}
           className="cible-44 flex items-center gap-2 rounded-md border border-border px-3.5 text-courant font-semibold"
         >
           <Truck size={16} aria-hidden="true" /> Simuler la livraison
         </Link>
-        <Link
-          to={`/fournisseurs/${publication.fournisseur_slug}`}
-          className="cible-44 flex items-center gap-2 rounded-md border border-border px-3.5 text-courant font-semibold"
-        >
-          <Phone size={16} aria-hidden="true" /> Appeler
-        </Link>
+        {/* « Appeler » revele le numero ici meme : renvoyer vers une autre page
+            pour un bouton qui annonce un appel, c'est mentir sur l'etiquette. */}
+        {publication.fournisseur_id ? (
+          <RevelerContact fournisseurId={publication.fournisseur_id} />
+        ) : null}
       </footer>
 
       <Visionneuse
