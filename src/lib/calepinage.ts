@@ -136,3 +136,141 @@ export function hourdisParM2(format: FormatHourdis): number {
   if (entraxe <= 0 || pas <= 0) return 0;
   return 1 / (entraxe * pas);
 }
+
+/* ── Mur en blocs ─────────────────────────────────────────────────────────
+   Meme defaut que la dalle : un mur se monte en RANGEES entieres, et la
+   derniere rangee compte pour une rangee complete meme si elle est ecretee.
+   Sur un mur de 4,00 x 2,50 m en blocs 40 x 20 :
+     par ratio      : 10,0 m2 x 12,5 = 125 blocs
+     par calepinage : 10 blocs x 13 rangees = 130
+   Cinq pour cent d'ecart, et cinq pour cent d'un mur, c'est une demi-journee
+   d'arret. */
+
+export interface EntreeMurCalepine {
+  longueurM: number;
+  hauteurM: number;
+  /** Longueur du bloc en parement, en cm. */
+  blocLongueurCm: number;
+  /** Hauteur du bloc en parement, en cm. */
+  blocHauteurCm: number;
+  /** Surface totale des portes et fenetres, en m2. */
+  ouverturesM2?: number;
+}
+
+export interface MurCalepine {
+  surfaceBruteM2: number;
+  surfaceNetteM2: number;
+  blocsParRangee: number;
+  nbRangees: number;
+  nbBlocsBruts: number;
+  /** Blocs economises par les ouvertures, comptes a l'unite INFERIEURE. */
+  blocsDeduits: number;
+  nbBlocs: number;
+  nbBlocsParRatio: number;
+  ecartPct: number;
+}
+
+export function calepinerMur(entree: EntreeMurCalepine): MurCalepine {
+  const longueur = Math.max(0, entree.longueurM);
+  const hauteur = Math.max(0, entree.hauteurM);
+  const blocL = entree.blocLongueurCm / 100;
+  const blocH = entree.blocHauteurCm / 100;
+  const surfaceBruteM2 = longueur * hauteur;
+
+  if (longueur <= 0 || hauteur <= 0 || blocL <= 0 || blocH <= 0) {
+    return {
+      surfaceBruteM2: 0,
+      surfaceNetteM2: 0,
+      blocsParRangee: 0,
+      nbRangees: 0,
+      nbBlocsBruts: 0,
+      blocsDeduits: 0,
+      nbBlocs: 0,
+      nbBlocsParRatio: 0,
+      ecartPct: 0,
+    };
+  }
+
+  const blocsParRangee = entierSup(longueur / blocL);
+  const nbRangees = entierSup(hauteur / blocH);
+  const nbBlocsBruts = blocsParRangee * nbRangees;
+
+  // Les ouvertures se deduisent a l'unite INFERIEURE : une baie ne fait
+  // presque jamais un compte rond de blocs, et il vaut mieux en avoir deux de
+  // trop que d'arreter le chantier pour deux blocs.
+  const ouvertures = Math.max(0, entree.ouverturesM2 ?? 0);
+  const parM2 = 1 / (blocL * blocH);
+  // L'epsilon n'est pas cosmetique : 1 / (0,40 x 0,20) vaut 12,499999999 en
+  // virgule flottante, donc 6 m2 d'ouvertures donnaient 74 blocs au lieu de
+  // 75, et le mur en comptait un de trop.
+  const blocsDeduits = Math.min(nbBlocsBruts, Math.floor(ouvertures * parM2 + 1e-9));
+
+  const surfaceNetteM2 = Math.max(0, surfaceBruteM2 - ouvertures);
+  const nbBlocsParRatio = entierSup(surfaceNetteM2 * parM2);
+
+  return {
+    surfaceBruteM2,
+    surfaceNetteM2,
+    blocsParRangee,
+    nbRangees,
+    nbBlocsBruts,
+    blocsDeduits,
+    nbBlocs: nbBlocsBruts - blocsDeduits,
+    nbBlocsParRatio,
+    ecartPct:
+      nbBlocsParRatio > 0 ? ((nbBlocsBruts - blocsDeduits - nbBlocsParRatio) / nbBlocsParRatio) * 100 : 0,
+  };
+}
+
+/* ── Couverture en toles ──────────────────────────────────────────────────
+   Une tole se pose entiere, et son recouvrement mange de la largeur. La
+   largeur UTILE d'une tole ondulee de 0,90 m est d'environ 0,80 m une fois
+   l'onde de recouvrement retiree — c'est cette largeur-la qui compte. */
+
+export interface EntreeToitureCalepinee {
+  /** Longueur du batiment, perpendiculaire a la pente, en metres. */
+  longueurM: number;
+  /** Longueur du rampant, dans le sens de la pente, en metres. */
+  rampantM: number;
+  /** Longueur d'une tole, en metres. */
+  toleLongueurM: number;
+  /** Largeur utile d'une tole, recouvrement deduit, en metres. */
+  largeurUtileM: number;
+}
+
+export interface ToitureCalepinee {
+  surfaceM2: number;
+  tolesParRangee: number;
+  nbRangees: number;
+  nbToles: number;
+  nbTolesParRatio: number;
+  ecartPct: number;
+}
+
+export function calepinerToiture(entree: EntreeToitureCalepinee): ToitureCalepinee {
+  const longueur = Math.max(0, entree.longueurM);
+  const rampant = Math.max(0, entree.rampantM);
+  const toleL = entree.toleLongueurM;
+  const largeur = entree.largeurUtileM;
+  const surfaceM2 = longueur * rampant;
+
+  if (longueur <= 0 || rampant <= 0 || toleL <= 0 || largeur <= 0) {
+    return { surfaceM2: 0, tolesParRangee: 0, nbRangees: 0, nbToles: 0, nbTolesParRatio: 0, ecartPct: 0 };
+  }
+
+  // Une rangee de toles couvre `toleLongueurM` de rampant ; il en faut autant
+  // que le rampant en contient, arrondi au superieur.
+  const nbRangees = entierSup(rampant / toleL);
+  const tolesParRangee = entierSup(longueur / largeur);
+  const nbToles = nbRangees * tolesParRangee;
+  const nbTolesParRatio = entierSup(surfaceM2 / (toleL * largeur));
+
+  return {
+    surfaceM2,
+    tolesParRangee,
+    nbRangees,
+    nbToles,
+    nbTolesParRatio,
+    ecartPct: nbTolesParRatio > 0 ? ((nbToles - nbTolesParRatio) / nbTolesParRatio) * 100 : 0,
+  };
+}

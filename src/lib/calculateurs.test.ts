@@ -41,7 +41,10 @@ describe("mur en parpaings", () => {
       RATIOS,
       0,
     );
-    expect(quantite(sansMarge, "blocs")).toBe(300); // 24 x 12,5
+    // 25 blocs par rangee x 15 rangees = 375, moins 75 pour les ouvertures.
+    // Le ratio donnait le meme compte ici parce que les dimensions tombent
+    // rondes ; ce n'est pas toujours le cas — cf. calepinage.test.ts.
+    expect(quantite(sansMarge, "blocs")).toBe(300);
   });
 
   it("applique la marge de sécurité et arrondit à l'unité supérieure", () => {
@@ -136,9 +139,17 @@ describe("toiture en tôles", () => {
 });
 
 describe("indépendance aux ratios", () => {
-  it("suit un ratio modifié par l'admin, sans rien coder en dur", () => {
-    const modifie: Ratios = { ...RATIOS, "mur_parpaing.blocs_par_m2": 10 };
-    const r = murParpaings({ longueurM: 10, hauteurM: 3, epaisseurCm: 15 }, modifie, 0);
-    expect(quantite(r, "blocs")).toBe(300); // 30 m² x 10
+  it("suit les dimensions de bloc reglees par l'admin, sans rien coder en dur", () => {
+    // Depuis le calepinage, ce sont les DIMENSIONS du bloc qui commandent le
+    // compte, plus un ratio « pieces au m2 » — un mur se monte en rangees.
+    // L'admin garde la main : il regle les dimensions.
+    const grand: Ratios = { ...RATIOS, "mur_parpaing.bloc_longueur_cm": 50 };
+    const r = murParpaings({ longueurM: 10, hauteurM: 3, epaisseurCm: 15 }, grand, 0);
+    // 10 / 0,50 = 20 blocs par rangee, 3 / 0,20 = 15 rangees.
+    expect(quantite(r, "blocs")).toBe(300);
+
+    const standard = murParpaings({ longueurM: 10, hauteurM: 3, epaisseurCm: 15 }, RATIOS, 0);
+    // 10 / 0,40 = 25 par rangee : le meme mur demande plus de blocs plus petits.
+    expect(quantite(standard, "blocs")).toBe(375);
   });
 });

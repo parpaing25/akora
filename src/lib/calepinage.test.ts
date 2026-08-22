@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { calepinerDalle, hourdisParM2, type FormatHourdis } from "./calepinage";
+import {
+  calepinerDalle,
+  calepinerMur,
+  calepinerToiture,
+  hourdisParM2,
+  type FormatHourdis,
+} from "./calepinage";
 
 /** Hourdis beton courant : franchit 60 cm entre poutrelles, 20 cm de pas. */
 const H60x20: FormatHourdis = { slug: "hourdis-16", entraxeCm: 60, pasCm: 20, hauteurCm: 16 };
@@ -81,5 +87,72 @@ describe("calepinerDalle", () => {
     expect(d.nbHourdis).toBe(0);
     expect(d.entraxeReelM).toBe(0);
     expect(Number.isFinite(d.ecartHourdisPct)).toBe(true);
+  });
+});
+
+describe("calepinerMur", () => {
+  const BLOC = { blocLongueurCm: 40, blocHauteurCm: 20 };
+
+  it("monte le mur en rangees entieres", () => {
+    // 4,00 / 0,40 = 10 blocs ; 2,50 / 0,20 = 12,5 → 13 rangees.
+    const m = calepinerMur({ longueurM: 4, hauteurM: 2.5, ...BLOC });
+    expect(m.blocsParRangee).toBe(10);
+    expect(m.nbRangees).toBe(13);
+    expect(m.nbBlocs).toBe(130);
+    // Le ratio en annoncait 125 : cinq de moins, et le mur s'arrete.
+    expect(m.nbBlocsParRatio).toBe(125);
+    expect(m.ecartPct).toBeCloseTo(4, 0);
+  });
+
+  it("deduit les ouvertures a l'unite INFERIEURE", () => {
+    // Une baie de 2 m2 vaut 25 blocs pile ; une de 2,1 m2 en vaut 26,25 et
+    // on n'en deduit que 26 — mieux vaut deux blocs de trop qu'un chantier
+    // arrete pour deux blocs.
+    const m = calepinerMur({ longueurM: 4, hauteurM: 2.5, ouverturesM2: 2.1, ...BLOC });
+    expect(m.blocsDeduits).toBe(26);
+    expect(m.nbBlocs).toBe(104);
+  });
+
+  it("ne deduit jamais plus que le mur ne contient", () => {
+    const m = calepinerMur({ longueurM: 2, hauteurM: 2, ouverturesM2: 999, ...BLOC });
+    expect(m.nbBlocs).toBe(0);
+  });
+
+  it("rend zero sur un mur vide", () => {
+    expect(calepinerMur({ longueurM: 0, hauteurM: 2.5, ...BLOC }).nbBlocs).toBe(0);
+  });
+});
+
+describe("calepinerToiture", () => {
+  const TOLE = { toleLongueurM: 2, largeurUtileM: 0.8 };
+
+  it("pose les toles entieres, en rangees", () => {
+    // Rampant 4,50 m → 3 rangees de 2 m ; longueur 8 m → 10 toles par rangee.
+    const t = calepinerToiture({ longueurM: 8, rampantM: 4.5, ...TOLE });
+    expect(t.nbRangees).toBe(3);
+    expect(t.tolesParRangee).toBe(10);
+    expect(t.nbToles).toBe(30);
+    // Le ratio : 36 m2 / 1,6 = 22,5 → 23. Sept toles de moins.
+    expect(t.nbTolesParRatio).toBe(23);
+    expect(t.ecartPct).toBeGreaterThan(30);
+  });
+
+  it("tombe juste quand tout est multiple", () => {
+    const t = calepinerToiture({ longueurM: 8, rampantM: 4, ...TOLE });
+    expect(t.nbToles).toBe(20);
+    expect(t.nbTolesParRatio).toBe(20);
+  });
+
+  it("ne sous-estime jamais le ratio", () => {
+    for (let longueur = 3; longueur <= 20; longueur += 0.5) {
+      for (let rampant = 2; rampant <= 8; rampant += 0.5) {
+        const t = calepinerToiture({ longueurM: longueur, rampantM: rampant, ...TOLE });
+        expect(t.nbToles).toBeGreaterThanOrEqual(t.nbTolesParRatio);
+      }
+    }
+  });
+
+  it("rend zero sur une toiture vide", () => {
+    expect(calepinerToiture({ longueurM: 0, rampantM: 4, ...TOLE }).nbToles).toBe(0);
   });
 });

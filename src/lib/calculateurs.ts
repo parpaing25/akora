@@ -1,4 +1,5 @@
 import type { Unite } from "./types-metier";
+import { calepinerMur, calepinerToiture } from "./calepinage";
 
 /**
  * Calculateurs de métré (spec B11).
@@ -63,8 +64,22 @@ export interface EntreeMur {
 }
 
 export function murParpaings(entree: EntreeMur, ratios: Ratios, margePct = MARGE_DEFAUT): ResultatMetre {
-  const surface = Math.max(0, entree.longueurM * entree.hauteurM - (entree.ouverturesM2 ?? 0));
-  const blocsParM2 = ratio(ratios, "mur_parpaing", "blocs_par_m2", 12.5);
+  // Un mur se monte en RANGEES entieres : la derniere compte pour une rangee
+  // complete meme ecretee, et chaque rangee demande son compte de blocs
+  // arrondi au superieur. Multiplier la surface par un ratio sous-estime de
+  // quelques pour cent — et quelques pour cent d'un mur, c'est une demi-journee
+  // d'arret (cf. `calepinage.ts`).
+  // Les dimensions du bloc arrivent des ratios, comme tout le reste : ce
+  // module ne code AUCUNE valeur en dur, sinon l'admin ne peut plus rien
+  // ajuster sans redeploiement.
+  const calepinage = calepinerMur({
+    longueurM: entree.longueurM,
+    hauteurM: entree.hauteurM,
+    blocLongueurCm: ratio(ratios, "mur_parpaing", "bloc_longueur_cm", 40),
+    blocHauteurCm: ratio(ratios, "mur_parpaing", "bloc_hauteur_cm", 20),
+    ouverturesM2: entree.ouverturesM2 ?? 0,
+  });
+  const surface = calepinage.surfaceNetteM2;
   const mortierParM2 = ratio(ratios, "mur_parpaing", "mortier_m3_par_m2", 0.02);
   const cimentParM3 = ratio(ratios, "mortier", "ciment_kg_par_m3", 350);
   const sableParM3 = ratio(ratios, "mortier", "sable_m3_par_m3", 1.1);
@@ -77,7 +92,7 @@ export function murParpaings(entree: EntreeMur, ratios: Ratios, margePct = MARGE
       {
         cle: "blocs",
         libelle: `Parpaings creux ${entree.epaisseurCm}`,
-        quantite: entierSup(avecMarge(surface * blocsParM2, margePct)),
+        quantite: entierSup(avecMarge(calepinage.nbBlocs, margePct)),
         unite: "piece",
         materiauSlug: `parpaing-creux-${entree.epaisseurCm}`,
       },
@@ -98,6 +113,8 @@ export function murParpaings(entree: EntreeMur, ratios: Ratios, margePct = MARGE
     ],
     reserves: [
       `Surface de mur retenue : ${surface.toFixed(1).replace(".", ",")} m², ouvertures déduites.`,
+      `Calepinage : ${calepinage.blocsParRangee} blocs sur ${calepinage.nbRangees} rangées` +
+        (calepinage.blocsDeduits > 0 ? `, moins ${calepinage.blocsDeduits} pour les ouvertures.` : "."),
       "Hors chaînages, linteaux et fondations.",
     ],
   };
@@ -260,6 +277,12 @@ export interface EntreeToiture {
   surfaceM2: number;
   longueurToleM: 2 | 3;
   faitageM?: number;
+  /**
+   * Longueur du batiment, perpendiculaire a la pente. Sans elle, le compte des
+   * toles reste une approximation : une tole se pose ENTIERE, et le nombre de
+   * rangees depend du rampant, pas de la surface.
+   */
+  longueurBatimentM?: number;
 }
 
 export function toitureToles(entree: EntreeToiture, ratios: Ratios, margePct = MARGE_DEFAUT): ResultatMetre {
@@ -270,11 +293,29 @@ export function toitureToles(entree: EntreeToiture, ratios: Ratios, margePct = M
   const pannes = ratio(ratios, "toiture_tole", "pannes_ml_par_m2", 0.83);
   const faitiere = ratio(ratios, "toiture_tole", "faitiere_ml_par_ml", 1.05);
 
+  // Une tole se pose ENTIERE : le compte depend du rampant et de la longueur
+  // du batiment, pas de la seule surface. Avec les deux dimensions on
+  // calepine ; sans elles, on garde le ratio et on le dit dans les reserves.
+  const longueurBatiment = entree.longueurBatimentM ?? 0;
+  const calepinage =
+    longueurBatiment > 0 && surface > 0
+      ? calepinerToiture({
+          longueurM: longueurBatiment,
+          rampantM: surface / longueurBatiment,
+          toleLongueurM: entree.longueurToleM,
+          // Largeur utile d'une tole ondulee, recouvrement d'onde deduit :
+          // c'est la valeur que porte le ratio du referentiel.
+          largeurUtileM: 1 / (tolesParM2 * entree.longueurToleM),
+        })
+      : null;
+
   const lignes: LigneMetre[] = [
     {
       cle: "toles",
       libelle: `Tôles ondulées de ${entree.longueurToleM} m`,
-      quantite: entierSup(avecMarge(surface * tolesParM2, margePct)),
+      quantite: entierSup(
+        avecMarge(calepinage ? calepinage.nbToles : surface * tolesParM2, margePct),
+      ),
       unite: "piece",
       materiauSlug: entree.longueurToleM === 3 ? "tole-ondulee-030-3m" : "tole-ondulee-025-2m",
     },
@@ -309,6 +350,9 @@ export function toitureToles(entree: EntreeToiture, ratios: Ratios, margePct = M
     lignes,
     reserves: [
       "Surface de COUVERTURE, pente comprise — pas la surface au sol.",
+      calepinage
+        ? `Calepinage : ${calepinage.tolesParRangee} tôles sur ${calepinage.nbRangees} rangée${calepinage.nbRangees > 1 ? "s" : ""}.`
+        : "Sans la longueur du bâtiment, le compte des tôles reste approché : une tôle se pose entière, et le nombre de rangées dépend du rampant.",
       "Hors visserie et fixations : la quincaillerie n'est pas au catalogue d'Akora.",
     ],
   };

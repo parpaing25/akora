@@ -250,14 +250,123 @@ def langue(texte: str) -> str:
     return "mg" if malgaches >= 3 else "fr"
 
 
+# ── Côté acheteur : ce qu'une demande dit du besoin ────────────────────────
+MOTS_URGENCE = ("urgent", "urgence", "maintenant", "aujourd'hui", "au plus vite",
+                "rapidement", "haingana", "anio", "maika", "des demain",
+                "cette semaine", "tout de suite")
+
+# « 3 camions », « 50 sacs », « 2 m3 », « 1000 briques ». L'unité vient juste
+# après le nombre : c'est ce qui distingue « 3 camions » d'un prix « 3 000 ».
+MOTIF_QUANTITE = re.compile(
+    r"(\d{1,5}(?:[.,]\d{1,2})?)\s*"
+    r"(camions?|voyages?|bennes?|sacs?|gony|m\s*3|m³|tonnes?|briques?|"
+    r"pieces?|pcs?|palettes?|bottes?|paquets?|m\s*2|m²)\b",
+    re.IGNORECASE,
+)
+
+# Le nombre seul suivi du matériau : « mila fasika 3 camion », « 500 parpaing ».
+MOTS_UNITES_QUANTITE = {
+    "camion": "chargement", "camions": "chargement", "voyage": "chargement",
+    "voyages": "chargement", "benne": "chargement", "bennes": "chargement",
+    "sac": "sac", "sacs": "sac", "gony": "sac",
+    "m3": "m3", "m 3": "m3", "m³": "m3",
+    "tonne": "tonne", "tonnes": "tonne",
+    "brique": "piece", "briques": "piece", "piece": "piece", "pieces": "piece",
+    "pc": "piece", "pcs": "piece",
+    "palette": "palette", "palettes": "palette",
+    "botte": "botte", "bottes": "botte", "paquet": "botte", "paquets": "botte",
+    "m2": "m2", "m 2": "m2", "m²": "m2",
+}
+
+
+def quantite_demandee(texte: str) -> tuple[float | None, str | None]:
+    """(quantité, unité Akora) du besoin exprimé, sinon (None, None)."""
+    propre = _sans_telephones(texte or "")
+    trouve = MOTIF_QUANTITE.search(propre)
+    if not trouve:
+        return None, None
+    try:
+        valeur = float(trouve.group(1).replace(",", ".").replace(" ", ""))
+    except ValueError:
+        return None, None
+    unite = MOTS_UNITES_QUANTITE.get(
+        re.sub(r"\s+", "", trouve.group(2).lower()), None
+    )
+    # Au-delà de 100 000 on n'est plus dans une quantité de chantier mais dans
+    # un montant mal lu.
+    return (valeur, unite) if 0 < valeur <= 100_000 else (None, None)
+
+
+def budget_dans(texte: str, cfg: dict) -> int | None:
+    """Le budget annoncé par un acheteur, s'il en donne un."""
+    reduit = referentiel.sans_accents(texte or "")
+    if not any(mot in reduit for mot in ("budget", "vola", "je dispose", "maximum")):
+        return None
+    montant, _, _ = prix_dans(texte, cfg)
+    return montant
+
+
+def est_urgente(texte: str) -> bool:
+    reduit = referentiel.sans_accents(texte or "")
+    return any(mot in reduit for mot in MOTS_URGENCE)
+
+
+def analyser_demande(texte: str, cfg: dict) -> dict:
+    """Ce qu'une demande d'acheteur apprend : quoi, combien, où, pour quand.
+
+    L'appariement au catalogue est le même que pour une offre — c'est ce qui
+    permet de dire à un dépôt « il y a eu 12 demandes de sable dans votre zone
+    cette semaine » plutôt que « il y a de la demande ».
+    """
+    ville, quartier = lieux.detecter(texte or "")
+    numeros = telephones(texte or "")
+    appariement = referentiel.apparier(texte or "")
+    quantite, unite = quantite_demandee(texte or "")
+
+    return {
+        "telephone": numeros[0]["affichage"] if numeros else None,
+        "telephone_cle": numeros[0]["cle"] if numeros else None,
+        "ville": ville,
+        "quartier": quartier,
+        "langue": langue(texte or ""),
+        "quantite": quantite,
+        "unite": unite or referentiel.unite_dans(texte or ""),
+        "budget": budget_dans(texte or "", cfg),
+        "urgence": 1 if est_urgente(texte or "") else 0,
+        "materiau_slug": (appariement or {}).get("materiau_slug"),
+        "materiau_nom": (appariement or {}).get("materiau_nom"),
+        "type_slug": (appariement or {}).get("type_slug"),
+        "type_nom": (appariement or {}).get("type_nom"),
+        "famille_slug": (appariement or {}).get("famille_slug"),
+    }
+
+
 def analyser(texte: str, cfg: dict) -> dict:
     """Tout ce qu'une publication apprend sur son auteur et sur ce qu'il vend."""
+    from . import transport      # importé ici : évite un cycle au chargement
+
     reduit = referentiel.normaliser(texte)
     ville, quartier = lieux.detecter(texte or "")
     numeros = telephones(texte or "")
+    flotte = transport.analyser(texte or "", cfg)
+    offres_lues = offres(texte or "", cfg)
+
+    # Ce qu'il EST : un dépôt vend des matériaux, un transporteur loue sa
+    # benne, et beaucoup font les deux. La distinction commande le score, le
+    # message envoyé, et ce qu'on écrit dans sa fiche réservée.
+    if offres_lues and flotte["vehicules"]:
+        nature = "mixte"
+    elif flotte["est_transporteur"] or (flotte["vehicules"] and not offres_lues):
+        nature = "transporteur"
+    else:
+        nature = "depot"
 
     return {
         "telephones": numeros,
+        "nature": nature,
+        "vehicules": flotte["vehicules"],
+        "rayon_km": flotte["rayon_km"],
+        "seuil_franco": flotte["seuil_franco"],
         "telephone": numeros[0]["affichage"] if numeros else None,
         "telephone_cle": numeros[0]["cle"] if numeros else None,
         "whatsapp": any(mot in reduit for mot in MOTS_WHATSAPP),
@@ -268,5 +377,7 @@ def analyser(texte: str, cfg: dict) -> dict:
         "livre": any(mot in reduit for mot in MOTS_LIVRAISON),
         "retrait_sur_place": any(mot in reduit for mot in MOTS_RETRAIT),
         "langue": langue(texte or ""),
-        "offres": offres(texte or "", cfg),
+        # Déjà calculées plus haut : les relire ferait tourner deux fois
+        # l'appariement de toutes les lignes, pour le même résultat.
+        "offres": offres_lues,
     }

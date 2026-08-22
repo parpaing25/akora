@@ -24,10 +24,15 @@ from datetime import datetime, timezone
 PLAFONDS = {
     "catalogue": 30,
     "prix": 20,
+    # Un transporteur n'a ni catalogue ni prix matériau : les 50 points de ces
+    # deux postes passent sur sa flotte. Un dépôt, lui, gagne un bonus de 8
+    # s'il livre avec ses propres camions.
+    "flotte": 50,
     "contact": 15,
     "lieu": 15,
     "identite": 10,
     "activite": 10,
+    "livraison": 8,
 }
 
 
@@ -119,19 +124,62 @@ def _points_activite(fiche: dict) -> tuple[int, str]:
     return min(PLAFONDS["activite"], acquis), detail
 
 
-def calculer(fiche: dict, offres: list[dict], nb_photos: int = 0) -> dict:
-    """{score, niveau, details} — `details` dit POURQUOI, pas seulement combien."""
-    postes = [
-        ("catalogue", *_points_catalogue(offres)),
-        ("prix", *_points_prix(offres)),
-        ("contact", *_points_contact(fiche)),
-        ("lieu", *_points_lieu(fiche)),
-        ("identite", *_points_identite(fiche)),
-        ("activite", *_points_activite(fiche)),
-    ]
+def _points_flotte(vehicules: list[dict]) -> tuple[int, str]:
+    """Ce qu'on attend d'un transporteur : un camion mesuré et un tarif.
+
+    Une benne sans capacité ni prix n'entre dans aucun calcul de livraison :
+    c'est une piste, pas une offre de transport.
+    """
+    if not vehicules:
+        return 0, "aucun véhicule"
+    mesures = [v for v in vehicules if v.get("capacite_m3") or v.get("capacite_kg")]
+    tarifes = [v for v in vehicules if v.get("forfait_base") or v.get("prix_par_km")]
+    acquis = 10 + min(10, 5 * len(vehicules))
+    detail = f"{len(vehicules)} véhicule(s)"
+    if mesures:
+        acquis += 15
+        detail += ", capacité connue"
+    if tarifes:
+        acquis += 15
+        detail += ", tarif annoncé"
+    return min(PLAFONDS["catalogue"] + PLAFONDS["prix"], acquis), detail
+
+
+def calculer(fiche: dict, offres: list[dict], nb_photos: int = 0,
+             vehicules: list[dict] | None = None) -> dict:
+    """{score, niveau, details} — `details` dit POURQUOI, pas seulement combien.
+
+    Un transporteur n'est pas noté sur le catalogue ni sur les prix matériaux :
+    il n'en a pas. Les 50 points de ces deux postes vont à sa flotte — c'est
+    elle qui décide s'il sert à quelque chose.
+    """
+    vehicules = vehicules or []
+    if (fiche.get("nature") or "depot") == "transporteur":
+        postes = [
+            ("flotte", *_points_flotte(vehicules)),
+            ("contact", *_points_contact(fiche)),
+            ("lieu", *_points_lieu(fiche)),
+            ("identite", *_points_identite(fiche)),
+            ("activite", *_points_activite(fiche)),
+        ]
+    else:
+        postes = [
+            ("catalogue", *_points_catalogue(offres)),
+            ("prix", *_points_prix(offres)),
+            ("contact", *_points_contact(fiche)),
+            ("lieu", *_points_lieu(fiche)),
+            ("identite", *_points_identite(fiche)),
+            ("activite", *_points_activite(fiche)),
+        ]
+        # Un dépôt qui livre avec ses propres camions vaut mieux qu'un dépôt
+        # où il faut venir chercher : c'est un « prix rendu chantier » de plus
+        # sur le site, sans dépendre de personne.
+        if vehicules:
+            postes.append(("livraison", min(PLAFONDS["livraison"], 4 * len(vehicules)),
+                           f"{len(vehicules)} véhicule(s) de livraison"))
     total = sum(points for _, points, _ in postes)
     details = [
-        {"poste": nom, "points": points, "sur": PLAFONDS[nom], "raison": raison}
+        {"poste": nom, "points": points, "sur": PLAFONDS.get(nom, points), "raison": raison}
         for nom, points, raison in postes
     ]
 
@@ -141,7 +189,11 @@ def calculer(fiche: dict, offres: list[dict], nb_photos: int = 0) -> dict:
     confiance = fiche.get("llm_confiance")
     if confiance is not None and confiance < 50:
         malus.append(("lecture peu sûre", 5))
-    if not fiche.get("livre") and not fiche.get("retrait_sur_place"):
+    # Reprocher à un transporteur de ne pas annoncer de livraison n'aurait pas
+    # de sens : la livraison EST son métier.
+    transporteur = (fiche.get("nature") or "depot") == "transporteur"
+    if not transporteur and not fiche.get("livre") \
+            and not fiche.get("retrait_sur_place"):
         malus.append(("ni livraison ni retrait annoncés", 3))
     for raison, points in malus:
         total -= points

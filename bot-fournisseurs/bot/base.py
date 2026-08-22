@@ -54,6 +54,12 @@ CREATE TABLE IF NOT EXISTS prospects (
     langue           TEXT NOT NULL DEFAULT 'fr',
     retrait_sur_place INTEGER NOT NULL DEFAULT 0,
     livre            INTEGER NOT NULL DEFAULT 0,
+    -- 'depot' | 'transporteur' | 'mixte'. Un transporteur ne vend aucun
+    -- matériau : il loue sa benne. C'est un fournisseur d'un autre genre, et
+    -- sans lui aucun « prix rendu chantier » n'est calculable.
+    nature           TEXT NOT NULL DEFAULT 'depot',
+    rayon_km         REAL,
+    seuil_franco     INTEGER,
 
     statut           TEXT NOT NULL DEFAULT 'a_trier',
     score            INTEGER NOT NULL DEFAULT 0,
@@ -164,6 +170,67 @@ CREATE TABLE IF NOT EXISTS materiaux_absents (
     derniere    TEXT NOT NULL
 );
 
+-- ── La flotte : ce qui rend le « prix rendu chantier » calculable ─────────
+-- Miroir de `vehicules_livraison` côté Akora. Une capacité ou un tarif absent
+-- reste NULL : on ne convertit pas « 6 roues » en mètres cubes (règle A2.8).
+CREATE TABLE IF NOT EXISTS vehicules (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    prospect_id    TEXT NOT NULL,
+    publication_id TEXT,
+    libelle_brut   TEXT NOT NULL,
+    nom            TEXT NOT NULL,
+    categorie      TEXT,
+    capacite_m3    REAL,
+    capacite_kg    REAL,
+    prix_par_km    INTEGER,
+    forfait_base   INTEGER,
+    km_inclus      REAL,
+    prix_minimum   INTEGER,
+    aller_retour   INTEGER NOT NULL DEFAULT 0,
+    certitude      INTEGER NOT NULL DEFAULT 0,
+    garder         INTEGER NOT NULL DEFAULT 1,
+    vu_le          TEXT NOT NULL,
+    FOREIGN KEY (prospect_id) REFERENCES prospects(id) ON DELETE CASCADE
+);
+
+-- ── Les demandes d'acheteurs ──────────────────────────────────────────────
+-- « Mila fasika 3 camion aho eto Ivato » : un besoin daté, chiffré, localisé.
+-- Le bot les jetait ; c'est pourtant ce qui prouve la demande à un dépôt qui
+-- hésite. Elles restent INTERNES : rien n'est republié, personne n'a donné son
+-- accord pour ça.
+CREATE TABLE IF NOT EXISTS demandes (
+    id            TEXT PRIMARY KEY,
+    empreinte     TEXT UNIQUE,
+    permalien     TEXT,
+    source_id     INTEGER,
+    source_nom    TEXT,
+    auteur        TEXT,
+    auteur_url    TEXT,
+    texte         TEXT NOT NULL,
+    publie_le     TEXT,
+    collecte_le   TEXT NOT NULL,
+    dossier       TEXT,
+
+    telephone     TEXT,
+    telephone_cle TEXT,
+    ville         TEXT,
+    quartier      TEXT,
+    langue        TEXT NOT NULL DEFAULT 'fr',
+
+    materiau_slug TEXT,
+    materiau_nom  TEXT,
+    type_slug     TEXT,
+    type_nom      TEXT,
+    famille_slug  TEXT,
+    quantite      REAL,
+    unite         TEXT,
+    budget        INTEGER,
+    urgence       INTEGER NOT NULL DEFAULT 0,
+
+    statut        TEXT NOT NULL DEFAULT 'nouvelle',
+    note          TEXT
+);
+
 CREATE TABLE IF NOT EXISTS journal (
     id      INTEGER PRIMARY KEY AUTOINCREMENT,
     ts      TEXT NOT NULL,
@@ -185,7 +252,22 @@ CREATE INDEX IF NOT EXISTS idx_offres_materiau  ON offres(materiau_slug);
 CREATE INDEX IF NOT EXISTS idx_photos_prospect  ON photos(prospect_id);
 CREATE INDEX IF NOT EXISTS idx_evt_prospect     ON evenements(prospect_id, ts DESC);
 CREATE INDEX IF NOT EXISTS idx_journal_ts       ON journal(ts DESC);
+CREATE INDEX IF NOT EXISTS idx_vehicules_prosp  ON vehicules(prospect_id);
+CREATE INDEX IF NOT EXISTS idx_demandes_statut  ON demandes(statut, collecte_le DESC);
+CREATE INDEX IF NOT EXISTS idx_demandes_mat     ON demandes(materiau_slug);
 """
+
+# Colonnes ajoutées après coup. SQLite n'a pas d'`ADD COLUMN IF NOT EXISTS` :
+# une base créée avant ces champs doit être complétée au démarrage, sinon
+# toutes les requêtes tombent sur « no such column » — et on ne jette pas la
+# base d'un utilisateur pour ajouter trois colonnes.
+COLONNES_AJOUTEES = {
+    "prospects": [
+        ("nature", "TEXT NOT NULL DEFAULT 'depot'"),
+        ("rayon_km", "REAL"),
+        ("seuil_franco", "INTEGER"),
+    ],
+}
 
 # Colonnes rendues comme des listes côté interface, mais stockées en JSON.
 CHAMPS_JSON = ("manques", "detail_score", "telephones_autres")
@@ -208,6 +290,14 @@ def connexion() -> sqlite3.Connection:
 def initialiser() -> None:
     with _verrou, connexion() as cx:
         cx.executescript(SCHEMA)
+        for table, colonnes in COLONNES_AJOUTEES.items():
+            existantes = {
+                ligne["name"]
+                for ligne in cx.execute(f"PRAGMA table_info({table})").fetchall()
+            }
+            for nom, definition in colonnes:
+                if nom not in existantes:
+                    cx.execute(f"ALTER TABLE {table} ADD COLUMN {nom} {definition}")
 
 
 def maintenant() -> str:
@@ -353,6 +443,10 @@ def prospect(pid: str) -> dict | None:
         fiche["publications"] = [dict(p) for p in cx.execute(
             "SELECT id, permalien, source_nom, publie_le, texte, dossier, nb_offres "
             "FROM publications WHERE prospect_id = ? ORDER BY collecte_le DESC", (pid,)
+        ).fetchall()]
+        fiche["vehicules"] = [dict(v) for v in cx.execute(
+            "SELECT * FROM vehicules WHERE prospect_id = ? "
+            "ORDER BY garder DESC, capacite_m3", (pid,)
         ).fetchall()]
         fiche["evenements"] = [dict(e) for e in cx.execute(
             "SELECT ts, genre, message FROM evenements WHERE prospect_id = ? "
@@ -720,6 +814,154 @@ def signaler_materiau_absent(libelle: str, exemple: str) -> None:
             "derniere = excluded.derniere",
             (libelle.strip().lower()[:80], exemple[:200], maintenant()),
         )
+
+
+# ── Véhicules ──────────────────────────────────────────────────────────────
+def ajouter_vehicule(prospect_id: str, publication_id: str | None,
+                     vehicule: dict) -> int | None:
+    """Ajoute un véhicule, sauf si le même est déjà connu du prospect.
+
+    Un transporteur reposte son annonce chaque semaine : on ne duplique pas
+    « Camion benne 8 m³ », on complète ce qui manquait — un tarif appris au
+    troisième passage vaut mieux qu'une quatrième ligne vide.
+    """
+    with _verrou, connexion() as cx:
+        jumeau = cx.execute(
+            "SELECT * FROM vehicules WHERE prospect_id = ? AND nom = ? LIMIT 1",
+            (prospect_id, vehicule.get("nom")),
+        ).fetchone()
+        if jumeau:
+            complements = {
+                champ: vehicule[champ]
+                for champ in ("capacite_m3", "capacite_kg", "prix_par_km",
+                              "forfait_base", "prix_minimum")
+                if vehicule.get(champ) and not jumeau[champ]
+            }
+            if complements:
+                assignations = ", ".join(f"{c} = ?" for c in complements)
+                cx.execute(
+                    f"UPDATE vehicules SET {assignations}, vu_le = ? WHERE id = ?",
+                    (*complements.values(), maintenant(), jumeau["id"]),
+                )
+            return None
+        donnees = {
+            "prospect_id": prospect_id,
+            "publication_id": publication_id,
+            "vu_le": maintenant(),
+            **vehicule,
+        }
+        colonnes = ", ".join(donnees)
+        trous = ", ".join("?" for _ in donnees)
+        curseur = cx.execute(
+            f"INSERT INTO vehicules ({colonnes}) VALUES ({trous})", tuple(donnees.values())
+        )
+    return curseur.lastrowid
+
+
+def modifier_vehicule(vid: int, **champs) -> None:
+    autorises = {"nom", "categorie", "capacite_m3", "capacite_kg", "prix_par_km",
+                 "forfait_base", "km_inclus", "prix_minimum", "aller_retour", "garder"}
+    champs = {c: v for c, v in champs.items() if c in autorises}
+    if not champs:
+        return
+    assignations = ", ".join(f"{c} = ?" for c in champs)
+    with _verrou, connexion() as cx:
+        cx.execute(
+            f"UPDATE vehicules SET {assignations} WHERE id = ?", (*champs.values(), vid)
+        )
+
+
+def supprimer_vehicule(vid: int) -> None:
+    with _verrou, connexion() as cx:
+        cx.execute("DELETE FROM vehicules WHERE id = ?", (vid,))
+
+
+def vehicules_du_prospect(pid: str, gardes_seulement: bool = True) -> list[dict]:
+    condition = " AND garder = 1" if gardes_seulement else ""
+    with _verrou, connexion() as cx:
+        return [dict(l) for l in cx.execute(
+            f"SELECT * FROM vehicules WHERE prospect_id = ?{condition} "
+            "ORDER BY capacite_m3", (pid,)
+        ).fetchall()]
+
+
+# ── Demandes d'acheteurs ───────────────────────────────────────────────────
+def demande_existe(empreinte: str) -> bool:
+    with _verrou, connexion() as cx:
+        return cx.execute(
+            "SELECT 1 FROM demandes WHERE empreinte = ?", (empreinte,)
+        ).fetchone() is not None
+
+
+def ajouter_demande(champs: dict) -> str | None:
+    donnees = {"id": str(uuid.uuid4()), "collecte_le": maintenant(), **champs}
+    colonnes = ", ".join(donnees)
+    trous = ", ".join("?" for _ in donnees)
+    try:
+        with _verrou, connexion() as cx:
+            cx.execute(
+                f"INSERT INTO demandes ({colonnes}) VALUES ({trous})",
+                tuple(donnees.values()),
+            )
+    except sqlite3.IntegrityError:
+        return None
+    return donnees["id"]
+
+
+def demande(did: str) -> dict | None:
+    with _verrou, connexion() as cx:
+        return _sortir(
+            cx.execute("SELECT * FROM demandes WHERE id = ?", (did,)).fetchone()
+        )
+
+
+def modifier_demande(did: str, champs: dict) -> None:
+    if not champs:
+        return
+    assignations = ", ".join(f"{c} = ?" for c in champs)
+    with _verrou, connexion() as cx:
+        cx.execute(
+            f"UPDATE demandes SET {assignations} WHERE id = ?", (*champs.values(), did)
+        )
+
+
+def lister_demandes(statut: str = "", famille: str = "", ville: str = "",
+                    limite: int = 300) -> list[dict]:
+    conditions, parametres = [], []
+    if statut and statut != "tous":
+        conditions.append("statut = ?")
+        parametres.append(statut)
+    if famille:
+        conditions.append("famille_slug = ?")
+        parametres.append(famille)
+    if ville:
+        conditions.append("ville = ?")
+        parametres.append(ville)
+    ou = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+    with _verrou, connexion() as cx:
+        return [dict(l) for l in cx.execute(
+            f"SELECT * FROM demandes {ou} ORDER BY urgence DESC, collecte_le DESC LIMIT ?",
+            (*parametres, limite),
+        ).fetchall()]
+
+
+def compter_demandes() -> dict:
+    with _verrou, connexion() as cx:
+        par_statut = {l["statut"]: l["n"] for l in cx.execute(
+            "SELECT statut, COUNT(*) n FROM demandes GROUP BY statut"
+        ).fetchall()}
+        depuis = (datetime.now(timezone.utc).timestamp() - 7 * 86400)
+        recentes = cx.execute(
+            "SELECT COUNT(*) n FROM demandes WHERE collecte_le >= ?",
+            (datetime.fromtimestamp(depuis, timezone.utc).isoformat(timespec="seconds"),),
+        ).fetchone()["n"]
+    return {
+        "nouvelle": par_statut.get("nouvelle", 0),
+        "traitee": par_statut.get("traitee", 0),
+        "ignoree": par_statut.get("ignoree", 0),
+        "total": sum(par_statut.values()),
+        "sept_jours": recentes,
+    }
 
 
 def materiaux_absents(limite: int = 40) -> list[dict]:

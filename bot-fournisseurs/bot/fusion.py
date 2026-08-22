@@ -77,6 +77,8 @@ def absorber(source_id: str, cible_id: str) -> None:
                    (cible_id, source_id))
         cx.execute("UPDATE photos SET prospect_id = ? WHERE prospect_id = ?",
                    (cible_id, source_id))
+        cx.execute("UPDATE vehicules SET prospect_id = ? WHERE prospect_id = ?",
+                   (cible_id, source_id))
         cx.execute("UPDATE evenements SET prospect_id = ? WHERE prospect_id = ?",
                    (cible_id, source_id))
         cx.execute("DELETE FROM prospects WHERE id = ?", (source_id,))
@@ -117,6 +119,9 @@ def enregistrer(lecture: dict, post: dict, source: dict, cfg: dict) -> tuple[str
         "langue": lecture.get("langue") or "fr",
         "livre": 1 if lecture.get("livre") else 0,
         "retrait_sur_place": 1 if lecture.get("retrait_sur_place") else 0,
+        "nature": lecture.get("nature") or "depot",
+        "rayon_km": lecture.get("rayon_km"),
+        "seuil_franco": lecture.get("seuil_franco"),
         "llm_confiance": lecture.get("llm_confiance"),
         "llm_doute": lecture.get("llm_doute"),
         "llm_resume": lecture.get("llm_resume"),
@@ -134,6 +139,12 @@ def enregistrer(lecture: dict, post: dict, source: dict, cfg: dict) -> tuple[str
         if existant.get("nom_valide") and not lecture.get("nom"):
             a_ecrire["nom"] = existant["nom"]
             a_ecrire["nom_valide"] = 1
+        # Un dépôt vu une fois avec un camion, une fois avec un tarif matériau,
+        # est les DEUX. `_fusionner_valeur` garderait la première nature vue et
+        # perdrait l'autre moitié de ce qu'il sait faire.
+        natures = {existant.get("nature") or "depot", lecture.get("nature") or "depot"}
+        a_ecrire["nature"] = "mixte" if len(natures - {"mixte"}) > 1 or "mixte" in natures \
+            else natures.pop()
         a_ecrire["derniere_vue"] = base.maintenant()
         a_ecrire["nb_publications"] = int(existant.get("nb_publications") or 0) + 1
         # Un second numéro n'écrase pas le premier : il s'ajoute à côté.
@@ -163,16 +174,28 @@ def evaluer(pid: str, cfg: dict) -> dict:
     if not fiche:
         return {}
     offres = [o for o in fiche["offres"] if o["garder"]]
+    vehicules = [v for v in fiche.get("vehicules", []) if v["garder"]]
     nb_photos = sum(1 for p in fiche["photos"] if p["garder"])
+    transporteur = (fiche.get("nature") or "depot") == "transporteur"
 
     manques = []
     if not fiche.get("telephone_cle"):
         manques.append("téléphone")
-    if not any(o.get("materiau_slug") for o in offres):
+    # Un transporteur ne vend aucun matériau : lui reprocher de ne pas en
+    # avoir le classerait « incomplet » à vie. Ce qu'on attend de lui, c'est
+    # un camion avec une capacité et un tarif.
+    if transporteur:
+        if not vehicules:
+            manques.append("véhicule")
+        elif not any(v.get("capacite_m3") or v.get("capacite_kg") for v in vehicules):
+            manques.append("capacité du camion")
+        elif not any(v.get("forfait_base") or v.get("prix_par_km") for v in vehicules):
+            manques.append("tarif de transport")
+    elif not any(o.get("materiau_slug") for o in offres):
         manques.append("matériau")
     if not (fiche.get("ville") or fiche.get("quartier")):
         manques.append("lieu")
-    if not any(o.get("prix") for o in offres):
+    if not transporteur and not any(o.get("prix") for o in offres):
         manques.append("prix")
     if not (fiche.get("nom") or "").strip():
         manques.append("nom")
@@ -180,7 +203,7 @@ def evaluer(pid: str, cfg: dict) -> dict:
     if ambigues:
         manques.append(f"{len(ambigues)} format(s) à préciser")
 
-    note = notation.calculer(fiche, offres, nb_photos)
+    note = notation.calculer(fiche, offres, nb_photos, vehicules)
     a_ecrire = {
         "manques": manques,
         "score": note["score"],
@@ -192,7 +215,10 @@ def evaluer(pid: str, cfg: dict) -> dict:
     # validée, réservée ou contactée garde le sien, sinon une collecte du
     # lendemain défaire le travail de tri de la veille.
     if fiche["statut"] in ("a_trier", "incomplet"):
-        bloquants = [m for m in manques if m in set(cfg.get("criteres_obligatoires", []))]
+        obligatoires = set(cfg.get("criteres_obligatoires", []))
+        if transporteur:
+            obligatoires = (obligatoires - {"materiau"}) | {"vehicule"}
+        bloquants = [m for m in manques if m in obligatoires]
         if cfg.get("prix_obligatoire") and "prix" in manques:
             bloquants.append("prix")
         a_ecrire["statut"] = "incomplet" if bloquants else "a_trier"

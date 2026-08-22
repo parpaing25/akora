@@ -40,7 +40,7 @@ from urllib.parse import parse_qsl, quote, urlencode, urlsplit, urlunsplit
 import requests
 from playwright.sync_api import sync_playwright
 
-from . import analyse_llm, base, extraction, fusion, referentiel
+from . import analyse_llm, base, demandes, extraction, fusion, referentiel, transport
 from .config import DOSSIER_PROSPECTS, PROFIL_NAVIGATEUR, charger
 
 # Mots qui font d'une publication un candidat. Large exprès : le tri fin se
@@ -186,19 +186,40 @@ def _age_en_jours(heure: str) -> int | None:
     return valeur * 365
 
 
+def semble_demande(texte: str) -> bool:
+    """Est-ce un ACHETEUR qui cherche, plutôt qu'un vendeur qui propose ?
+
+    Ces publications étaient jetées. Elles valent pourtant plus cher que
+    beaucoup d'offres : un besoin daté, chiffré, localisé, et l'argument qui
+    fait signer un dépôt qui hésite. On les capture (voir `demandes.py`), mais
+    on ne les republie jamais.
+
+    La photo ne compte pas ici : personne ne photographie le sable qu'il n'a
+    pas encore acheté.
+    """
+    reduit = referentiel.sans_accents(texte or "")
+    if not any(mot in reduit for mot in MOTS_DEMANDE):
+        return False
+    return any(mot in reduit for mot in MOTS_MATERIAUX)
+
+
 def semble_vendeur(texte: str, nb_photos: int = 0) -> bool:
     """Pré-filtre du fil, volontairement large.
 
     Le fil coupe les textes à « En voir plus » : sur 60 caractères, exiger deux
     mots-clés écarterait de bons dépôts. Un seul suffit dès qu'il y a une photo.
-    En revanche une demande explicite est écartée tout de suite : la relire
-    coûterait un appel au modèle pour rien.
+
+    Une annonce de camion compte autant qu'une annonce de matériau : sans
+    véhicule, aucun « prix rendu chantier » n'est calculable, et le
+    transporteur est un fournisseur à part entière.
     """
     reduit = referentiel.sans_accents(texte)
     if any(mot in reduit for mot in MOTS_DEMANDE):
         return False
     trouves = sum(1 for mot in MOTS_MATERIAUX if mot in reduit)
-    return trouves >= 2 or (trouves >= 1 and nb_photos >= 1)
+    if trouves >= 2 or (trouves >= 1 and nb_photos >= 1):
+        return True
+    return transport.semble_transport(texte)
 
 
 def _url_fil_de_page(url: str) -> str:
@@ -455,7 +476,7 @@ class Collecteur:
         self.config = charger()
         self.stop = threading.Event()
         self.etat = {"actif": False, "source": None, "nouveaux": 0, "revus": 0,
-                     "examines": 0, "parcourues": 0, "en_file": 0}
+                     "examines": 0, "parcourues": 0, "en_file": 0, "demandes": 0}
         # Un verrou pour l'écriture des prospects : plusieurs fils d'atelier
         # peuvent tomber sur le MÊME dépôt (il poste dans plusieurs groupes),
         # et deux créations simultanées feraient deux fiches au lieu d'une.
@@ -565,8 +586,8 @@ class Collecteur:
             return {"nouveaux": 0, "examines": 0}
 
         self.stop.clear()
-        self.etat.update({"actif": True, "nouveaux": 0, "revus": 0,
-                          "examines": 0, "parcourues": 0, "en_file": 0})
+        self.etat.update({"actif": True, "nouveaux": 0, "revus": 0, "examines": 0,
+                          "parcourues": 0, "en_file": 0, "demandes": 0})
         depart = base.maintenant()
         self.atelier = Atelier(self._finir_publication, int(cfg.get("travailleurs", 3)))
         par_genre = {}
@@ -639,7 +660,8 @@ class Collecteur:
         self.etat["source"] = None
         base.logguer(
             f"Collecte terminée : {self.etat['nouveaux']} nouveau(x) fournisseur(s), "
-            f"{self.etat['revus']} déjà connu(s) enrichi(s), sur "
+            f"{self.etat['revus']} déjà connu(s) enrichi(s), "
+            f"{self.etat.get('demandes', 0)} demande(s) d'acheteur, sur "
             f"{self.etat['parcourues']} publication(s) parcourue(s). "
             + _repartition(depart),
             "succes",
@@ -695,10 +717,19 @@ class Collecteur:
                 vus_dans_ce_tour.add(cle)
                 self.etat["parcourues"] += 1
 
-                if not semble_vendeur(post["texte"], post["nb_images"]):
-                    continue
                 age = _age_en_jours(post.get("heure", ""))
                 if age is not None and age > int(cfg["jours_max"]):
+                    continue
+
+                # Un acheteur qui cherche part dans les demandes, pas a la
+                # poubelle : c'est ce qui prouve la demande a un depot qui
+                # hesite. Rien n'en sera republie.
+                if semble_demande(post["texte"]):
+                    if not base.demande_existe(cle):
+                        self._inscrire_demande(post, source, cle)
+                    continue
+
+                if not semble_vendeur(post["texte"], post["nb_images"]):
                     continue
                 if base.publication_existe(cle):
                     continue
@@ -763,6 +794,32 @@ class Collecteur:
             "source": source,
             "config": dict(self.config),
         })
+        return True
+
+    def _inscrire_demande(self, post: dict, source: dict, cle: str) -> bool:
+        """Range une demande d'acheteur. Pas de photo, pas d'atelier.
+
+        Une demande ne demande aucun travail lourd : ni téléchargement de
+        photos (personne ne photographie le sable qu'il n'a pas acheté), ni
+        relecture par un modèle. Elle est lue et rangée sur place.
+        """
+        lecture = extraction.analyser_demande(post["texte"], self.config)
+        if not (lecture.get("type_slug") or lecture.get("materiau_slug")):
+            return False        # « je cherche un maçon » : hors périmètre
+
+        identifiant = demandes.enregistrer(lecture, post, source, cle, "")
+        if not identifiant:
+            return False
+
+        self.etat["demandes"] = self.etat.get("demandes", 0) + 1
+        base.logguer(
+            "Demande d'acheteur — "
+            f"{lecture.get('type_nom') or lecture.get('materiau_nom')} "
+            f"{('(' + str(lecture['quantite']) + ' ' + (lecture.get('unite') or '') + ')') if lecture.get('quantite') else ''} "
+            f"à {lecture.get('quartier') or lecture.get('ville') or 'lieu inconnu'}"
+            f"{' — URGENT' if lecture.get('urgence') else ''}.",
+            "info",
+        )
         return True
 
     # -- Passe 2 : atelier, hors du navigateur ------------------------------
