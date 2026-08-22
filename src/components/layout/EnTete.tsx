@@ -39,9 +39,8 @@ export function EnTete() {
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur">
       <div className="container flex min-h-[3.5rem] items-center gap-3">
-        <Link to="/" className="flex shrink-0 items-center gap-2" aria-label="Akora, accueil">
-          <LogoAkora className="size-8" />
-          <span className="text-[1.05rem] font-bold tracking-tight">Akora</span>
+        <Link to="/" className="flex shrink-0 items-center" aria-label="Akora, accueil">
+          <LogoAkora variante="logo" prioritaire className="h-9 w-auto" />
         </Link>
 
         <nav aria-label="Sections" className="hidden lg:flex lg:items-center lg:gap-1">

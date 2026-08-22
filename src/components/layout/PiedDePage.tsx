@@ -36,10 +36,7 @@ export function PiedDePage() {
     <footer className="mt-12 border-t border-border bg-card">
       <div className="container grid gap-8 py-8 sm:grid-cols-2 lg:grid-cols-4">
         <div>
-          <div className="flex items-center gap-2">
-            <LogoAkora className="size-8" />
-            <span className="text-[1.05rem] font-bold tracking-tight">Akora</span>
-          </div>
+          <LogoAkora variante="logo" className="h-9 w-auto" />
           <p className="mt-2 max-w-xs text-legende text-muted-foreground">
             Le prix rendu chantier, pas le prix au dépôt. Matériaux de gros œuvre, fournisseurs
             vérifiés, livraison calculée au kilomètre.

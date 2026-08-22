@@ -1,10 +1,46 @@
-/** Marque Akora : le « A » posé sur un linteau. Latérite pleine, blanc dedans. */
-export function LogoAkora({ className }: { className?: string }) {
+import { cn } from "@/lib/utils";
+
+/**
+ * Marque Akora — les fichiers du kit, jamais une redite dessinée à la main.
+ *
+ * Deux formes, deux usages :
+ *   `mark` — le « A » seul, pour les petites surfaces (barre, pied de page).
+ *   `logo` — le « A » et le mot, pour l'identification franche.
+ *
+ * Les images sont servies au double de leur taille d'affichage, avec `width`
+ * et `height` posés : pas de flou sur écran dense, pas de saut de mise en page
+ * pendant le chargement (règle A4, anti-CLS).
+ */
+export function LogoAkora({
+  variante = "mark",
+  sombre = false,
+  className,
+  prioritaire = false,
+}: {
+  variante?: "mark" | "logo";
+  /** `true` sur fond latérite ou béton : la version blanche prend le relais. */
+  sombre?: boolean;
+  className?: string;
+  prioritaire?: boolean;
+}) {
+  const estLogo = variante === "logo";
+  const fichier = estLogo
+    ? sombre
+      ? "/akora-logo-blanc.png"
+      : "/akora-logo.png"
+    : sombre
+      ? "/akora-mark-blanc.png"
+      : "/akora-mark.png";
+
   return (
-    <svg viewBox="0 0 64 64" className={className} role="img" aria-label="Akora" focusable="false">
-      <rect width="64" height="64" rx="14" fill="hsl(var(--primary))" />
-      <path d="M20 46 32 18l12 28h-7l-2.2-5.4h-5.6L27 46z" fill="hsl(var(--primary-foreground))" />
-      <rect x="26" y="30" width="12" height="4" rx="1" fill="hsl(var(--background))" opacity="0.55" />
-    </svg>
+    <img
+      src={fichier}
+      alt="Akora"
+      width={estLogo ? 132 : 32}
+      height={estLogo ? 40 : 32}
+      loading={prioritaire ? "eager" : "lazy"}
+      decoding={prioritaire ? "sync" : "async"}
+      className={cn(estLogo ? "h-10 w-auto" : "size-8", className)}
+    />
   );
 }

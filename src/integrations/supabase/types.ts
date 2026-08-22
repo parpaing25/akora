@@ -243,6 +243,39 @@ export type Database = {
           },
         ]
       }
+      codes_verification_email: {
+        Row: {
+          code: string
+          created_at: string
+          email: string
+          expire_le: string
+          id: string
+          tentatives: number
+          user_id: string | null
+          verifie: boolean
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          email: string
+          expire_le: string
+          id?: string
+          tentatives?: number
+          user_id?: string | null
+          verifie?: boolean
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          email?: string
+          expire_le?: string
+          id?: string
+          tentatives?: number
+          user_id?: string | null
+          verifie?: boolean
+        }
+        Relationships: []
+      }
       commandes: {
         Row: {
           acheteur_id: string | null
@@ -1444,6 +1477,8 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string
+          email_verifie: boolean
+          email_verifie_le: string | null
           id: string
           nif: string | null
           nom_complet: string | null
@@ -1456,6 +1491,8 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           created_at?: string
+          email_verifie?: boolean
+          email_verifie_le?: string | null
           id: string
           nif?: string | null
           nom_complet?: string | null
@@ -1468,6 +1505,8 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           created_at?: string
+          email_verifie?: boolean
+          email_verifie_le?: string | null
           id?: string
           nif?: string | null
           nom_complet?: string | null
@@ -2103,6 +2142,10 @@ export type Database = {
           solde_portefeuille: number
         }[]
       }
+      creer_code_verification: {
+        Args: { _email: string; _user_id: string }
+        Returns: string
+      }
       ecrire_ledger: {
         Args: {
           _commande_id?: string
@@ -2128,6 +2171,7 @@ export type Database = {
         Args: { _reference: string; _retrait_id: string }
         Returns: undefined
       }
+      generer_code_otp: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -2164,6 +2208,7 @@ export type Database = {
         Returns: undefined
       }
       prochain_numero_commande: { Args: never; Returns: string }
+      purger_codes_expires: { Args: never; Returns: number }
       recalculer_niveau_verification: {
         Args: { _fournisseur_id: string }
         Returns: Database["public"]["Enums"]["niveau_verification"]
@@ -2204,6 +2249,10 @@ export type Database = {
           _depuis: Database["public"]["Enums"]["statut_paiement"]
           _vers: Database["public"]["Enums"]["statut_paiement"]
         }
+        Returns: boolean
+      }
+      verifier_code_email: {
+        Args: { _code: string; _email: string }
         Returns: boolean
       }
       verifier_solde_ledger: {

@@ -13,6 +13,8 @@ import { ENV } from "@/lib/env";
  */
 
 const MARQUE = "Akora";
+/** Image de partage par défaut : la marque sur fond sable, 1200 x 630. */
+const IMAGE_DEFAUT = "/og-akora.png";
 const DESCRIPTION_DEFAUT =
   "Comparez les fournisseurs de matériaux au prix rendu chantier, livraison calculée depuis votre adresse.";
 
@@ -50,7 +52,7 @@ export function Seo({
 }: ProprietesSeo) {
   const titreComplet = titre === MARQUE ? MARQUE : `${titre} — ${MARQUE}`;
   const canonique = new URL(chemin, ENV.siteUrl).toString();
-  const imageAbsolue = image ? new URL(image, ENV.siteUrl).toString() : undefined;
+  const imageAbsolue = new URL(image ?? IMAGE_DEFAUT, ENV.siteUrl).toString();
 
   React.useEffect(() => {
     document.title = titreComplet;
@@ -63,13 +65,11 @@ export function Seo({
     poserMeta('meta[property="og:type"]', "property", "og:type", "website");
     poserMeta('meta[property="og:site_name"]', "property", "og:site_name", MARQUE);
     poserMeta('meta[property="og:locale"]', "property", "og:locale", "fr_MG");
-    poserMeta('meta[name="twitter:card"]', "name", "twitter:card", imageAbsolue ? "summary_large_image" : "summary");
+    poserMeta('meta[name="twitter:card"]', "name", "twitter:card", "summary_large_image");
     poserMeta('meta[name="twitter:title"]', "name", "twitter:title", titreComplet);
     poserMeta('meta[name="twitter:description"]', "name", "twitter:description", description);
-    if (imageAbsolue) {
-      poserMeta('meta[property="og:image"]', "property", "og:image", imageAbsolue);
-      poserMeta('meta[name="twitter:image"]', "name", "twitter:image", imageAbsolue);
-    }
+    poserMeta('meta[property="og:image"]', "property", "og:image", imageAbsolue);
+    poserMeta('meta[name="twitter:image"]', "name", "twitter:image", imageAbsolue);
 
     let lien = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]');
     if (!lien) {

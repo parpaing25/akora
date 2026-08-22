@@ -7,6 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { ENV } from "@/lib/env";
 import { schemaInscription, type ValeursInscription } from "@/lib/validation";
 import { useAntiAbus } from "@/hooks/useAntiAbus";
+import { envoyerCode } from "@/lib/donnees/otp";
+import { DialogueCode } from "@/components/auth/DialogueCode";
 import { Seo } from "@/components/Seo";
 import { Champ } from "@/components/ui/champ";
 import { Saisie } from "@/components/ui/input";
@@ -28,6 +30,7 @@ export default function Inscription() {
   const naviguer = useNavigate();
   const antiAbus = useAntiAbus();
   const [envoiEnCours, setEnvoiEnCours] = React.useState(false);
+  const [aVerifier, setAVerifier] = React.useState<{ userId: string; email: string } | null>(null);
 
   const {
     register,
@@ -49,7 +52,7 @@ export default function Inscription() {
       return;
     }
     setEnvoiEnCours(true);
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email: valeurs.email,
       password: valeurs.motDePasse,
       options: {
@@ -62,12 +65,30 @@ export default function Inscription() {
         },
       },
     });
-    setEnvoiEnCours(false);
     if (error) {
+      setEnvoiEnCours(false);
       toast.error("Inscription impossible", { description: error.message });
       return;
     }
-    naviguer("/verification-email", { replace: true, state: { email: valeurs.email } });
+
+    // Le compte existe ; il reste à prouver que l'adresse est bien la sienne.
+    const utilisateur = data.user;
+    if (!utilisateur) {
+      setEnvoiEnCours(false);
+      naviguer("/verification-email", { replace: true, state: { email: valeurs.email } });
+      return;
+    }
+    try {
+      await envoyerCode(utilisateur.id, valeurs.email);
+      setAVerifier({ userId: utilisateur.id, email: valeurs.email });
+    } catch (erreur) {
+      // Le compte est créé : on ne le perd pas parce que le mail n'est pas
+      // parti. L'utilisateur pourra redemander un code depuis son espace.
+      toast.error("Code non envoyé", { description: (erreur as Error).message });
+      naviguer("/verification-email", { replace: true, state: { email: valeurs.email } });
+    } finally {
+      setEnvoiEnCours(false);
+    }
   };
 
   return (
@@ -172,6 +193,15 @@ export default function Inscription() {
           </Bouton>
         </form>
       </Carte>
+
+      {aVerifier ? (
+        <DialogueCode
+          ouvert
+          email={aVerifier.email}
+          userId={aVerifier.userId}
+          onVerifie={() => naviguer("/compte", { replace: true })}
+        />
+      ) : null}
 
       <p className="mt-4 text-legende text-muted-foreground">
         Déjà inscrit ?{" "}

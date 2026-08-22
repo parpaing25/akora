@@ -24,8 +24,8 @@ DialogueDescription.displayName = "DialogueDescription";
 
 export const DialogueContenu = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...reste }, ref) => (
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & { sansFermeture?: boolean }
+>(({ className, children, sansFermeture = false, ...reste }, ref) => (
   <DialogPrimitive.Portal>
     <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-foreground/40 data-[state=open]:animate-in data-[state=open]:fade-in-0" />
     <DialogPrimitive.Content
@@ -38,12 +38,14 @@ export const DialogueContenu = React.forwardRef<
       {...reste}
     >
       {children}
-      <DialogPrimitive.Close
-        className="absolute right-2 top-2 inline-flex cible-44 items-center justify-center rounded-md text-muted-foreground hover:bg-muted"
-        aria-label="Fermer"
-      >
-        <X className="size-5" aria-hidden="true" />
-      </DialogPrimitive.Close>
+      {sansFermeture ? null : (
+        <DialogPrimitive.Close
+          className="absolute right-2 top-2 inline-flex cible-44 items-center justify-center rounded-md text-muted-foreground hover:bg-muted"
+          aria-label="Fermer"
+        >
+          <X className="size-5" aria-hidden="true" />
+        </DialogPrimitive.Close>
+      )}
     </DialogPrimitive.Content>
   </DialogPrimitive.Portal>
 ));

@@ -55,7 +55,14 @@ const aDeployer = demandees.length ? fonctions.filter((f) => demandees.includes(
 
 // Le webhook est PUBLIC : les opérateurs n'ont pas de jeton Supabase.
 // Il vérifie lui-même la signature, et n'applique rien sans elle.
-const SANS_JWT = new Set(["paiement-webhook", "paiement-reconciliation", "commande-creer"]);
+const SANS_JWT = new Set([
+  "paiement-webhook",
+  "paiement-reconciliation",
+  "commande-creer",
+  // Appelees juste apres signUp, avant toute session utilisable.
+  "envoyer-code",
+  "verifier-code",
+]);
 
 for (const nom of aDeployer) {
   const entree = join(dossierFonctions, nom, "index.ts");

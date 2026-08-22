@@ -28,6 +28,22 @@ Deno.serve(async (requete: Request) => {
   }
 
   const client = clientAdmin();
+
+  // L'adresse doit avoir ete confirmee par le code a six chiffres. On ne se
+  // fie PAS a `auth.users.email_confirmed_at` : la confirmation native de
+  // Supabase est desactivee, cette colonne est remplie des l'inscription.
+  const { data: profil } = await client
+    .from("profiles")
+    .select("email_verifie")
+    .eq("id", utilisateur)
+    .maybeSingle();
+  if (!profil?.email_verifie) {
+    return reponse(403, {
+      erreur:
+        "Confirmez votre adresse e-mail avant de payer en ligne. Le code a six chiffres vous a ete envoye a l'inscription.",
+    });
+  }
+
   if (!(await quotaOk(client, "initier_paiement", utilisateur, 30))) {
     return reponse(429, { erreur: "Trop de tentatives de paiement. Réessayez dans une heure." });
   }

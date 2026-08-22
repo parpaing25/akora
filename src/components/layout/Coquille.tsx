@@ -1,6 +1,7 @@
 import { Outlet, useLocation } from "react-router-dom";
 import * as React from "react";
 import { EnTete } from "./EnTete";
+import { BandeauVerification } from "./BandeauVerification";
 import { BarreMobile } from "./BarreMobile";
 import { PiedDePage } from "./PiedDePage";
 
@@ -28,6 +29,7 @@ export function Coquille() {
         Aller au contenu
       </a>
       <EnTete />
+      <BandeauVerification />
       <main id="contenu" tabIndex={-1} className="flex-1">
         <Outlet />
       </main>

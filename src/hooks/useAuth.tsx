@@ -22,6 +22,8 @@ export interface Profil {
   avatar_url: string | null;
   type_client: "particulier" | "entreprise" | null;
   raison_sociale: string | null;
+  /** Vrai seulement apres saisie du code a six chiffres (migration 26). */
+  email_verifie: boolean;
 }
 
 interface ContexteAuth {
@@ -67,7 +69,7 @@ export function FournisseurAuth({ children }: { children: React.ReactNode }) {
       // profiles.id EST auth.uid() : on filtre par `id`, jamais par `user_id`.
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, nom_complet, telephone, ville, avatar_url, type_client, raison_sociale")
+        .select("id, nom_complet, telephone, ville, avatar_url, type_client, raison_sociale, email_verifie")
         .eq("id", idUtilisateur as string)
         .maybeSingle();
       if (error) throw error;

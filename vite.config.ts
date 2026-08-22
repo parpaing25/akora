@@ -18,7 +18,14 @@ export default defineConfig({
       strategies: "injectManifest",
       srcDir: "public",
       filename: "sw.js",
-      includeAssets: ["favicon.svg", "icon-192.png", "icon-512.png", "apple-touch-icon.png"],
+      includeAssets: [
+        "favicon.ico",
+        "favicon-32.png",
+        "icon-192.png",
+        "icon-512.png",
+        "icon-maskable-512.png",
+        "apple-touch-icon.png",
+      ],
       manifest: {
         name: "Akora — matériaux de construction à Madagascar",
         short_name: "Akora",
@@ -31,8 +38,11 @@ export default defineConfig({
         start_url: "/",
         orientation: "portrait-primary",
         icons: [
-          { src: "/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any maskable" },
-          { src: "/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any maskable" },
+          { src: "/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+          { src: "/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+          // Android rogne un cercle dans l'icone : celle-ci garde la lettre
+          // dans la zone sure, sur fond laterite plein.
+          { src: "/icon-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
         ],
       },
       injectManifest: {
