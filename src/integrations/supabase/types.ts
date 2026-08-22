@@ -839,6 +839,7 @@ export type Database = {
           lng: number | null
           localite_id: string | null
           logo_url: string | null
+          metier: string | null
           modes_paiement_acceptes: Database["public"]["Enums"]["mode_paiement"][]
           msisdn_versement: string | null
           nb_avis: number
@@ -850,9 +851,11 @@ export type Database = {
             | Database["public"]["Enums"]["operateur_paiement"]
             | null
           owner_id: string
+          photo_depot: string | null
           raison_sociale: string
           rayon_max_km: number
           rcs: string | null
+          retrait_sur_place: boolean
           slug: string
           stat: string | null
           statut: Database["public"]["Enums"]["statut_fournisseur"]
@@ -876,6 +879,7 @@ export type Database = {
           lng?: number | null
           localite_id?: string | null
           logo_url?: string | null
+          metier?: string | null
           modes_paiement_acceptes?: Database["public"]["Enums"]["mode_paiement"][]
           msisdn_versement?: string | null
           nb_avis?: number
@@ -887,9 +891,11 @@ export type Database = {
             | Database["public"]["Enums"]["operateur_paiement"]
             | null
           owner_id: string
+          photo_depot?: string | null
           raison_sociale: string
           rayon_max_km?: number
           rcs?: string | null
+          retrait_sur_place?: boolean
           slug: string
           stat?: string | null
           statut?: Database["public"]["Enums"]["statut_fournisseur"]
@@ -913,6 +919,7 @@ export type Database = {
           lng?: number | null
           localite_id?: string | null
           logo_url?: string | null
+          metier?: string | null
           modes_paiement_acceptes?: Database["public"]["Enums"]["mode_paiement"][]
           msisdn_versement?: string | null
           nb_avis?: number
@@ -924,9 +931,11 @@ export type Database = {
             | Database["public"]["Enums"]["operateur_paiement"]
             | null
           owner_id?: string
+          photo_depot?: string | null
           raison_sociale?: string
           rayon_max_km?: number
           rcs?: string | null
+          retrait_sur_place?: boolean
           slug?: string
           stat?: string | null
           statut?: Database["public"]["Enums"]["statut_fournisseur"]
@@ -2360,7 +2369,9 @@ export type Database = {
           lat: number | null
           lng: number | null
           localite_id: string | null
+          localite_nom: string | null
           logo_url: string | null
+          metier: string | null
           modes_paiement_acceptes:
             | Database["public"]["Enums"]["mode_paiement"][]
             | null
@@ -2371,73 +2382,16 @@ export type Database = {
             | Database["public"]["Enums"]["niveau_verification"]
             | null
           note_moyenne: number | null
+          photo_depot: string | null
           raison_sociale: string | null
           rayon_max_km: number | null
           rcs: string | null
+          retrait_sur_place: boolean | null
           slug: string | null
           stat: string | null
           taux_acompte: number | null
+          vehicules: string[] | null
           verifie_le: string | null
-        }
-        Insert: {
-          assujetti_tva?: boolean | null
-          coef_sinuosite?: number | null
-          couverture_url?: string | null
-          created_at?: string | null
-          description?: string | null
-          horaires?: Json | null
-          id?: string | null
-          lat?: number | null
-          lng?: number | null
-          localite_id?: string | null
-          logo_url?: string | null
-          modes_paiement_acceptes?:
-            | Database["public"]["Enums"]["mode_paiement"][]
-            | null
-          nb_avis?: number | null
-          nb_commandes_cloturees?: number | null
-          nif?: string | null
-          niveau_verification?:
-            | Database["public"]["Enums"]["niveau_verification"]
-            | null
-          note_moyenne?: number | null
-          raison_sociale?: string | null
-          rayon_max_km?: number | null
-          rcs?: string | null
-          slug?: string | null
-          stat?: string | null
-          taux_acompte?: number | null
-          verifie_le?: string | null
-        }
-        Update: {
-          assujetti_tva?: boolean | null
-          coef_sinuosite?: number | null
-          couverture_url?: string | null
-          created_at?: string | null
-          description?: string | null
-          horaires?: Json | null
-          id?: string | null
-          lat?: number | null
-          lng?: number | null
-          localite_id?: string | null
-          logo_url?: string | null
-          modes_paiement_acceptes?:
-            | Database["public"]["Enums"]["mode_paiement"][]
-            | null
-          nb_avis?: number | null
-          nb_commandes_cloturees?: number | null
-          nif?: string | null
-          niveau_verification?:
-            | Database["public"]["Enums"]["niveau_verification"]
-            | null
-          note_moyenne?: number | null
-          raison_sociale?: string | null
-          rayon_max_km?: number | null
-          rcs?: string | null
-          slug?: string | null
-          stat?: string | null
-          taux_acompte?: number | null
-          verifie_le?: string | null
         }
         Relationships: [
           {
@@ -2593,6 +2547,35 @@ export type Database = {
           _volume_m3: number
         }
         Returns: string
+      }
+      annuaire_fournisseurs: {
+        Args: {
+          _famille?: string
+          _lat?: number
+          _livre_chez_moi?: boolean
+          _lng?: number
+          _tri?: string
+          _type?: string
+          _verifies_seulement?: boolean
+        }
+        Returns: {
+          distance_km: number
+          familles: string[]
+          id: string
+          localite_nom: string
+          logo_url: string
+          metier: string
+          nb_avis: number
+          nb_produits: number
+          niveau_verification: string
+          note_moyenne: number
+          photo_depot: string
+          produit_phare: Json
+          raison_sociale: string
+          rayon_max_km: number
+          slug: string
+          types: string[]
+        }[]
       }
       arbitrer_litige: {
         Args: {
