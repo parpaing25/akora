@@ -62,8 +62,13 @@ DEFAUTS = {
     "llm_delai": 120,
     "llm_confiance_min": 50,
 
-    # ── Collectes automatiques.
-    "collecte_auto": True,
+    # ── Collectes automatiques. FAUX par défaut, et c'est délibéré : ce bot
+    # n'a encore jamais tourné contre le vrai Facebook. Un bot qui part tout
+    # seul avant sa première collecte vérifiée est un bot qu'on ne peut plus
+    # déboguer — on ne sait plus qui a déclenché quoi, surtout avec trois bots
+    # sur la même machine. À activer depuis le tableau de bord, une fois la
+    # première collecte lancée à la main et son résultat regardé.
+    "collecte_auto": False,
     "heures_collecte": ["10:00", "17:00"],
     "objectif_par_jour": 15,         # 15 NOUVEAUX fournisseurs par jour
 
