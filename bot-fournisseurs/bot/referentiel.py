@@ -35,12 +35,16 @@ from .config import CACHE_REFERENTIEL
 SYNONYMES_INSUFFISANTS = {"dalle", "plancher", "panneau", "boite", "chambre",
                           "fil", "pierre", "paquet", "grillage"}
 
-# Mots qui désignent bien un matériau, mais que PLUSIEURS types se partagent :
-# « biriky » vaut parpaing et brique, « vato » vaut gravillon et moellon. Les
-# écarter serait absurde — c'est ainsi que les dépôts écrivent. On les garde
-# donc, on prend le type le plus courant de la famille, et on plafonne la
-# certitude pour que l'interface demande confirmation.
-SYNONYMES_PARTAGES = {"biriky", "vato", "tany", "hazo", "bloc", "tafo", "vy"}
+# Certaines appellations désignent bien un matériau, mais PLUSIEURS types se
+# les partagent : « biriky » vaut parpaing et brique, « vato » vaut gravillon
+# et moellon, « parpaing » vaut creux et plein. Les écarter serait absurde —
+# c'est ainsi que les dépôts écrivent. On les garde, on prend le type le plus
+# courant de la famille, et on plafonne la certitude pour que l'interface
+# demande confirmation.
+#
+# La liste n'est PAS écrite ici : elle se déduit du catalogue au chargement
+# (toute expression qui pointe vers deux types ou plus). Le jour où une famille
+# est ajoutée côté site, le partage se recalcule tout seul.
 PLAFOND_PARTAGE = 55
 
 # Unités reconnues dans le texte -> enum `unite` d'Akora.
@@ -225,12 +229,19 @@ def _indexer(brut: dict) -> dict:
     # « parpaing », et « vato madinika » contre « vato ».
     appellations.sort(key=lambda a: len(a[0]), reverse=True)
 
+    # Quelles appellations plusieurs types se disputent-ils ? Déduit du
+    # catalogue, jamais écrit à la main.
+    proprietaires: dict[str, set[str]] = {}
+    for expression, slug, _ in appellations:
+        proprietaires.setdefault(expression, set()).add(slug)
+
     return {
         "familles": {f["slug"]: f for f in brut.get("familles", [])},
         "types": types,
         "materiaux": materiaux,
         "par_type": par_type,
         "appellations": appellations,
+        "partagees": {e for e, slugs in proprietaires.items() if len(slugs) > 1},
     }
 
 
@@ -257,11 +268,9 @@ def _candidats_types(ligne_normalisee: str) -> list[tuple[str, int, str, bool]]:
         marque = marques.setdefault(slug, {"poids": 0, "expression": expression,
                                            "partage": True})
         marque["poids"] += poids
-        if poids >= 3:
-            # Un nom officiel ou son premier mot : la reconnaissance ne tient
-            # plus à un synonyme partagé.
-            marque["partage"] = False
-        if expression not in SYNONYMES_PARTAGES and poids >= 2:
+        # Il suffit d'UNE appellation non partagée pour lever le doute :
+        # « fer » ne désigne que le fer à béton, « parpaing » désigne deux types.
+        if expression not in catalogue["partagees"]:
             marque["partage"] = False
 
     # À égalité de poids, le type le mieux placé dans le catalogue gagne :
@@ -323,19 +332,36 @@ def _choisir_format(type_slug: str, ligne_normalisee: str,
             if derniere in materiau["reperes"]:
                 return materiau, 92
 
-    # 2. Un repère numérique du format présent dans la ligne. Les repères
+    # 2. Le format dont TOUS les repères sont dans la ligne. « Gravillon 5/15 »
+    # porte les deux chiffres du format : c'est une signature, pas un indice.
+    if len(nombres) >= 2:
+        jeu = set(nombres)
+        complets = [
+            m for m in candidats
+            if m["reperes_cles"] and m["reperes_cles"] <= jeu
+        ]
+        if len(complets) == 1:
+            return complets[0], 95
+
+    # 3. Un repère numérique du format présent dans la ligne. Les repères
     # « clés » d'abord — ceux qui distinguent vraiment un format d'un autre.
-    for jeu, note in (("reperes_cles", 90), ("reperes", 75)):
+    for jeu_reperes, note in (("reperes_cles", 90), ("reperes", 75)):
         for nombre in nombres:
-            correspondants = [m for m in candidats if nombre in m[jeu]]
+            correspondants = [m for m in candidats if nombre in m[jeu_reperes]]
+            if not correspondants:
+                continue
             if len(correspondants) == 1:
                 return correspondants[0], note
-            if len(correspondants) > 1:
-                # Plusieurs formats répondent au même chiffre : on ne tranche
-                # pas au hasard, on renvoie l'ambiguïté à l'interface.
-                return None, 0
+            # Plusieurs formats portent ce chiffre. Le MOINS qualifié gagne :
+            # « hourdis 12 » désigne le 60×20×12, pas le 33×33×12 — celui-là
+            # s'annonce toujours « TC ». Si deux formats sont aussi peu
+            # qualifiés l'un que l'autre, on ne tranche pas.
+            sobres = sorted(correspondants, key=lambda m: len(m["reperes_cles"]))
+            if len(sobres[0]["reperes_cles"]) < len(sobres[1]["reperes_cles"]):
+                return sobres[0], note - 15
+            return None, 0
 
-    # 3. Aucun chiffre ne tranche : les mots distinctifs (« fin », « rivière »).
+    # 4. Aucun chiffre ne tranche : les mots distinctifs (« fin », « rivière »).
     meilleur, points = None, 0
     for materiau in candidats:
         trouves = sum(
