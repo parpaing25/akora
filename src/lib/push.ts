@@ -3,10 +3,13 @@ import { supabase } from "@/integrations/supabase/client";
 /**
  * Abonnement Web Push.
  *
- * ⚠️ À BRANCHER : clés VAPID. Sans clé publique, on ne demande même pas la
- * permission — mieux vaut ne rien proposer que griller le seul consentement
- * que l'utilisateur accordera. Le jour où la clé est là, il n'y a rien à
- * changer ici.
+ * Sans clé publique VAPID dans le bundle, on ne demande même pas la
+ * permission : mieux vaut ne rien proposer que griller le seul consentement
+ * que l'utilisateur accordera — un refus est définitif dans la plupart des
+ * navigateurs.
+ *
+ * L'envoi, lui, vit dans l'Edge Function `envoyer-push`, appelée chaque minute
+ * par le cron. La clé PRIVÉE ne quitte jamais les secrets serveur.
  */
 const CLE_PUBLIQUE = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined;
 

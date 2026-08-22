@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { normaliserTelephone, telephoneValide } from "@/lib/format";
 import { Seo } from "@/components/Seo";
 import { Carte } from "@/components/ui/card";
+import { ReglagePush } from "@/components/compte/ReglagePush";
 import { Champ } from "@/components/ui/champ";
 import { Saisie } from "@/components/ui/input";
 import { Bouton } from "@/components/ui/button";
@@ -96,6 +97,8 @@ export default function Profil() {
           </Bouton>
         </div>
       </Carte>
+
+      <ReglagePush />
     </>
   );
 }
