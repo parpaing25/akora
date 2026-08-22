@@ -2680,6 +2680,31 @@ export type Database = {
         }
         Returns: undefined
       }
+      offres_pour_materiaux: {
+        Args: { _lat?: number; _lng?: number; _slugs: string[] }
+        Returns: {
+          coef_sinuosite: number
+          distance_km: number
+          fournisseur_id: string
+          fournisseur_lat: number
+          fournisseur_lng: number
+          fournisseur_niveau: string
+          fournisseur_nom: string
+          fournisseur_slug: string
+          materiau_nom: string
+          materiau_slug: string
+          poids_kg_unite: number
+          prix_unitaire: number
+          produit_id: string
+          produit_nom: string
+          produit_slug: string
+          quantite_min: number
+          rayon_max_km: number
+          stock_statut: string
+          unite: string
+          volume_m3_unite: number
+        }[]
+      }
       prochain_numero_commande: { Args: never; Returns: string }
       purger_codes_expires: { Args: never; Returns: number }
       recalculer_niveau_verification: {

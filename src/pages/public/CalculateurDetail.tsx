@@ -28,6 +28,7 @@ import { Bouton } from "@/components/ui/button";
 import { Curseur } from "@/components/ui/slider";
 import { SelecteurPoint } from "@/components/livraison/SelecteurPoint";
 import { Squelette } from "@/components/ui/skeleton";
+import { DalleHourdis } from "@/components/calculateur/DalleHourdis";
 import NonTrouve from "@/pages/NonTrouve";
 
 const TITRES: Record<string, string> = {
@@ -203,6 +204,42 @@ export default function CalculateurDetail() {
       )}
     </Champ>
   );
+
+  // La dalle en hourdis a son propre ecran : elle ne se calcule pas par
+  // ratio mais par calepinage, et elle chiffre en direct sur les offres
+  // reelles. Les autres calculateurs gardent la forme generique.
+  if (type === "dalle-hourdis") {
+    return (
+      <div className="container py-6">
+        <Seo
+          titre={TITRES[type] ?? "Calculateur"}
+          chemin={"/calculateurs/" + type}
+          description="Calculez une dalle en hourdis par calepinage : files entières, poutrelles, béton de table, treillis — au prix rendu chantier."
+          donneesStructurees={filAriane([
+            { nom: "Accueil", chemin: "/" },
+            { nom: "Calculateurs", chemin: "/calculateurs" },
+            { nom: TITRES[type] ?? "", chemin: "/calculateurs/" + type },
+          ])}
+        />
+        <nav
+          aria-label="Fil d'Ariane"
+          className="print:hidden mb-2 flex flex-wrap items-center gap-2 text-legende text-muted-foreground"
+        >
+          <Link to="/calculateurs" className="lien-souligne">
+            Calculateurs
+          </Link>
+          <span aria-hidden="true">›</span>
+          <span className="font-semibold text-foreground">{TITRES[type]}</span>
+        </nav>
+        <h1 className="print:hidden text-page">{TITRES[type]}</h1>
+        <p className="print:hidden mb-4 mt-1 text-legende text-muted-foreground">
+          Poutrelles, hourdis, treillis et béton de table — comptés par files entières, comme on
+          les pose.
+        </p>
+        <DalleHourdis />
+      </div>
+    );
+  }
 
   return (
     <div className="container max-w-3xl py-6">

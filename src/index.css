@@ -330,6 +330,22 @@
    Le recu de commande doit sortir lisible sur une feuille, sans navigation,
    sans ombre et sans fond colore qui vide une cartouche. */
 @media print {
+  /* A4 portrait : le format de tous les imprimeurs de Tana. Les marges sont
+     posees ici, pas dans le composant — le navigateur les gere mieux, et une
+     marge en padding se repete a chaque page. */
+  @page {
+    size: A4 portrait;
+    margin: 14mm;
+  }
+
+  /* Les aplats sombres du devis DOIVENT sortir : sans cela, l'en-tete de
+     tableau imprime du texte blanc sur du blanc. */
+  .print\:block,
+  .print\:block * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
   header[class*="sticky"],
   footer,
   nav[aria-label="Navigation principale"],
