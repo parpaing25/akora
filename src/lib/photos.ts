@@ -69,7 +69,10 @@ async function envoyerUn(fichier: File, dossier: DossierPhoto, jeton: string, us
     reponse = await fetch(ENV.uploadEndpoint, {
       method: "POST",
       headers: { Authorization: `Bearer ${jeton}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ filename: nom, folder: dossier, data: base64 }),
+      // Le champ s'appelle `file`, pas `data` : c'est ce que lit
+      // `serveur/api/o2upload.php`. Avec `data`, le serveur repondait
+      // « Missing file data » — ce repli n'avait donc jamais pu fonctionner.
+      body: JSON.stringify({ filename: nom, folder: dossier, file: base64 }),
     });
   }
 

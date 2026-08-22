@@ -170,11 +170,13 @@ function PostFournisseur({ publication }: { publication: Publication }) {
               </>
             ) : (
               <p className="max-w-[220px] text-legende text-muted-foreground">
-                {!point
-                  ? "Indiquez où livrer pour voir le prix rendu."
-                  : livraison?.statut === "hors_zone"
-                    ? "Hors zone de livraison — à négocier avec le dépôt."
-                    : "Prix rendu indisponible pour ce point."}
+                {livraison?.statut === "retrait_sur_place"
+                  ? "Ce dépôt n'a pas encore déclaré de camion : retrait sur place, ou livraison à convenir avec lui."
+                  : !point
+                    ? "Indiquez où livrer pour voir le prix rendu."
+                    : livraison?.statut === "hors_zone"
+                      ? "Hors zone de livraison — à négocier avec le dépôt."
+                      : "Prix rendu en cours de calcul."}
               </p>
             )}
           </div>

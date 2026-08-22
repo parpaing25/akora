@@ -86,7 +86,15 @@ export default function Accueil() {
         description="Le fil des dépôts de matériaux à Madagascar : stock du jour, baisses de prix, tournées de livraison. Comparez au prix rendu chantier, livraison comprise."
       />
 
-      <div className="container grid items-start gap-5 py-4 lg:grid-cols-[230px_minmax(0,1fr)_300px]">
+      {/*
+        Pleine largeur, et non le gabarit de 1400 px d'AKORA-DESIGN §9.
+        Écart demandé et assumé : un fil se lit en colonnes, et sur un écran
+        large les 1400 px laissaient deux bandes vides pendant que la colonne
+        centrale étouffait. Le cap de 2100 px reste, parce qu'au-delà une ligne
+        de texte devient illisible — on élargit les colonnes latérales, pas la
+        lecture.
+      */}
+      <div className="mx-auto grid w-full max-w-[2100px] items-start gap-5 px-4 py-4 lg:grid-cols-[260px_minmax(0,1fr)_340px] lg:px-6 2xl:grid-cols-[300px_minmax(0,1fr)_380px] 2xl:gap-6 2xl:px-8">
         {/* ── Colonne gauche : navigation ─────────────────────────────── */}
         <nav aria-label="Navigation du fil" className="hidden flex-col gap-4 lg:flex">
           <ul className="carte p-2">
