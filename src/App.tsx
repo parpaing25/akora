@@ -4,7 +4,6 @@ import { Coquille } from "@/components/layout/Coquille";
 import { RouteProtegee } from "@/components/RouteProtegee";
 import { Squelette } from "@/components/ui/skeleton";
 import Accueil from "@/pages/Accueil";
-import type { RoleApplicatif } from "@/lib/types-metier";
 
 /**
  * Routeur complet (spec D1).
@@ -32,6 +31,34 @@ const ProCatalogue = lazy(() => import("@/pages/pro/Catalogue"));
 const ProProduitEditeur = lazy(() => import("@/pages/pro/ProduitEditeur"));
 const ProLivraison = lazy(() => import("@/pages/pro/Livraison"));
 const ProVitrine = lazy(() => import("@/pages/pro/Vitrine"));
+const ProCommandes = lazy(() => import("@/pages/pro/Commandes"));
+const ProPortefeuille = lazy(() => import("@/pages/pro/Portefeuille"));
+const ProAvis = lazy(() => import("@/pages/pro/Avis"));
+const ProStatistiques = lazy(() => import("@/pages/pro/Statistiques"));
+
+// ── Espace acheteur ──────────────────────────────────────────────────────
+const CoquilleCompte = lazy(() =>
+  import("@/components/compte/CoquilleCompte").then((m) => ({ default: m.CoquilleCompte })),
+);
+const CompteProfil = lazy(() => import("@/pages/compte/Profil"));
+const CompteCommandes = lazy(() => import("@/pages/compte/MesCommandes"));
+const ComptePaiements = lazy(() => import("@/pages/compte/MesPaiements"));
+const CompteFavoris = lazy(() => import("@/pages/compte/Favoris"));
+const CompteAdresses = lazy(() => import("@/pages/compte/Adresses"));
+const CompteSecurite = lazy(() => import("@/pages/compte/Securite"));
+
+// ── Administration (etape 9) ─────────────────────────────────────────────
+const CoquilleAdmin = lazy(() =>
+  import("@/components/admin/CoquilleAdmin").then((m) => ({ default: m.CoquilleAdmin })),
+);
+const AdminVerifications = lazy(() => import("@/pages/admin/Verifications"));
+const AdminMateriaux = lazy(() => import("@/pages/admin/MateriauxDemandes"));
+const AdminPaiements = lazy(() => import("@/pages/admin/PaiementsAdmin"));
+const AdminLitiges = lazy(() => import("@/pages/admin/Litiges"));
+const AdminVersements = lazy(() => import("@/pages/admin/Versements"));
+const AdminReferentiels = lazy(() => import("@/pages/admin/Referentiels"));
+const AdminModeration = lazy(() => import("@/pages/admin/Moderation"));
+const AdminAudit = lazy(() => import("@/pages/admin/Audit"));
 
 // ── Vitrine publique, comparateur, panier et commande (etapes 4, 6, 7) ───
 const Materiaux = lazy(() => import("@/pages/public/Materiaux"));
@@ -60,23 +87,6 @@ const PUBLIQUES = [
   "mentions-legales",
 ];
 
-const ACHETEUR = ["compte", "compte/commandes", "compte/paiements", "compte/favoris", "compte/adresses", "compte/securite"];
-
-/** Sous-routes de l'espace pro pas encore construites (etapes 7 a 9). */
-const PRO_A_VENIR = ["commandes", "commandes/:id", "portefeuille", "avis", "statistiques"];
-
-const ADMIN = [
-  "admin",
-  "admin/verifications",
-  "admin/materiaux",
-  "admin/paiements",
-  "admin/litiges",
-  "admin/versements",
-  "admin/referentiels",
-  "admin/moderation",
-  "admin/audit",
-];
-
 /** Squelette de transition. Jamais de spinner plein ecran (§5). */
 function Attente() {
   return (
@@ -87,20 +97,6 @@ function Attente() {
       <Squelette className="h-64 w-full" />
     </div>
   );
-}
-
-function routesProtegees(chemins: string[], role?: RoleApplicatif) {
-  return chemins.map((chemin) => (
-    <Route
-      key={chemin}
-      path={chemin}
-      element={
-        <RouteProtegee role={role}>
-          <AVenir />
-        </RouteProtegee>
-      }
-    />
-  ));
 }
 
 export default function App() {
@@ -131,7 +127,21 @@ export default function App() {
           <Route path="mot-de-passe-oublie" element={<MotDePasseOublie />} />
           <Route path="verification-email" element={<VerificationEmail />} />
 
-          {routesProtegees(ACHETEUR)}
+          <Route
+            path="compte"
+            element={
+              <RouteProtegee>
+                <CoquilleCompte />
+              </RouteProtegee>
+            }
+          >
+            <Route index element={<CompteProfil />} />
+            <Route path="commandes" element={<CompteCommandes />} />
+            <Route path="paiements" element={<ComptePaiements />} />
+            <Route path="favoris" element={<CompteFavoris />} />
+            <Route path="adresses" element={<CompteAdresses />} />
+            <Route path="securite" element={<CompteSecurite />} />
+          </Route>
 
           <Route
             path="pro"
@@ -148,12 +158,31 @@ export default function App() {
             <Route path="catalogue/:id" element={<ProProduitEditeur />} />
             <Route path="livraison" element={<ProLivraison />} />
             <Route path="vitrine" element={<ProVitrine />} />
-            {PRO_A_VENIR.map((chemin) => (
-              <Route key={chemin} path={chemin} element={<AVenir />} />
-            ))}
+            <Route path="commandes" element={<ProCommandes />} />
+            <Route path="commandes/:id" element={<ProCommandes />} />
+            <Route path="portefeuille" element={<ProPortefeuille />} />
+            <Route path="avis" element={<ProAvis />} />
+            <Route path="statistiques" element={<ProStatistiques />} />
           </Route>
 
-          {routesProtegees(ADMIN, "admin")}
+          <Route
+            path="admin"
+            element={
+              <RouteProtegee role="admin">
+                <CoquilleAdmin />
+              </RouteProtegee>
+            }
+          >
+            <Route index element={<AdminVerifications />} />
+            <Route path="verifications" element={<AdminVerifications />} />
+            <Route path="materiaux" element={<AdminMateriaux />} />
+            <Route path="paiements" element={<AdminPaiements />} />
+            <Route path="litiges" element={<AdminLitiges />} />
+            <Route path="versements" element={<AdminVersements />} />
+            <Route path="referentiels" element={<AdminReferentiels />} />
+            <Route path="moderation" element={<AdminModeration />} />
+            <Route path="audit" element={<AdminAudit />} />
+          </Route>
 
           <Route path="*" element={<NonTrouve />} />
         </Route>

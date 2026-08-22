@@ -2039,6 +2039,14 @@ export type Database = {
         }
         Returns: string
       }
+      arbitrer_litige: {
+        Args: {
+          _decision: string
+          _litige_id: string
+          _montant_rembourse?: number
+        }
+        Returns: undefined
+      }
       attribuer_badges_partenaire: { Args: never; Returns: number }
       compter_vue_produit: { Args: { _produit_id: string }; Returns: undefined }
       confirmer_livraison: {
@@ -2083,6 +2091,10 @@ export type Database = {
         Args: { _fournisseur_id: string }
         Returns: boolean
       }
+      executer_retrait: {
+        Args: { _reference: string; _retrait_id: string }
+        Returns: undefined
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -2101,6 +2113,13 @@ export type Database = {
         Returns: undefined
       }
       liberer_sequestre: { Args: { _paiement_id: string }; Returns: number }
+      moderer_avis: {
+        Args: {
+          _avis_id: string
+          _statut: Database["public"]["Enums"]["statut_moderation"]
+        }
+        Returns: undefined
+      }
       notifier: {
         Args: {
           _categorie?: string
@@ -2118,6 +2137,10 @@ export type Database = {
       }
       refuser_demande_materiau: {
         Args: { _demande_id: string; _motif: string }
+        Returns: undefined
+      }
+      refuser_retrait: {
+        Args: { _motif: string; _retrait_id: string }
         Returns: undefined
       }
       reveler_contact_fournisseur: {
