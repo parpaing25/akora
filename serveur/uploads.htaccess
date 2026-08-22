@@ -1,0 +1,15 @@
+# Racine des photos envoyees par les fournisseurs.
+# Aucun script ne s'execute ici : un fichier deguise en image ne doit jamais
+# devenir du code. Le controle des magic bytes cote PHP est la premiere
+# barriere, celle-ci est la seconde.
+php_flag engine off
+RemoveHandler .php .phtml .php3 .php4 .php5 .php7 .php8 .cgi .pl .py
+RemoveType .php .phtml .php3 .php4 .php5 .php7 .php8 .cgi .pl .py
+AddType text/plain .php .phtml .cgi .pl .py .html .htm .shtml
+
+<FilesMatch "\.(jpe?g|png|webp|avif|gif)$">
+  ForceType none
+  Header set Cache-Control "public, max-age=31536000, immutable"
+</FilesMatch>
+
+Options -ExecCGI -Indexes

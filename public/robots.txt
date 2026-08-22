@@ -1,12 +1,24 @@
+# ─────────────────────────────────────────────────────────────────────────
+# CHANTIER EN COURS — indexation FERMEE.
+#
+# Le site est deploye pour etre regarde, pas pour etre reference : 7 etapes
+# sur 10 restent a construire et la plupart des pages publiques sont encore
+# des ecrans d'attente. Sur Fonenako, laisser Google decouvrir des pages
+# incompletes a coute 22 pages declarees « doublons » et sorties de l'index.
+#
+# A ROUVRIR A L'ETAPE 10, en remplacant ce fichier par le bloc commente
+# ci-dessous.
+# ─────────────────────────────────────────────────────────────────────────
 User-agent: *
-Allow: /
+Disallow: /
 
-# Espaces privés : rien à indexer.
-Disallow: /compte
-Disallow: /pro
-Disallow: /admin
-Disallow: /panier
-Disallow: /commander
-Disallow: /paiement
-
-Sitemap: https://akora.fonenako.mg/sitemap.xml
+# ── Version de lancement, a retablir quand le site est complet ───────────
+# User-agent: *
+# Allow: /
+# Disallow: /compte
+# Disallow: /pro
+# Disallow: /admin
+# Disallow: /panier
+# Disallow: /commander
+# Disallow: /paiement
+# Sitemap: https://akora.fonenako.mg/sitemap.xml

@@ -105,15 +105,26 @@ export async function envoyerPhotos(
   return urls;
 }
 
-/** Suppression : le serveur n'autorise que le dossier de l'utilisateur. */
-export async function supprimerPhoto(url: string): Promise<void> {
+/**
+ * Suppression. Le serveur n'autorise que le dossier de l'utilisateur, et il
+ * retire AUSSI la vignette `.thumb.webp` associée — inutile de la demander.
+ * Le point d'entrée attend un tableau `urls`, même pour une seule photo.
+ */
+export async function supprimerPhotos(urls: readonly string[]): Promise<void> {
+  if (urls.length === 0) return;
   const { data } = await supabase.auth.getSession();
   const jeton = data.session?.access_token;
   if (!jeton) throw new Error("Connectez-vous pour supprimer une photo.");
   const reponse = await fetch(ENV.deleteEndpoint, {
     method: "POST",
     headers: { Authorization: `Bearer ${jeton}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ url }),
+    body: JSON.stringify({ urls }),
   });
   if (!reponse.ok) throw new Error(`Suppression refusée (${reponse.status}).`);
+  const resultat = (await reponse.json()) as { failed?: number; errors?: string[] };
+  if (resultat.failed && resultat.errors?.length) {
+    throw new Error(resultat.errors[0] ?? "Suppression partielle.");
+  }
 }
+
+export const supprimerPhoto = (url: string) => supprimerPhotos([url]);
