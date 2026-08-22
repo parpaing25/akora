@@ -81,6 +81,7 @@ export abstract class PrestataireOAuth implements PrestatairePaiement {
         Authorization: "Bearer " + jeton,
         "Content-Type": "application/json",
         "X-Correlation-ID": demande.reference,
+        ...this.enTetesSupplementaires(),
       },
       body: JSON.stringify(this.corpsTransaction(demande)),
     });
@@ -105,7 +106,7 @@ export abstract class PrestataireOAuth implements PrestatairePaiement {
       encodeURIComponent(reference),
     );
     const reponse = await fetch(new URL(chemin, base).toString(), {
-      headers: { Authorization: "Bearer " + jeton },
+      headers: { Authorization: "Bearer " + jeton, ...this.enTetesSupplementaires() },
     });
     const brut = await reponse.json().catch(() => null);
     if (!reponse.ok) return { statut: "inconnu", referenceExterne: reference, brut };
@@ -153,6 +154,14 @@ export abstract class PrestataireOAuth implements PrestatairePaiement {
     let ecart = 0;
     for (let i = 0; i < hexa.length; i++) ecart |= hexa.charCodeAt(i) ^ signature.charCodeAt(i);
     return ecart === 0;
+  }
+
+  /**
+   * En-tetes exiges par un operateur en particulier. Airtel demande X-Country
+   * et X-Currency ; les deux autres n'en ont pas besoin.
+   */
+  protected enTetesSupplementaires(): Record<string, string> {
+    return {};
   }
 
   protected abstract corpsTransaction(demande: DemandePaiement): Record<string, unknown>;

@@ -11,6 +11,11 @@ export class AirtelMoney extends PrestataireOAuth {
   readonly operateur: Operateur = "airtel_money";
   protected readonly prefixe = "AIRTEL_MONEY";
 
+  /** Airtel refuse les appels sans le pays ni la devise. */
+  protected override enTetesSupplementaires(): Record<string, string> {
+    return { "X-Country": "MG", "X-Currency": "MGA" };
+  }
+
   protected corpsTransaction(demande: DemandePaiement): Record<string, unknown> {
     return {
       reference: demande.libelle,
