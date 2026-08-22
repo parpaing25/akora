@@ -24,7 +24,7 @@ export function CarteDepot({ depot }: { depot: DepotAnnuaire }) {
   return (
     <Link
       to={`/fournisseurs/${depot.slug}`}
-      className="carte group flex flex-col overflow-hidden p-0 transition-colors hover:border-primary"
+      className="carte carte-cliquable flex flex-col overflow-hidden p-0"
     >
       <div className="relative aspect-[16/9] w-full bg-muted">
         {depot.photo_depot ? (
@@ -35,7 +35,7 @@ export function CarteDepot({ depot }: { depot: DepotAnnuaire }) {
             decoding="async"
             width={480}
             height={270}
-            className="size-full object-cover"
+            className="vignette size-full object-cover"
           />
         ) : null}
         <span className="absolute right-2 top-2">
@@ -108,7 +108,7 @@ export function CarteDepot({ depot }: { depot: DepotAnnuaire }) {
           </p>
         )}
 
-        <p className="mt-auto flex items-center justify-between gap-2 border-t border-border pt-2.5 text-legende">
+        <p className="pied -mx-4 -mb-4 mt-auto flex items-center justify-between gap-2 border-t border-border px-4 py-2.5 text-legende">
           <span className="text-muted-foreground">
             {depot.nb_avis > 0 ? (
               <>
@@ -124,7 +124,7 @@ export function CarteDepot({ depot }: { depot: DepotAnnuaire }) {
           </span>
           <span className="flex items-center gap-1 font-semibold text-primary">
             Voir le dépôt
-            <ArrowRight size={14} className="transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+            <ArrowRight size={14} className="fleche" aria-hidden="true" />
           </span>
         </p>
       </div>

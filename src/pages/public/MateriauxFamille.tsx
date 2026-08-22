@@ -122,19 +122,19 @@ export default function MateriauxFamille() {
         </div>
       ) : null}
 
-      <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="entree mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {liste.map((type) => (
           <Link
             key={type.id}
             to={`/materiaux/${type.famille_slug}/${type.slug}`}
-            className="carte flex flex-col gap-3 p-4 transition-colors hover:border-primary"
+            className="carte carte-cliquable flex flex-col gap-3 p-4"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-produit text-foreground">{type.nom}</p>
                 {type.nom_mg ? <p className="text-legende text-muted-foreground">{type.nom_mg}</p> : null}
               </div>
-              <ArrowRight size={18} className="mt-0.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <ArrowRight size={18} className="fleche mt-0.5 shrink-0 text-muted-foreground" aria-hidden="true" />
             </div>
 
             <p className="text-courant">
@@ -153,7 +153,7 @@ export default function MateriauxFamille() {
                 {type.formats_apercu.slice(0, 4).map((format) => (
                   <li
                     key={format.slug}
-                    className="nombres rounded-full border border-border px-2 py-0.5 text-[0.72rem] text-muted-foreground"
+                    className="puce nombres rounded-full border border-border px-2 py-0.5 text-[0.72rem] text-muted-foreground"
                   >
                     {format.libelle_court}
                   </li>

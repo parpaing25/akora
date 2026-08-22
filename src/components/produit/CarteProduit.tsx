@@ -31,13 +31,13 @@ export function CarteProduit({
     produit.stock === "en_stock" ? "succes" : produit.stock === "rupture" ? "danger" : "neutre";
 
   return (
-    <article className={cn("carte flex flex-col overflow-hidden", className)}>
+    <article className={cn("carte carte-vivante flex flex-col overflow-hidden", className)}>
       <Link to={lien} className="block" tabIndex={-1} aria-hidden="true">
         <ImageProduit
           src={produit.photo}
           alt=""
           variante="vignette"
-          className="aspect-[4/3] w-full bg-muted object-cover"
+          className="vignette aspect-[4/3] w-full bg-muted object-cover"
         />
       </Link>
 

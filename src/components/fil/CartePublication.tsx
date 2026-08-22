@@ -83,7 +83,7 @@ function PostFournisseur({ publication }: { publication: Publication }) {
   const rendu = coutLivraison === null ? null : montantProduits + coutLivraison;
 
   return (
-    <article className="carte overflow-hidden p-0">
+    <article className="carte carte-vivante overflow-hidden p-0">
       <header className="flex items-start gap-3 px-4 pb-3 pt-3.5">
         <span
           aria-hidden="true"
@@ -131,9 +131,10 @@ function PostFournisseur({ publication }: { publication: Publication }) {
               width={publication.photos.length > 1 ? 400 : 800}
               height={publication.photos.length > 1 ? 300 : 450}
               className={
-                publication.photos.length > 1
+                "vignette " +
+                (publication.photos.length > 1
                   ? "aspect-[4/3] w-full bg-muted object-cover"
-                  : "aspect-[16/9] w-full bg-muted object-cover"
+                  : "aspect-[16/9] w-full bg-muted object-cover")
               }
             />
           ))}

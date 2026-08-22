@@ -201,7 +201,7 @@ export default function TypeMateriau() {
               {liste.map((f) => {
                 const estimation = rendu(f);
                 return (
-                  <tr key={f.id} className="border-t border-border">
+                  <tr key={f.id} className="ligne-survol border-t border-border">
                     <th scope="row" className="px-4 py-3 text-left align-top">
                       <span className="block text-courant font-semibold">{f.libelle_court ?? f.nom}</span>
                       {f.note ? (
@@ -265,7 +265,7 @@ export default function TypeMateriau() {
           {liste.map((f) => {
             const estimation = rendu(f);
             return (
-              <li key={f.id} className="carte p-4">
+              <li key={f.id} className="carte carte-vivante p-4">
                 <p className="text-produit">{f.libelle_court ?? f.nom}</p>
                 <p className="nombres text-legende text-muted-foreground">
                   {f.dimensions ?? "—"} · {Number(f.poids_kg_unite)} kg · {Number(f.volume_m3_unite)} m³

@@ -198,7 +198,7 @@ export function RechercheMateriaux({
           id={identifiant + "-liste"}
           role="listbox"
           aria-label="Suggestions de matériaux"
-          className="carte absolute z-40 mt-2 w-full overflow-hidden p-0"
+          className="carte panneau absolute z-40 mt-2 w-full overflow-hidden p-0"
         >
           {recherche.isFetching && resultats.length === 0 ? (
             <div className="space-y-2 p-3.5">

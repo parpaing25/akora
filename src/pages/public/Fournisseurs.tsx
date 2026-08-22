@@ -264,7 +264,7 @@ export default function Fournisseurs() {
         </div>
       ) : null}
 
-      <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="entree mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {liste.map((depot) => (
           <CarteDepot key={depot.id} depot={depot} />
         ))}

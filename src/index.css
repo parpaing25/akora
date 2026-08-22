@@ -64,6 +64,15 @@
 
     /* L'UNIQUE ombre du produit (§4). Toute classe shadow-* la reprend. */
     --ombre: 0 1px 2px hsl(215 20% 20% / 0.05), 0 6px 16px hsl(215 20% 20% / 0.06);
+    /* Sa seule variante : la carte survolee. Elle reste un TOKEN — une ombre
+       ecrite en dur dans un composant, et il y en aurait trois le mois
+       suivant. */
+    --ombre-survol: 0 1px 2px hsl(215 20% 20% / 0.05), 0 12px 28px hsl(215 20% 20% / 0.1);
+
+    /* Mouvement : une seule courbe, deux durees. Tout le produit s'y tient. */
+    --courbe: cubic-bezier(0.22, 0.61, 0.36, 1);
+    --duree-vite: 140ms;
+    --duree-normale: 220ms;
 
     /* Hauteur de la barre de navigation mobile, pour les padding-bottom. */
     --barre-mobile: 3.75rem;
@@ -111,6 +120,28 @@
       transition-duration: 0.01ms !important;
       scroll-behavior: auto !important;
     }
+
+    /* Annuler la DUREE ne suffit pas : le deplacement se produit encore, en
+       une fraction de milliseconde — c'est-a-dire d'un coup, ce qui est
+       precisement ce qu'un utilisateur en mouvement reduit veut eviter. On
+       supprime donc le deplacement lui-meme. La bordure et l'ombre, elles,
+       restent : ce sont des changements de couleur, pas du mouvement. */
+    .carte-cliquable:hover,
+    .carte-cliquable:active,
+    .carte-cliquable:focus-visible,
+    .carte-cliquable:hover .vignette,
+    .carte-vivante:hover .vignette,
+    .carte-cliquable:hover .fleche,
+    .puce:hover {
+      transform: none !important;
+    }
+    .ligne-survol::before {
+      transform: scaleY(1) !important;
+      opacity: 0;
+    }
+    .ligne-survol:hover::before {
+      opacity: 1;
+    }
   }
 }
 
@@ -128,6 +159,141 @@
   /* Squelette de chargement : jamais de spinner plein écran (§5). */
   .squelette {
     @apply bg-muted rounded-xs animate-squelette;
+  }
+
+  /* ── Carte cliquable ────────────────────────────────────────────────────
+     Le socle de toutes les cartes qui MENENT quelque part. Elle se souleve de
+     trois pixels, prend l'ombre de survol et une bordure laterite.
+
+     Trois pixels, pas dix : le mouvement doit confirmer que la carte est
+     vivante, pas faire sursauter la page. Et uniquement `transform` et
+     `box-shadow` — deux proprietes que le navigateur compose sans recalculer
+     la mise en page, ce qui compte sur les telephones d'entree de gamme qui
+     font l'essentiel du trafic.
+
+     Le focus clavier recoit le MEME signal que la souris, plus l'anneau : qui
+     navigue au clavier a droit au meme retour que qui pointe. */
+  .carte-cliquable {
+    transition:
+      transform var(--duree-normale) var(--courbe),
+      box-shadow var(--duree-normale) var(--courbe),
+      border-color var(--duree-vite) var(--courbe);
+  }
+  .carte-cliquable:hover {
+    transform: translateY(-3px);
+    border-color: hsl(var(--primary) / 0.45);
+    box-shadow: var(--ombre-survol);
+  }
+  .carte-cliquable:active {
+    transform: translateY(-1px);
+    transition-duration: var(--duree-vite);
+  }
+  .carte-cliquable:focus-visible {
+    outline: 2px solid hsl(var(--primary));
+    outline-offset: 2px;
+    transform: translateY(-3px);
+    box-shadow: var(--ombre-survol);
+  }
+
+  /* La vignette respire dans son cadre. Le cadre, lui, ne bouge pas :
+     `overflow: hidden` sur la carte suffit a la retenir. */
+  .carte-cliquable .vignette {
+    transition: transform 320ms var(--courbe);
+  }
+  .carte-cliquable:hover .vignette {
+    transform: scale(1.04);
+  }
+
+  /* La fleche avance : c'est le geste qui dit « ca s'ouvre ». */
+  .carte-cliquable .fleche {
+    transition: transform var(--duree-normale) var(--courbe);
+  }
+  .carte-cliquable:hover .fleche {
+    transform: translateX(3px);
+  }
+
+  /* Le pied de carte prend la teinte laterite. */
+  .carte-cliquable .pied {
+    transition: background-color var(--duree-normale) var(--courbe);
+  }
+  .carte-cliquable:hover .pied {
+    background-color: hsl(var(--primary) / 0.07);
+  }
+
+  /* ── Carte vivante ──────────────────────────────────────────────────────
+     Pour les cartes qui CONTIENNENT un lien sans en etre un : la vignette
+     respire, la bordure se teinte, mais la carte ne se souleve PAS. Le
+     soulevement promet « cliquez n'importe ou » ; ici, seul un endroit precis
+     repond. Un mouvement qui promet un clic inexistant est un mensonge. */
+  .carte-vivante {
+    transition: border-color var(--duree-normale) var(--courbe);
+  }
+  .carte-vivante:hover {
+    border-color: hsl(var(--primary) / 0.35);
+  }
+  .carte-vivante .vignette {
+    transition: transform 320ms var(--courbe);
+  }
+  .carte-vivante:hover .vignette {
+    transform: scale(1.04);
+  }
+
+  /* ── Puce de format ────────────────────────────────────────────────────── */
+  .puce {
+    transition:
+      background-color var(--duree-vite) var(--courbe),
+      border-color var(--duree-vite) var(--courbe),
+      transform var(--duree-vite) var(--courbe);
+  }
+  .puce:hover {
+    background-color: hsl(var(--primary) / 0.08);
+    border-color: hsl(var(--primary) / 0.4);
+    transform: translateY(-1px);
+  }
+
+  /* ── Ligne de tableau ──────────────────────────────────────────────────
+     Un filet laterite se deploie a gauche. Il est pose en `::before` et anime
+     en `scaleY` : ni la largeur ni la bordure ne bougent, donc aucune ligne du
+     tableau ne se decale au passage de la souris. */
+  .ligne-survol {
+    position: relative;
+    transition: background-color var(--duree-vite) var(--courbe);
+  }
+  .ligne-survol::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 3px;
+    background: hsl(var(--primary));
+    transform: scaleY(0);
+    transform-origin: center;
+    transition: transform var(--duree-normale) var(--courbe);
+  }
+  .ligne-survol:hover {
+    background-color: hsl(var(--primary) / 0.04);
+  }
+  .ligne-survol:hover::before {
+    transform: scaleY(1);
+  }
+
+  /* ── Entrees ───────────────────────────────────────────────────────────
+     Une seule fois, a l'arrivee du contenu. Pas de cascade indexee : sur une
+     grille de vingt cartes, l'attente devient perceptible. */
+  @keyframes akora-entree {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: none; }
+  }
+  .entree {
+    animation: akora-entree 340ms var(--courbe) both;
+  }
+
+  @keyframes akora-panneau {
+    from { opacity: 0; transform: translateY(-6px) scale(0.99); }
+    to   { opacity: 1; transform: none; }
+  }
+  .panneau {
+    animation: akora-panneau 160ms var(--courbe) both;
+    transform-origin: top center;
   }
 
   /* Cible tactile minimale imposée : 44 × 44 px (§12). */
