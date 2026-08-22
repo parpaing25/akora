@@ -27,14 +27,9 @@ export function formaterAriary(valeur: number): string {
   return `${formaterNombre(valeur)}${ESPACE_FINE}Ar`;
 }
 
-/**
- * Arrondi à la centaine d'Ariary SUPÉRIEURE.
- * Utilisé par le calcul de livraison (spec B6 étape 4) : on n'affiche jamais
- * un coût de transport avec des unités d'Ariary.
- */
-export function arrondirCentaineSup(valeur: number): number {
-  return Math.ceil(valeur / 100) * 100;
-}
+// L'arrondi vit dans argent.ts, partagé avec les Edge Functions. On le
+// re-exporte ici pour ne pas casser les appelants existants.
+export { arrondirCentaineSup } from "./argent";
 
 /* ── Téléphone ─────────────────────────────────────────────────────────── */
 

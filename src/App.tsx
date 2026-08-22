@@ -33,18 +33,20 @@ const ProProduitEditeur = lazy(() => import("@/pages/pro/ProduitEditeur"));
 const ProLivraison = lazy(() => import("@/pages/pro/Livraison"));
 const ProVitrine = lazy(() => import("@/pages/pro/Vitrine"));
 
+// ── Vitrine publique, comparateur, panier et commande (etapes 4, 6, 7) ───
+const Materiaux = lazy(() => import("@/pages/public/Materiaux"));
+const MateriauxFamille = lazy(() => import("@/pages/public/MateriauxFamille"));
+const Comparateur = lazy(() => import("@/pages/public/Comparateur"));
+const Fournisseurs = lazy(() => import("@/pages/public/Fournisseurs"));
+const FournisseurFiche = lazy(() => import("@/pages/public/FournisseurFiche"));
+const ProduitFiche = lazy(() => import("@/pages/public/ProduitFiche"));
+const Recherche = lazy(() => import("@/pages/public/Recherche"));
+const Panier = lazy(() => import("@/pages/public/Panier"));
+const Commander = lazy(() => import("@/pages/public/Commander"));
+const CommandeSuivi = lazy(() => import("@/pages/public/CommandeSuivi"));
+const Paiement = lazy(() => import("@/pages/public/Paiement"));
+
 const PUBLIQUES = [
-  "materiaux",
-  "materiaux/:categorie",
-  "materiaux/:categorie/:refSlug",
-  "fournisseurs",
-  "fournisseurs/:slug",
-  "fournisseurs/:slug/:produitSlug",
-  "recherche",
-  "panier",
-  "commander",
-  "commande/:numero",
-  "paiement/:numero",
   "calculateurs",
   "calculateurs/:type",
   "prix/:materiau/:ville",
@@ -107,6 +109,19 @@ export default function App() {
       <Routes>
         <Route element={<Coquille />}>
           <Route index element={<Accueil />} />
+
+          <Route path="materiaux" element={<Materiaux />} />
+          <Route path="materiaux/:categorie" element={<MateriauxFamille />} />
+          <Route path="materiaux/:categorie/:refSlug" element={<Comparateur />} />
+          <Route path="fournisseurs" element={<Fournisseurs />} />
+          <Route path="fournisseurs/:slug" element={<FournisseurFiche />} />
+          <Route path="fournisseurs/:slug/:produitSlug" element={<ProduitFiche />} />
+          <Route path="recherche" element={<Recherche />} />
+          <Route path="panier" element={<Panier />} />
+          <Route path="commander" element={<Commander />} />
+          <Route path="commande/:numero" element={<CommandeSuivi />} />
+          <Route path="paiement/:numero" element={<Paiement />} />
+
           {PUBLIQUES.map((chemin) => (
             <Route key={chemin} path={chemin} element={<AVenir />} />
           ))}

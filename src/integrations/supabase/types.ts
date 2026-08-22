@@ -2045,6 +2045,10 @@ export type Database = {
         Args: { _commande_id: string }
         Returns: undefined
       }
+      confirmer_paiement_manuel: {
+        Args: { _accepte: boolean; _motif?: string; _paiement_id: string }
+        Returns: Database["public"]["Enums"]["statut_paiement"]
+      }
       consommer_quota: {
         Args: { _cle: string; _plafond: number; _sujet: string }
         Returns: boolean
@@ -2069,6 +2073,10 @@ export type Database = {
           _type: Database["public"]["Enums"]["type_ecriture"]
         }
         Returns: number
+      }
+      enregistrer_reference_paiement: {
+        Args: { _paiement_id: string; _reference: string }
+        Returns: undefined
       }
       est_appel_systeme: { Args: never; Returns: boolean }
       est_membre_fournisseur: {
