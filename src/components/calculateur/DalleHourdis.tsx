@@ -163,7 +163,16 @@ export function DalleHourdis() {
     [lignes, retenue],
   );
 
-  const totalMateriaux = chiffrees.reduce((s, l) => s + l.total, 0);
+  // Le devis ne chiffre QUE ce qu'Akora peut vendre. Une ligne sans offre n'a
+  // pas sa place dans un tableau de prix : elle y met des tirets partout et
+  // fait croire a un devis incomplet plutot qu'a un catalogue incomplet.
+  const devis = React.useMemo(() => chiffrees.filter((l) => l.offre), [chiffrees]);
+  // Mais elle ne DISPARAIT pas : une dalle n'est pas faite que de hourdis, et
+  // laisser croire le contraire couterait un chantier a quelqu'un. Elle passe
+  // en note, avec sa quantite, pour qu'on sache quoi acheter ailleurs.
+  const horsDevis = React.useMemo(() => chiffrees.filter((l) => !l.offre), [chiffrees]);
+
+  const totalMateriaux = devis.reduce((s, l) => s + l.total, 0);
 
   // Un poste de livraison par depot distinct : c'est ce qui explique qu'un
   // metre eclate sur quatre fournisseurs coute plus cher a livrer qu'un metre
@@ -460,7 +469,8 @@ export function DalleHourdis() {
           <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-border p-4">
             <h2 className="text-produit">Votre liste de courses</h2>
             <p className="text-legende text-muted-foreground">
-              <span className="nombres">{lignes.length}</span> lignes · marge de{" "}
+              <span className="nombres">{devis.length}</span> ligne{devis.length > 1 ? "s" : ""}{" "}
+              chiffrée{devis.length > 1 ? "s" : ""} · marge de{" "}
               <span className="nombres">{marge} %</span> incluse
             </p>
           </div>
@@ -478,7 +488,7 @@ export function DalleHourdis() {
                 </tr>
               </thead>
               <tbody>
-                {chiffrees.map((ligne) => (
+                {devis.map((ligne) => (
                   <tr key={ligne.cle} className="ligne-survol border-t border-border">
                     <th scope="row" className="px-4 py-3 text-left align-top">
                       <span className="block text-courant font-semibold">{ligne.libelle}</span>
@@ -494,22 +504,14 @@ export function DalleHourdis() {
                       {ligne.offre ? formaterAriary(ligne.offre.prix_unitaire) : "—"}
                     </td>
                     <td className="px-4 py-3 align-top">
-                      {ligne.offre ? (
-                        <>
-                          <span className="block text-legende font-semibold">
-                            {ligne.offre.fournisseur_nom}
-                          </span>
-                          <span className="nombres block text-[0.72rem] text-muted-foreground">
-                            {ligne.offre.distance_km != null
-                              ? `${nombre(ligne.offre.distance_km, 1)} km`
-                              : "distance inconnue"}
-                          </span>
-                        </>
-                      ) : (
-                        <span className="text-legende text-muted-foreground">
-                          Aucune offre — à commander ailleurs
-                        </span>
-                      )}
+                      <span className="block text-legende font-semibold">
+                        {ligne.offre?.fournisseur_nom}
+                      </span>
+                      <span className="nombres block text-[0.72rem] text-muted-foreground">
+                        {ligne.offre?.distance_km != null
+                          ? `${nombre(ligne.offre.distance_km, 1)} km`
+                          : "distance inconnue"}
+                      </span>
                     </td>
                     <td className="px-4 py-3 text-right align-top">
                       <span className="nombres block text-courant font-semibold">
@@ -557,6 +559,28 @@ export function DalleHourdis() {
             </table>
           </div>
 
+          {horsDevis.length > 0 ? (
+            <div className="border-t border-border bg-muted p-4">
+              <p className="text-legende font-semibold">
+                Non chiffré : aucun dépôt ne le propose encore sur Akora
+              </p>
+              <ul className="mt-1 space-y-0.5">
+                {horsDevis.map((ligne) => (
+                  <li key={ligne.cle} className="text-legende text-muted-foreground">
+                    {ligne.libelle} —{" "}
+                    <span className="nombres">
+                      {nombre(ligne.quantite, 2)} {ligne.unite}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-1.5 text-[0.72rem] text-muted-foreground">
+                Ces postes restent nécessaires à l'ouvrage : la quantité est calculée, à commander
+                ailleurs.
+              </p>
+            </div>
+          ) : null}
+
           <div className="flex flex-wrap gap-2 border-t border-border p-4">
             <Bouton onClick={() => setDialogue(true)} disabled={totalMateriaux <= 0}>
               <ShoppingCart size={16} aria-hidden="true" />
@@ -578,7 +602,7 @@ export function DalleHourdis() {
       <DialogueFournisseurs
         ouvert={dialogue}
         onFermer={() => setDialogue(false)}
-        lignes={lignes}
+        lignes={devis}
         offres={toutes}
         choix={choix}
         onChoisir={(cle, produitId) => setChoix((c) => ({ ...c, [cle]: produitId }))}
@@ -598,13 +622,18 @@ export function DalleHourdis() {
           },
           { intitule: "Marge de sécurité", valeur: `${marge} %` },
         ]}
-        lignes={chiffrees as unknown as LigneDevis[]}
+        lignes={devis as unknown as LigneDevis[]}
         totalMateriaux={totalMateriaux}
         totalLivraison={totalLivraison}
         totalRendu={totalRendu}
         surfaceM2={surface}
         lieu={point?.libelle ?? null}
-        reserves={RESERVES}
+        reserves={[
+          ...RESERVES,
+          ...horsDevis.map(
+            (l) => `${l.libelle} (${nombre(l.quantite, 2)} ${l.unite}) : aucun dépôt sur Akora`,
+          ),
+        ]}
         reference={reference}
         etabliLe={new Date()}
       />
