@@ -159,3 +159,32 @@
     @apply text-secondary-strong underline underline-offset-2 decoration-secondary/40 hover:decoration-secondary;
   }
 }
+
+/* ── Impression ──────────────────────────────────────────────────────────
+   Le recu de commande doit sortir lisible sur une feuille, sans navigation,
+   sans ombre et sans fond colore qui vide une cartouche. */
+@media print {
+  header[class*="sticky"],
+  footer,
+  nav[aria-label="Navigation principale"],
+  .print\:hidden {
+    display: none !important;
+  }
+  body {
+    padding-bottom: 0;
+    background: #fff;
+    font-size: 11pt;
+  }
+  .carte {
+    border: 1px solid #ccc !important;
+    box-shadow: none !important;
+    break-inside: avoid;
+  }
+  a[href]::after {
+    content: "";
+  }
+  .container {
+    max-width: none;
+    padding: 0;
+  }
+}

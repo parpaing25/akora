@@ -3,6 +3,9 @@ import { Route, Routes } from "react-router-dom";
 import { Coquille } from "@/components/layout/Coquille";
 import { RouteProtegee } from "@/components/RouteProtegee";
 import { Squelette } from "@/components/ui/skeleton";
+
+/** Sonner n'entre dans le chunk d'entree pour rien : on le charge apres coup. */
+const Toaster = lazy(() => import("@/components/ui/toaster").then((m) => ({ default: m.Toaster })));
 import Accueil from "@/pages/Accueil";
 
 /**
@@ -10,11 +13,7 @@ import Accueil from "@/pages/Accueil";
  *
  * Toutes les routes sont en `React.lazy` SAUF l'accueil, qui porte le LCP et
  * ne doit pas attendre un second aller-retour reseau (A4).
- *
- * Les pages « AVenir » appartiennent a une etape de construction non encore
- * livree (partie E) ; chaque etape les remplace par la vraie page.
  */
-const AVenir = lazy(() => import("@/pages/AVenir"));
 const NonTrouve = lazy(() => import("@/pages/NonTrouve"));
 const Connexion = lazy(() => import("@/pages/auth/Connexion"));
 const Inscription = lazy(() => import("@/pages/auth/Inscription"));
@@ -60,6 +59,19 @@ const AdminReferentiels = lazy(() => import("@/pages/admin/Referentiels"));
 const AdminModeration = lazy(() => import("@/pages/admin/Moderation"));
 const AdminAudit = lazy(() => import("@/pages/admin/Audit"));
 
+// ── Calculateurs, prix et contenu editorial (etape 10) ───────────────────
+const Calculateurs = lazy(() => import("@/pages/public/Calculateurs"));
+const CalculateurDetail = lazy(() => import("@/pages/public/CalculateurDetail"));
+const PrixMarche = lazy(() => import("@/pages/public/PrixMarche"));
+const Guides = lazy(() => import("@/pages/contenu/Guides"));
+const PageVerification = lazy(() => import("@/pages/contenu/Verification"));
+const DevenirFournisseur = lazy(() => import("@/pages/contenu/DevenirFournisseur"));
+const APropos = lazy(() => import("@/pages/contenu/APropos"));
+const Contact = lazy(() => import("@/pages/contenu/Contact"));
+const Conditions = lazy(() => import("@/pages/contenu/Conditions"));
+const Confidentialite = lazy(() => import("@/pages/contenu/Confidentialite"));
+const MentionsLegales = lazy(() => import("@/pages/contenu/MentionsLegales"));
+
 // ── Vitrine publique, comparateur, panier et commande (etapes 4, 6, 7) ───
 const Materiaux = lazy(() => import("@/pages/public/Materiaux"));
 const MateriauxFamille = lazy(() => import("@/pages/public/MateriauxFamille"));
@@ -72,20 +84,6 @@ const Panier = lazy(() => import("@/pages/public/Panier"));
 const Commander = lazy(() => import("@/pages/public/Commander"));
 const CommandeSuivi = lazy(() => import("@/pages/public/CommandeSuivi"));
 const Paiement = lazy(() => import("@/pages/public/Paiement"));
-
-const PUBLIQUES = [
-  "calculateurs",
-  "calculateurs/:type",
-  "prix/:materiau/:ville",
-  "guides/:slug",
-  "verification",
-  "devenir-fournisseur",
-  "a-propos",
-  "contact",
-  "conditions-utilisation",
-  "politique-confidentialite",
-  "mentions-legales",
-];
 
 /** Squelette de transition. Jamais de spinner plein ecran (§5). */
 function Attente() {
@@ -102,6 +100,7 @@ function Attente() {
 export default function App() {
   return (
     <Suspense fallback={<Attente />}>
+      <Toaster />
       <Routes>
         <Route element={<Coquille />}>
           <Route index element={<Accueil />} />
@@ -118,9 +117,17 @@ export default function App() {
           <Route path="commande/:numero" element={<CommandeSuivi />} />
           <Route path="paiement/:numero" element={<Paiement />} />
 
-          {PUBLIQUES.map((chemin) => (
-            <Route key={chemin} path={chemin} element={<AVenir />} />
-          ))}
+          <Route path="calculateurs" element={<Calculateurs />} />
+          <Route path="calculateurs/:type" element={<CalculateurDetail />} />
+          <Route path="prix/:materiau/:ville" element={<PrixMarche />} />
+          <Route path="guides/:slug" element={<Guides />} />
+          <Route path="verification" element={<PageVerification />} />
+          <Route path="devenir-fournisseur" element={<DevenirFournisseur />} />
+          <Route path="a-propos" element={<APropos />} />
+          <Route path="contact" element={<Contact />} />
+          <Route path="conditions-utilisation" element={<Conditions />} />
+          <Route path="politique-confidentialite" element={<Confidentialite />} />
+          <Route path="mentions-legales" element={<MentionsLegales />} />
 
           <Route path="connexion" element={<Connexion />} />
           <Route path="inscription" element={<Inscription />} />

@@ -17,6 +17,8 @@ import { Bouton } from "@/components/ui/button";
 import { Pastille } from "@/components/ui/badge";
 import { Squelette } from "@/components/ui/skeleton";
 import { EtatVide } from "@/components/ui/etats";
+import { DeposerAvis } from "@/components/commande/DeposerAvis";
+import { OuvrirLitige } from "@/components/commande/OuvrirLitige";
 
 const TONS: Record<string, "succes" | "info" | "attention" | "danger" | "neutre"> = {
   cloturee: "succes",
@@ -227,10 +229,24 @@ export default function CommandeSuivi() {
             J'ai bien reçu ma commande
           </Bouton>
         ) : null}
+        {["payee", "en_preparation", "en_livraison", "livree"].includes(c.statut) ? (
+          <OuvrirLitige
+            commandeId={c.id}
+            onOuvert={() => void client.invalidateQueries({ queryKey: ["commande", numero] })}
+          />
+        ) : null}
         <Bouton asChild variante="secondaire">
           <Link to="/compte/commandes">Mes commandes</Link>
         </Bouton>
       </div>
+
+      {c.statut === "cloturee" ? (
+        <DeposerAvis
+          commandeId={c.id}
+          fournisseurId={c.fournisseur_id}
+          onDepose={() => void client.invalidateQueries({ queryKey: ["commande", numero] })}
+        />
+      ) : null}
 
       {c.statut === "livree" ? (
         <p className="mt-3 rounded-md bg-accent-soft px-3 py-2.5 text-legende text-accent-strong print:hidden">

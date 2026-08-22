@@ -15,6 +15,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      abonnements_push: {
+        Row: {
+          agent: string | null
+          cle_auth: string
+          cle_p256dh: string
+          created_at: string
+          endpoint: string
+          id: string
+          user_id: string
+          vu_le: string
+        }
+        Insert: {
+          agent?: string | null
+          cle_auth: string
+          cle_p256dh: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          user_id: string
+          vu_le?: string
+        }
+        Update: {
+          agent?: string | null
+          cle_auth?: string
+          cle_p256dh?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          user_id?: string
+          vu_le?: string
+        }
+        Relationships: []
+      }
       adresses_chantier: {
         Row: {
           adresse_libre: string | null

@@ -1,19 +1,18 @@
 import * as React from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import { Search, ShoppingCart, Menu, LogOut, LayoutDashboard, Shield } from "lucide-react";
+import { Search, ShoppingCart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { usePanier, nombreArticles } from "@/lib/panier";
 import { Bouton } from "@/components/ui/button";
 import { Saisie } from "@/components/ui/input";
-import {
-  Menu as MenuRacine,
-  MenuContenu,
-  MenuDeclencheur,
-  MenuElement,
-  MenuSeparateur,
-} from "@/components/ui/dropdown-menu";
 import { LogoAkora } from "@/components/marque/LogoAkora";
+// Chargés à la demande : un visiteur non connecté ne les voit jamais, et ils
+// tiraient Radix et le canal Realtime dans le chunk d'entrée.
+const Notifications = React.lazy(() =>
+  import("./Notifications").then((m) => ({ default: m.Notifications })),
+);
+const MenuCompte = React.lazy(() => import("./MenuCompte"));
 
 const LIENS = [
   { to: "/materiaux", libelle: "Matériaux" },
@@ -23,7 +22,7 @@ const LIENS = [
 ];
 
 export function EnTete() {
-  const { session, deconnexion, roles } = useAuth();
+  const { session } = useAuth();
   const lignes = usePanier((etat) => etat.lignes);
   const articles = nombreArticles(lignes);
   const naviguer = useNavigate();
@@ -100,42 +99,10 @@ export function EnTete() {
           </Link>
 
           {session ? (
-            <MenuRacine>
-              <MenuDeclencheur asChild>
-                <Bouton variante="fantome" taille="icone" aria-label="Mon compte">
-                  <Menu className="size-5" aria-hidden="true" />
-                </Bouton>
-              </MenuDeclencheur>
-              <MenuContenu>
-                <MenuElement asChild>
-                  <Link to="/compte">Mon compte</Link>
-                </MenuElement>
-                <MenuElement asChild>
-                  <Link to="/compte/commandes">Mes commandes</Link>
-                </MenuElement>
-                {roles.includes("fournisseur") ? (
-                  <MenuElement asChild>
-                    <Link to="/pro">
-                      <LayoutDashboard className="size-4" aria-hidden="true" />
-                      Espace fournisseur
-                    </Link>
-                  </MenuElement>
-                ) : null}
-                {roles.includes("admin") ? (
-                  <MenuElement asChild>
-                    <Link to="/admin">
-                      <Shield className="size-4" aria-hidden="true" />
-                      Administration
-                    </Link>
-                  </MenuElement>
-                ) : null}
-                <MenuSeparateur />
-                <MenuElement onSelect={() => void deconnexion()}>
-                  <LogOut className="size-4" aria-hidden="true" />
-                  Se déconnecter
-                </MenuElement>
-              </MenuContenu>
-            </MenuRacine>
+            <React.Suspense fallback={<span className="cible-44" aria-hidden="true" />}>
+              <Notifications />
+              <MenuCompte />
+            </React.Suspense>
           ) : (
             <>
               <Bouton variante="fantome" taille="compact" asChild className="hidden sm:inline-flex">

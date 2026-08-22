@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import App from "./App";
 import { FournisseurAuth } from "@/hooks/useAuth";
 import { FournisseurInfobulle } from "@/components/ui/tooltip";
-import { Toaster } from "@/components/ui/toaster";
+import { enregistrerServiceWorker } from "@/lib/pwa";
 import "./index.css";
 
 /**
@@ -36,10 +36,11 @@ createRoot(racine).render(
         <FournisseurAuth>
           <FournisseurInfobulle delayDuration={200}>
             <App />
-            <Toaster />
           </FournisseurInfobulle>
         </FournisseurAuth>
       </BrowserRouter>
     </QueryClientProvider>
   </StrictMode>,
 );
+
+enregistrerServiceWorker();

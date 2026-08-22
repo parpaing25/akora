@@ -29,6 +29,11 @@ npm run dev
 | `npm run db:push` | applique les migrations Supabase |
 | `npm run types:gen` | régénère `src/integrations/supabase/types.ts` |
 | `npm run deploy` | build + envoi FTP vers akora.fonenako.mg |
+| `npm run fonctions:deploy` | déploie les 5 Edge Functions |
+| `npm run test:a11y` | passe axe-core sur les écrans à formulaires |
+| `npm run verif:recette` | contrôles statiques de la partie F |
+| `npm run verif:securite` | contrôles joués contre la vraie base, à la clé anon |
+| `npm run verifier` | les cinq d'un coup, avant de livrer |
 
 ## Règles qui ne se négocient pas
 
@@ -56,3 +61,20 @@ supabase/
   functions/            Edge Functions (paiement)
   seed/                 jeux d'essai, hors production
 ```
+
+## État
+
+Les dix étapes de la partie E sont livrées. Mesures de la dernière passe :
+
+| Contrôle | Résultat |
+|---|---|
+| `tsc --noEmit` | 0 erreur |
+| Tests de logique métier | 86 au vert |
+| axe-core (9 écrans) | 0 violation critique ou sérieuse |
+| Recette statique | 10/10 |
+| Recette sécurité (base réelle) | 42/42 |
+| Conseiller Supabase — performance | 0 signalement |
+| **JS initial (accueil)** | **170,5 Ko gzip** (budget 200) |
+
+Leaflet (43,6 Ko gzip), sonner, le menu du compte et les notifications sont
+chargés à la demande : ils ne touchent jamais le premier rendu.
