@@ -22,6 +22,17 @@ const Inscription = lazy(() => import("@/pages/auth/Inscription"));
 const MotDePasseOublie = lazy(() => import("@/pages/auth/MotDePasseOublie"));
 const VerificationEmail = lazy(() => import("@/pages/auth/VerificationEmail"));
 
+// ── Espace fournisseur (etape 3) ─────────────────────────────────────────
+const CoquillePro = lazy(() =>
+  import("@/components/pro/CoquillePro").then((m) => ({ default: m.CoquillePro })),
+);
+const ProTableauDeBord = lazy(() => import("@/pages/pro/TableauDeBord"));
+const ProVerification = lazy(() => import("@/pages/pro/Verification"));
+const ProCatalogue = lazy(() => import("@/pages/pro/Catalogue"));
+const ProProduitEditeur = lazy(() => import("@/pages/pro/ProduitEditeur"));
+const ProLivraison = lazy(() => import("@/pages/pro/Livraison"));
+const ProVitrine = lazy(() => import("@/pages/pro/Vitrine"));
+
 const PUBLIQUES = [
   "materiaux",
   "materiaux/:categorie",
@@ -49,20 +60,8 @@ const PUBLIQUES = [
 
 const ACHETEUR = ["compte", "compte/commandes", "compte/paiements", "compte/favoris", "compte/adresses", "compte/securite"];
 
-const PRO = [
-  "pro",
-  "pro/verification",
-  "pro/catalogue",
-  "pro/catalogue/nouveau",
-  "pro/catalogue/:id",
-  "pro/livraison",
-  "pro/commandes",
-  "pro/commandes/:id",
-  "pro/portefeuille",
-  "pro/vitrine",
-  "pro/avis",
-  "pro/statistiques",
-];
+/** Sous-routes de l'espace pro pas encore construites (etapes 7 a 9). */
+const PRO_A_VENIR = ["commandes", "commandes/:id", "portefeuille", "avis", "statistiques"];
 
 const ADMIN = [
   "admin",
@@ -118,7 +117,27 @@ export default function App() {
           <Route path="verification-email" element={<VerificationEmail />} />
 
           {routesProtegees(ACHETEUR)}
-          {routesProtegees(PRO, "fournisseur")}
+
+          <Route
+            path="pro"
+            element={
+              <RouteProtegee role="fournisseur">
+                <CoquillePro />
+              </RouteProtegee>
+            }
+          >
+            <Route index element={<ProTableauDeBord />} />
+            <Route path="verification" element={<ProVerification />} />
+            <Route path="catalogue" element={<ProCatalogue />} />
+            <Route path="catalogue/nouveau" element={<ProProduitEditeur />} />
+            <Route path="catalogue/:id" element={<ProProduitEditeur />} />
+            <Route path="livraison" element={<ProLivraison />} />
+            <Route path="vitrine" element={<ProVitrine />} />
+            {PRO_A_VENIR.map((chemin) => (
+              <Route key={chemin} path={chemin} element={<AVenir />} />
+            ))}
+          </Route>
+
           {routesProtegees(ADMIN, "admin")}
 
           <Route path="*" element={<NonTrouve />} />

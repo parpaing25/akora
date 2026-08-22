@@ -68,9 +68,12 @@ export function formaterTelephone(saisie: string): string {
   return `+261 ${n.slice(0, 2)} ${n.slice(2, 4)} ${n.slice(4, 7)} ${n.slice(7, 9)}`;
 }
 
+import type { OperateurPaiement } from "./types-metier";
+
 /* ── Opérateurs mobile money ───────────────────────────────────────────── */
 
-export type OperateurPaiement = "mvola" | "orange_money" | "airtel_money";
+// Le type vient des enumerations Postgres generees, pas d'une copie locale.
+export type { OperateurPaiement } from "./types-metier";
 
 export const NOM_OPERATEUR: Record<OperateurPaiement, string> = {
   mvola: "MVola",
