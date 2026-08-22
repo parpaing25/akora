@@ -31,12 +31,12 @@ tout le reste.
 ## Démarrer
 
 Double-cliquez **`DEMARRER.bat`**. L'interface s'ouvre sur
-<http://127.0.0.1:8757> ; laissez la fenêtre noire ouverte tant que vous
+<http://127.0.0.1:8758> ; laissez la fenêtre noire ouverte tant que vous
 travaillez.
 
 ```bash
 cd bot-fournisseurs
-python demarrer.py                        # port 8757
+python demarrer.py                        # port 8758
 python demarrer.py --port 9000 --sans-navigateur
 ```
 

@@ -17,7 +17,7 @@ from bot.serveur import demarrer   # noqa: E402
 
 def main() -> None:
     analyseur = argparse.ArgumentParser(description="Bot de prospection Akora")
-    analyseur.add_argument("--port", type=int, default=8757)
+    analyseur.add_argument("--port", type=int, default=8758)
     analyseur.add_argument("--sans-navigateur", action="store_true")
     options = analyseur.parse_args()
 

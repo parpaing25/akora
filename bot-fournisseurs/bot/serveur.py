@@ -540,7 +540,7 @@ def a_l_arret():
         _planificateur.fermer()
 
 
-def demarrer(port: int = 8757, ouvrir: bool = True) -> None:
+def demarrer(port: int = 8758, ouvrir: bool = True) -> None:
     if ouvrir:
         threading.Timer(1.2, lambda: webbrowser.open(f"http://127.0.0.1:{port}")).start()
     uvicorn.run(app, host="127.0.0.1", port=port, log_level="warning")
