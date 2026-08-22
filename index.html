@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Akora — matériaux de construction à Madagascar</title>
+    <meta name="description" content="Comparez les fournisseurs de matériaux au prix rendu chantier, livraison calculée depuis votre adresse. Paiement Mvola, Orange Money, Airtel Money." />
+    <meta name="theme-color" content="#BB4A18" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+
+    <!-- La police est sur le chemin critique du premier rendu : on la précharge.
+         Pas de Google Fonts, Inter est auto-hébergée. -->
+    <link rel="preload" href="/fonts/inter-latin-var-v20.woff2" as="font" type="font/woff2" crossorigin />
+
+    <style>
+      /* Coquille inline : évite le flash blanc avant le CSS de l'app.
+         Le bandeau d'accueil est un dégradé latérite (aucune image LCP à charger). */
+      html { background: #fcfaf6; }
+      body { margin: 0; font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif; color: #2a323b; }
+      #racine:empty { min-height: 100svh; }
+    </style>
+  </head>
+  <body>
+    <div id="racine"></div>
+    <noscript>
+      <p style="padding:1rem">Akora a besoin de JavaScript pour fonctionner. Activez-le, puis rechargez la page.</p>
+    </noscript>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,40 @@
+# ── Akora — SPA statique sur mutualisé Apache (o2switch) ─────────────────
+# Pas de SSR : toute route inconnue retombe sur index.html.
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # HTTPS obligatoire.
+  RewriteCond %{HTTPS} !=on
+  RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
+
+  # Les fichiers, dossiers et l'API PHP réels sont servis tels quels.
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  RewriteRule ^ index.html [L]
+</IfModule>
+
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set X-Frame-Options "SAMEORIGIN"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  Header always set Permissions-Policy "geolocation=(self), camera=(), microphone=(), payment=()"
+
+  # Empreintes de contenu dans le nom : cache long et immuable.
+  <FilesMatch "\.(js|css|woff2|webp|avif|png|jpg|jpeg|svg)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+  # L'enveloppe HTML et le service worker ne sont jamais mis en cache.
+  <FilesMatch "^(index\.html|sw\.js|manifest\.webmanifest)$">
+    Header set Cache-Control "no-cache, must-revalidate"
+  </FilesMatch>
+</IfModule>
+
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json image/svg+xml
+</IfModule>
+
+ErrorDocument 404 /index.html

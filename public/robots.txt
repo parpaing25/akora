@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+
+# Espaces privés : rien à indexer.
+Disallow: /compte
+Disallow: /pro
+Disallow: /admin
+Disallow: /panier
+Disallow: /commander
+Disallow: /paiement
+
+Sitemap: https://akora.fonenako.mg/sitemap.xml
