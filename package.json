@@ -14,7 +14,9 @@
     "test:watch": "vitest",
     "types:gen": "node scripts/generer-types.mjs",
     "db:push": "node scripts/db-push.mjs",
-    "deploy": "node scripts/deployer.mjs"
+    "deploy": "node scripts/deployer.mjs",
+    "seed": "node scripts/charger-seed.mjs",
+    "verif:securite": "node scripts/verifier-securite.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
