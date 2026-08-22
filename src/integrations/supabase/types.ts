@@ -2465,6 +2465,8 @@ export type Database = {
           fournisseur_slug: string | null
           fournisseur_verifie_le: string | null
           id: string | null
+          materiau_largeur_cm: number | null
+          materiau_longueur_cm: number | null
           materiau_nom: string | null
           materiau_ref_id: string | null
           materiau_slug: string | null

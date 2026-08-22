@@ -48,10 +48,16 @@ PIEGES_PRIX = ("cin", "nif", "stat", "rcs", "compte", "reference", "ref",
                "abonne", "vues", "membres", "code")
 
 # ── Nom d'entreprise dans le texte ─────────────────────────────────────────
+# `[^\S\n]` et non `\s` : l'enseigne tient sur UNE ligne. Avec `\s`, « DEPOT
+# MANDROSOA Ambohibao \n Tarif du jour » devenait un seul nom, et le numéro de
+# téléphone de la ligne suivante finissait dans la raison sociale.
+# Les mots retenus après le mot-clé doivent commencer par une lettre : sans
+# ça, « Depot Ambohimanarina 032 00 111 » passait tel quel.
 MOTIF_ENSEIGNE = re.compile(
-    r"\b((?:ets|etablissement[s]?|sarl|sa|sarlu|ei|gie|depot|dépôt|briqueterie|"
-    r"carriere|carrière|scierie|quincaillerie|societe|société)"
-    r"[\s.\-]+[A-ZÀ-Ü0-9][\w'’\-\.]*(?:\s+[A-ZÀ-Ü0-9][\w'’\-\.]*){0,3})",
+    r"\b((?:ets|etablissement[s]?|sarl|sarlu|gie|depot|dépôt|briqueterie|"
+    r"carriere|carrière|scierie|societe|société)"
+    r"[^\S\n.\-]*[.\-]?[^\S\n]*"
+    r"[A-ZÀ-Ü][\w'’-]*(?:[^\S\n]+[A-ZÀ-Ü][\w'’-]*){0,3})",
     re.IGNORECASE,
 )
 

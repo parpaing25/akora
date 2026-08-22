@@ -7,6 +7,7 @@ import { usePointLivraison } from "@/lib/point-livraison";
 import { formaterAriary } from "@/lib/format";
 import { BadgeVerification } from "@/components/marque/BadgeVerification";
 import { LogoAkora } from "@/components/marque/LogoAkora";
+import { Visionneuse, useVisionneuse } from "@/components/ui/visionneuse";
 
 /**
  * Une publication du fil.
@@ -48,6 +49,7 @@ export function CartePublication({ publication }: { publication: Publication }) 
 function PostFournisseur({ publication }: { publication: Publication }) {
   const { point } = usePointLivraison();
   const produit = publication.produits[0];
+  const visionneuse = useVisionneuse(publication.photos);
 
   // Quantité de référence : celle que le dépôt exige au minimum. Afficher un
   // prix rendu pour une quantité que personne ne peut commander serait un
@@ -121,22 +123,29 @@ function PostFournisseur({ publication }: { publication: Publication }) {
 
       {publication.photos.length > 0 ? (
         <div className={publication.photos.length > 1 ? "grid grid-cols-2 gap-0.5" : ""}>
-          {publication.photos.slice(0, 2).map((url) => (
-            <img
+          {publication.photos.slice(0, 2).map((url, index) => (
+            <button
               key={url}
-              src={url}
-              alt=""
-              loading="lazy"
-              decoding="async"
-              width={publication.photos.length > 1 ? 400 : 800}
-              height={publication.photos.length > 1 ? 300 : 450}
-              className={
-                "vignette " +
-                (publication.photos.length > 1
-                  ? "aspect-[4/3] w-full bg-muted object-cover"
-                  : "aspect-[16/9] w-full bg-muted object-cover")
-              }
-            />
+              type="button"
+              onClick={() => visionneuse.ouvrir(index)}
+              aria-label={`Agrandir la photo ${index + 1}`}
+              className="block cursor-zoom-in"
+            >
+              <img
+                src={url}
+                alt=""
+                loading="lazy"
+                decoding="async"
+                width={publication.photos.length > 1 ? 400 : 800}
+                height={publication.photos.length > 1 ? 300 : 450}
+                className={
+                  "vignette " +
+                  (publication.photos.length > 1
+                    ? "aspect-[4/3] w-full bg-muted object-cover"
+                    : "aspect-[16/9] w-full bg-muted object-cover")
+                }
+              />
+            </button>
           ))}
         </div>
       ) : null}
@@ -206,6 +215,15 @@ function PostFournisseur({ publication }: { publication: Publication }) {
           <Phone size={16} aria-hidden="true" /> Appeler
         </Link>
       </footer>
+
+      <Visionneuse
+        photos={publication.photos}
+        index={visionneuse.index}
+        ouvert={visionneuse.ouvert}
+        onFermer={visionneuse.fermer}
+        onIndex={visionneuse.changer}
+        legende={publication.fournisseur_nom ?? undefined}
+      />
     </article>
   );
 }

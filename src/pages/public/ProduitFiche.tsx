@@ -15,6 +15,8 @@ import { LIBELLE_STOCK, LIBELLE_UNITE } from "@/lib/types-metier";
 import { ENV } from "@/lib/env";
 import { BadgeVerification } from "@/components/marque/BadgeVerification";
 import { ImageProduit } from "@/components/produit/ImageProduit";
+import { Visionneuse, useVisionneuse } from "@/components/ui/visionneuse";
+import { couverture, quantitePourSurface } from "@/lib/couverture";
 import { Prix } from "@/components/produit/Prix";
 import { SimulateurLivraison } from "@/components/livraison/SimulateurLivraison";
 import { SelecteurPoint } from "@/components/livraison/SelecteurPoint";
@@ -28,6 +30,7 @@ export default function ProduitFiche() {
   const { slug, produitSlug } = useParams<{ slug: string; produitSlug: string }>();
   const ajouter = usePanier((e) => e.ajouter);
   const [quantite, setQuantite] = React.useState(1);
+  const [surface, setSurface] = React.useState(0);
   const [photoActive, setPhotoActive] = React.useState(0);
 
   const produit = useQuery({
@@ -84,6 +87,14 @@ export default function ProduitFiche() {
   if (produit.isSuccess && !produit.data) return <NonTrouve />;
 
   const photos = ((p?.photos as string[] | null) ?? []).filter(Boolean);
+  const visionneuse = useVisionneuse(photos);
+  // La couverture au m2 n'existe que pour ce qui se pose en surface : une
+  // brique, une tuile, un hourdis. Pas pour un sac de ciment ni un metre cube
+  // de sable — d'ou le `null`, et le champ qui ne s'affiche pas.
+  const couvertureProduit = React.useMemo(
+    () => (p && p.unite === "piece" ? couverture(p as never) : null),
+    [p],
+  );
 
   return (
     <div className="container pb-28 pt-6 sm:pb-6">
@@ -154,13 +165,22 @@ export default function ProduitFiche() {
 
           <div className="mt-3 grid gap-6 lg:grid-cols-2">
             <div>
-              <ImageProduit
-                src={photos[photoActive] ?? null}
-                alt={p.nom_affiche as string}
-                variante="original"
-                prioritaire
-                className="aspect-[4/3] w-full rounded-lg border border-border bg-muted object-cover"
-              />
+              {/* Une photo de materiau se regarde de pres : texture, alveoles,
+                  etat des aretes. La vignette ne suffit pas. */}
+              <button
+                type="button"
+                onClick={() => visionneuse.ouvrir(photoActive)}
+                aria-label="Agrandir la photo"
+                className="block w-full cursor-zoom-in"
+              >
+                <ImageProduit
+                  src={photos[photoActive] ?? null}
+                  alt={p.nom_affiche as string}
+                  variante="original"
+                  prioritaire
+                  className="aspect-[4/3] w-full rounded-lg border border-border bg-muted object-cover"
+                />
+              </button>
               {photos.length > 1 ? (
                 <ul className="mt-2 flex gap-2 overflow-x-auto">
                   {photos.map((url, index) => (
@@ -249,6 +269,56 @@ export default function ProduitFiche() {
 
           <Carte className="h-fit p-4">
             <h2 className="text-produit">Votre commande</h2>
+
+            {/*
+              Un macon connait la surface de son mur, pas le nombre de briques.
+              Lui faire poser la division, c'est lui faire porter une erreur
+              qu'on sait eviter. Le champ n'apparait que si la couverture du
+              materiau est connue — proposer une conversion qu'on ne sait pas
+              faire serait pire que ne rien proposer.
+            */}
+            {couvertureProduit ? (
+              <div className="mt-3 rounded-md bg-muted p-3">
+                <label htmlFor="surface-produit" className="text-legende font-semibold">
+                  Surface à couvrir
+                </label>
+                <div className="mt-1.5 flex items-center gap-2">
+                  <input
+                    id="surface-produit"
+                    type="number"
+                    inputMode="decimal"
+                    step="0.5"
+                    min="0"
+                    value={surface}
+                    onChange={(e) => {
+                      const valeur = Math.max(0, Number(e.target.value));
+                      setSurface(valeur);
+                      if (valeur > 0) {
+                        setQuantite(
+                          quantitePourSurface(
+                            valeur,
+                            couvertureProduit.piecesParM2,
+                            Number(p.quantite_min ?? 1),
+                          ),
+                        );
+                      }
+                    }}
+                    className="cible-44 w-28 rounded-md border border-input bg-card px-3 text-courant"
+                  />
+                  <span className="text-courant text-muted-foreground">m²</span>
+                </div>
+                <p className="mt-1.5 text-legende text-muted-foreground">
+                  <span className="nombres">
+                    {couvertureProduit.piecesParM2.toFixed(2).replace(/\.?0+$/, "").replace(".", ",")}
+                  </span>{" "}
+                  {LIBELLE_UNITE[p.unite as never]} au m²
+                  {couvertureProduit.source === "depot"
+                    ? ", chiffre du dépôt"
+                    : ", calculé sur les dimensions — hors joints"}
+                  . La quantité ci-dessous s'ajuste ; vous pouvez la corriger.
+                </p>
+              </div>
+            ) : null}
 
             <div className="mt-3 flex items-center gap-2">
               <label htmlFor="quantite-produit" className="text-legende font-semibold">
@@ -375,6 +445,14 @@ export default function ProduitFiche() {
           </div>
         </div>
       ) : null}
+      <Visionneuse
+        photos={photos}
+        index={visionneuse.index}
+        ouvert={visionneuse.ouvert}
+        onFermer={visionneuse.fermer}
+        onIndex={visionneuse.changer}
+        legende={p?.nom_affiche as string | undefined}
+      />
     </div>
   );
 }

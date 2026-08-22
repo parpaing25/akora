@@ -1,0 +1,5 @@
+# Tout ce que le bot fabrique en tournant : session Facebook, photos,
+# base locale, cache du referentiel. Rien de tout ca ne se versionne.
+data/
+__pycache__/
+*.pyc

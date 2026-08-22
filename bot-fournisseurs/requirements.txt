@@ -1,0 +1,10 @@
+# Bot de prospection des fournisseurs — Akora
+fastapi>=0.110
+uvicorn[standard]>=0.27
+pydantic>=2.6
+playwright>=1.42
+requests>=2.31
+Pillow>=10.2
+# Facultatif : relecture par l'API Claude officielle (le chemin « passerelle »
+# n'en a pas besoin).
+# anthropic>=0.40

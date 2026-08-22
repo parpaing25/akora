@@ -27,11 +27,21 @@ from difflib import SequenceMatcher
 from . import akora, base
 from .config import CACHE_REFERENTIEL
 
-# Mots trop courants pour désigner un matériau à eux seuls. Sans cette liste,
-# « plancher » (synonyme de hourdis) attrape toutes les phrases qui parlent de
-# l'étage, et « fil » attrape « fil d'attente ».
-TROP_COURANTS = {"dalle", "plancher", "panneau", "boite", "chambre", "fil",
-                 "pierre", "tany", "hazo", "vato", "biriky", "bloc", "tafo"}
+# Mots qui ne suffisent JAMAIS seuls : ce sont des mots de la langue courante
+# avant d'être des synonymes. Sans cette liste, « plancher » (synonyme de
+# hourdis) attrape toute phrase qui parle d'un étage, et « fil » attrape
+# « fil d'attente ». Ils ne comptent que si un autre indice a déjà désigné le
+# même type.
+SYNONYMES_INSUFFISANTS = {"dalle", "plancher", "panneau", "boite", "chambre",
+                          "fil", "pierre", "paquet", "grillage"}
+
+# Mots qui désignent bien un matériau, mais que PLUSIEURS types se partagent :
+# « biriky » vaut parpaing et brique, « vato » vaut gravillon et moellon. Les
+# écarter serait absurde — c'est ainsi que les dépôts écrivent. On les garde
+# donc, on prend le type le plus courant de la famille, et on plafonne la
+# certitude pour que l'interface demande confirmation.
+SYNONYMES_PARTAGES = {"biriky", "vato", "tany", "hazo", "bloc", "tafo", "vy"}
+PLAFOND_PARTAGE = 55
 
 # Unités reconnues dans le texte -> enum `unite` d'Akora.
 UNITES = {
@@ -48,7 +58,9 @@ UNITES = {
 
 # Ce que le fournisseur EST, en un mot — colonne `fournisseurs.metier`.
 METIERS = {
-    "Dépôt": ["depot", "quincaillerie", "magasin", "stock", "vente materiaux"],
+    # « quincaillerie » n'est PAS un dépôt de gros œuvre : c'est justement le
+    # hors-périmètre d'Akora. La classer ici la ferait entrer par la fenêtre.
+    "Dépôt": ["depot", "magasin materiaux", "stock", "vente materiaux"],
     "Briqueterie": ["briqueterie", "briquerie", "fabrique de brique", "biriky"],
     "Carrière": ["carriere", "concassage", "concasseur", "gisement"],
     "Scierie": ["scierie", "sciage", "menuiserie", "hazo"],
@@ -140,17 +152,28 @@ def _indexer(brut: dict) -> dict:
             attributs = json.loads(attributs)
         fiche["attributs"] = attributs
 
-        # Les repères numériques qui distinguent ce format des autres du type :
-        # suffixe du slug, libellé court, dimensions, et les attributs chiffrés.
-        reperes = set(_formats_du_slug(fiche["slug"], fiche.get("type_slug")))
-        for source in (fiche.get("libelle_court"), fiche.get("dimensions")):
-            if source:
-                reperes.update(re.findall(r"[0-9]+", str(source)))
+        # Deux niveaux de repères numériques, et la distinction compte :
+        #
+        #   « clés »   — ce qui DISTINGUE ce format des autres du même type :
+        #                le suffixe du slug, le libellé court, les attributs
+        #                chiffrés ;
+        #   « larges » — tout ce qui traîne dans les dimensions.
+        #
+        # Sans la séparation, « Fer 12 » tombait sur le fer Ø6 : tous les fers
+        # portent « barre de 12 m » dans leurs dimensions, donc tous
+        # répondaient à « 12 », et le premier de la liste gagnait.
+        cles = set(_formats_du_slug(fiche["slug"], fiche.get("type_slug")))
+        if fiche.get("libelle_court"):
+            cles.update(re.findall(r"[0-9]+", str(fiche["libelle_court"])))
         for cle in ("epaisseur_cm", "hauteur_cm", "largeur_cm", "longueur_cm",
                     "diametre_mm", "diametre"):
             if attributs.get(cle) is not None:
-                reperes.add(str(int(float(attributs[cle]))))
-        fiche["reperes"] = {r for r in reperes if r}
+                cles.add(str(int(float(attributs[cle]))))
+        larges = set(cles)
+        if fiche.get("dimensions"):
+            larges.update(re.findall(r"[0-9]+", str(fiche["dimensions"])))
+        fiche["reperes_cles"] = {r for r in cles if r}
+        fiche["reperes"] = {r for r in larges if r}
 
         # Les mots du nom qui n'appartiennent pas au type : « fin », « rivière »,
         # « CEM II ». Ce sont eux qui départagent « Sable fin » de « Sable de
@@ -171,9 +194,22 @@ def _indexer(brut: dict) -> dict:
     # poids. Le nom officiel vaut plus qu'un synonyme, qui peut être partagé
     # (« biriky » désigne aussi bien un parpaing qu'une brique).
     appellations: list[tuple[str, str, int]] = []
-    for slug, fiche in types.items():
+    for rang, (slug, fiche) in enumerate(types.items()):
+        # Le rang est l'ordre d'affichage du catalogue sur le site. Il sert à
+        # départager : « parpaing » tout court vaut parpaing CREUX, parce que
+        # c'est le premier de sa famille — et c'est bien ce qu'on vend quand on
+        # ne précise pas.
+        fiche["rang"] = rang
+
         if fiche.get("nom"):
             appellations.append((normaliser(fiche["nom"]), slug, 6))
+            # Personne n'écrit « parpaing creux 15 » ni « gravillon et
+            # cailloux » : on écrit « parpaing 15 », « gravillon ». Le premier
+            # mot du nom officiel est donc une appellation à part entière,
+            # moins sûre que le nom entier mais bien plus fréquente.
+            premier = normaliser(fiche["nom"]).split(" ")[0]
+            if len(premier) >= 4 and premier != normaliser(fiche["nom"]):
+                appellations.append((premier, slug, 3))
         if fiche.get("nom_mg"):
             appellations.append((normaliser(fiche["nom_mg"]), slug, 5))
         synonymes = fiche.get("synonymes") or []
@@ -199,26 +235,42 @@ def _indexer(brut: dict) -> dict:
 
 
 # ── Appariement ────────────────────────────────────────────────────────────
-def _candidats_types(ligne_normalisee: str) -> list[tuple[str, int, str]]:
-    """(slug de type, poids, expression trouvée), du plus probable au moins."""
+def _candidats_types(ligne_normalisee: str) -> list[tuple[str, int, str, bool]]:
+    """(slug de type, poids, expression trouvée, partagée) — du plus probable au moins.
+
+    `partagée` dit que la reconnaissance ne tient qu'à un mot que plusieurs
+    types se disputent (« biriky », « vato ») : l'appelant plafonne alors la
+    certitude, pour que l'interface demande confirmation au lieu de trancher
+    en silence.
+    """
     catalogue = charger()
-    marques: dict[str, tuple[int, str]] = {}
+    marques: dict[str, dict] = {}
     for expression, slug, poids in catalogue["appellations"]:
         if len(expression) < 3:
             continue
-        if expression in TROP_COURANTS and poids <= 1:
-            # Un synonyme trop courant ne suffit pas seul, mais il compte quand
-            # un autre indice a déjà désigné le même type.
-            if slug not in marques:
-                continue
+        if expression in SYNONYMES_INSUFFISANTS and slug not in marques:
+            # Ces mots-là ne comptent que si un autre indice a déjà désigné le
+            # même type. Seuls, ils n'ouvrent jamais un candidat.
+            continue
         if not _mot_present(expression, ligne_normalisee):
             continue
-        precedent = marques.get(slug)
-        cumul = (precedent[0] if precedent else 0) + poids
-        marques[slug] = (cumul, expression if not precedent else precedent[1])
+        marque = marques.setdefault(slug, {"poids": 0, "expression": expression,
+                                           "partage": True})
+        marque["poids"] += poids
+        if poids >= 3:
+            # Un nom officiel ou son premier mot : la reconnaissance ne tient
+            # plus à un synonyme partagé.
+            marque["partage"] = False
+        if expression not in SYNONYMES_PARTAGES and poids >= 2:
+            marque["partage"] = False
+
+    # À égalité de poids, le type le mieux placé dans le catalogue gagne :
+    # c'est le plus courant de sa famille, et c'est celui qu'on vend quand on
+    # écrit « biriky » sans préciser.
+    types = catalogue["types"]
     return sorted(
-        ((slug, poids, expression) for slug, (poids, expression) in marques.items()),
-        key=lambda c: (-c[1], -len(c[2])),
+        ((slug, m["poids"], m["expression"], m["partage"]) for slug, m in marques.items()),
+        key=lambda c: (-c[1], types.get(c[0], {}).get("rang", 999)),
     )
 
 
@@ -271,13 +323,17 @@ def _choisir_format(type_slug: str, ligne_normalisee: str,
             if derniere in materiau["reperes"]:
                 return materiau, 92
 
-    # 2. Un repère numérique du format présent dans la ligne.
-    for nombre in nombres:
-        correspondants = [m for m in candidats if nombre in m["reperes"]]
-        if len(correspondants) == 1:
-            return correspondants[0], 90
-        if len(correspondants) > 1:
-            return correspondants[0], 60
+    # 2. Un repère numérique du format présent dans la ligne. Les repères
+    # « clés » d'abord — ceux qui distinguent vraiment un format d'un autre.
+    for jeu, note in (("reperes_cles", 90), ("reperes", 75)):
+        for nombre in nombres:
+            correspondants = [m for m in candidats if nombre in m[jeu]]
+            if len(correspondants) == 1:
+                return correspondants[0], note
+            if len(correspondants) > 1:
+                # Plusieurs formats répondent au même chiffre : on ne tranche
+                # pas au hasard, on renvoie l'ambiguïté à l'interface.
+                return None, 0
 
     # 3. Aucun chiffre ne tranche : les mots distinctifs (« fin », « rivière »).
     meilleur, points = None, 0
@@ -322,14 +378,17 @@ def apparier(libelle: str, nombres_prix: set[str] | None = None) -> dict | None:
             return _fiche(meilleur, type_fiche, int(ressemblance * 80), ambigu=False)
         return None
 
-    type_slug, poids, _ = candidats[0]
+    type_slug, poids, _, partage = candidats[0]
     type_fiche = charger()["types"].get(type_slug, {})
     materiau, certitude = _choisir_format(type_slug, ligne, nombres_prix)
 
-    # Deux types se disputent la ligne (« biriky » = parpaing ou brique) :
-    # la certitude baisse, l'interface demandera confirmation.
-    if len(candidats) > 1 and candidats[1][1] >= poids:
-        certitude = min(certitude, 55)
+    # La reconnaissance ne tient qu'à un mot partagé (« biriky » = parpaing ou
+    # brique), ou deux types se disputent la ligne à poids égal : la certitude
+    # est plafonnée et l'interface demandera confirmation. On ne jette rien —
+    # c'est ainsi que les dépôts écrivent, et une offre écartée est une offre
+    # perdue.
+    if partage or (len(candidats) > 1 and candidats[1][1] >= poids):
+        certitude = min(certitude, PLAFOND_PARTAGE)
 
     if materiau is None:
         return {
