@@ -1,0 +1,294 @@
+import * as React from "react";
+import { Link } from "react-router-dom";
+import { toast } from "sonner";
+import { Heart, Phone, Truck } from "lucide-react";
+import type { Publication } from "@/lib/donnees/fil";
+import { basculerAbonnement } from "@/lib/donnees/fil";
+import { useLivraisonUnique } from "@/hooks/useLivraison";
+import { usePointLivraison } from "@/lib/point-livraison";
+import { useAuth } from "@/hooks/useAuth";
+import { formaterAriary } from "@/lib/format";
+import { BadgeVerification } from "@/components/marque/BadgeVerification";
+import { LogoAkora } from "@/components/marque/LogoAkora";
+
+/**
+ * Une publication du fil.
+ *
+ * Le prix rendu chantier est calculé ICI, pour la quantité de référence du
+ * produit, et non au dépôt : c'est la promesse d'Akora, et la seule manière de
+ * comparer deux dépôts honnêtement. Le calcul est pur (`src/lib/livraison`) et
+ * ne fait aucun appel réseau — seuls les barèmes du dépôt sont chargés, et
+ * react-query les partage entre toutes les cartes du même fournisseur.
+ */
+
+/** Depuis quand, en clair. L'heure ronde suffit sur un chantier. */
+function depuis(iso: string): string {
+  const minutes = Math.round((Date.now() - new Date(iso).getTime()) / 60_000);
+  if (minutes < 1) return "à l'instant";
+  if (minutes < 60) return `il y a ${minutes} min`;
+  if (minutes < 1440) return `il y a ${Math.round(minutes / 60)} h`;
+  const jours = Math.round(minutes / 1440);
+  if (jours <= 7) return `il y a ${jours} j`;
+  return new Date(iso).toLocaleDateString("fr-FR");
+}
+
+function initiales(nom: string): string {
+  return nom
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((mot) => mot[0]?.toUpperCase() ?? "")
+    .join("");
+}
+
+export function CartePublication({ publication }: { publication: Publication }) {
+  if (publication.type === "prix_marche") return <PostPrixMarche publication={publication} />;
+  if (publication.type === "demande") return <PostDemande publication={publication} />;
+  return <PostFournisseur publication={publication} />;
+}
+
+/* ── Publication d'un dépôt ─────────────────────────────────────────────── */
+
+function PostFournisseur({ publication }: { publication: Publication }) {
+  const { session } = useAuth();
+  const { point } = usePointLivraison();
+  const [suivi, setSuivi] = React.useState(publication.suivi);
+  const [enCours, setEnCours] = React.useState(false);
+  const produit = publication.produits[0];
+
+  // Quantité de référence : celle que le dépôt exige au minimum. Afficher un
+  // prix rendu pour une quantité que personne ne peut commander serait un
+  // chiffre décoratif.
+  const quantite = produit ? Math.max(produit.quantite_min, 1) : 0;
+
+  const livraison = useLivraisonUnique(
+    produit && publication.fournisseur_id
+      ? {
+          fournisseurId: publication.fournisseur_id,
+          rayonMaxKm: publication.fournisseur_rayon_max_km ?? 0,
+          coefSinuosite: publication.fournisseur_coef_sinuosite,
+          depart:
+            publication.fournisseur_lat != null && publication.fournisseur_lng != null
+              ? { lat: publication.fournisseur_lat, lng: publication.fournisseur_lng }
+              : null,
+          lignes: [
+            {
+              quantite,
+              poids_kg_unite: produit.poids_kg_unite,
+              volume_m3_unite: produit.volume_m3_unite,
+            },
+          ],
+          montantProduits: (produit.prix_promo ?? produit.prix_unitaire) * quantite,
+        }
+      : null,
+  );
+
+  const prixUnitaire = produit ? (produit.prix_promo ?? produit.prix_unitaire) : 0;
+  const montantProduits = prixUnitaire * quantite;
+  const coutLivraison =
+    livraison?.statut === "estimee" ? livraison.cout : livraison?.statut === "offerte" ? 0 : null;
+  const rendu = coutLivraison === null ? null : montantProduits + coutLivraison;
+
+  const suivre = async () => {
+    if (!session) {
+      toast.error("Connectez-vous pour suivre ce fournisseur");
+      return;
+    }
+    if (!publication.fournisseur_id) return;
+    setEnCours(true);
+    try {
+      setSuivi(await basculerAbonnement(publication.fournisseur_id, suivi));
+    } catch (erreur) {
+      toast.error("Impossible", { description: (erreur as Error).message });
+    } finally {
+      setEnCours(false);
+    }
+  };
+
+  return (
+    <article className="carte overflow-hidden p-0">
+      <header className="flex items-start gap-3 px-4 pb-3 pt-3.5">
+        <span
+          aria-hidden="true"
+          className="flex size-11 shrink-0 items-center justify-center rounded-md bg-primary text-[0.9375rem] font-bold text-primary-foreground"
+        >
+          {initiales(publication.fournisseur_nom ?? "?")}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              to={`/fournisseurs/${publication.fournisseur_slug}`}
+              className="text-produit text-foreground"
+            >
+              {publication.fournisseur_nom}
+            </Link>
+            <BadgeVerification niveau={publication.fournisseur_niveau ?? "non_verifie"} compact />
+          </div>
+          <p className="mt-0.5 text-legende text-muted-foreground">
+            {publication.localite_nom ?? "Madagascar"}
+            {livraison?.statut === "estimee" || livraison?.statut === "offerte"
+              ? ` · ${livraison.detail.distanceRouteKm.toFixed(1).replace(".", ",")} km`
+              : ""}{" "}
+            · {depuis(publication.publie_le)}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => void suivre()}
+          disabled={enCours}
+          aria-pressed={suivi}
+          className="min-h-9 shrink-0 rounded-md border border-foreground px-3 text-legende font-semibold disabled:opacity-60"
+        >
+          {suivi ? "Suivi" : "Suivre"}
+        </button>
+      </header>
+
+      <p className="whitespace-pre-line px-4 pb-3 text-courant">{publication.texte}</p>
+
+      {publication.photos.length > 0 ? (
+        <div className={publication.photos.length > 1 ? "grid grid-cols-2 gap-0.5" : ""}>
+          {publication.photos.slice(0, 2).map((url) => (
+            <img
+              key={url}
+              src={url}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              width={publication.photos.length > 1 ? 400 : 800}
+              height={publication.photos.length > 1 ? 300 : 450}
+              className={
+                publication.photos.length > 1
+                  ? "aspect-[4/3] w-full bg-muted object-cover"
+                  : "aspect-[16/9] w-full bg-muted object-cover"
+              }
+            />
+          ))}
+        </div>
+      ) : null}
+
+      {produit ? (
+        <div className="flex flex-wrap items-center gap-4 border-b border-border px-4 py-3.5">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-produit">{produit.nom_affiche}</p>
+            <p className="mt-0.5 flex flex-wrap items-baseline gap-2">
+              <span className="nombres text-[1.375rem] font-bold">{formaterAriary(prixUnitaire)}</span>
+              <span className="text-legende text-muted-foreground">/ {produit.unite}</span>
+              {produit.prix_promo ? (
+                <span className="nombres text-legende text-muted-foreground line-through">
+                  {formaterAriary(produit.prix_unitaire)}
+                </span>
+              ) : null}
+            </p>
+          </div>
+          <div className="shrink-0 sm:border-l sm:border-border sm:pl-4 sm:text-right">
+            <p className="nombres text-[0.66rem] uppercase tracking-[0.08em] text-muted-foreground">
+              Rendu chantier · {quantite} {produit.unite}
+            </p>
+            {rendu !== null ? (
+              <>
+                <p className="nombres text-[1.3125rem] font-bold text-primary">
+                  {formaterAriary(rendu)}
+                </p>
+                <p className="nombres text-legende text-muted-foreground">
+                  {formaterAriary(rendu / quantite)} / {produit.unite} rendue
+                  {livraison?.statut === "offerte" ? " · livraison offerte" : ""}
+                </p>
+              </>
+            ) : (
+              <p className="max-w-[220px] text-legende text-muted-foreground">
+                {!point
+                  ? "Indiquez où livrer pour voir le prix rendu."
+                  : livraison?.statut === "hors_zone"
+                    ? "Hors zone de livraison — à négocier avec le dépôt."
+                    : "Prix rendu indisponible pour ce point."}
+              </p>
+            )}
+          </div>
+        </div>
+      ) : null}
+
+      <footer className="flex flex-wrap items-center gap-2 px-4 pb-3.5 pt-2.5">
+        {produit ? (
+          <Link
+            to={`/fournisseurs/${publication.fournisseur_slug}/${produit.slug}`}
+            className="cible-44 flex items-center rounded-md bg-primary px-4 text-courant font-bold text-primary-foreground"
+          >
+            Voir le produit
+          </Link>
+        ) : null}
+        <Link
+          to={`/fournisseurs/${publication.fournisseur_slug}`}
+          className="cible-44 flex items-center gap-2 rounded-md border border-border px-3.5 text-courant font-semibold"
+        >
+          <Truck size={16} aria-hidden="true" /> Simuler la livraison
+        </Link>
+        <Link
+          to={`/fournisseurs/${publication.fournisseur_slug}`}
+          className="cible-44 flex items-center gap-2 rounded-md border border-border px-3.5 text-courant font-semibold"
+        >
+          <Phone size={16} aria-hidden="true" /> Appeler
+        </Link>
+      </footer>
+    </article>
+  );
+}
+
+/* ── Publication d'Akora : les prix du marché ───────────────────────────── */
+
+function PostPrixMarche({ publication }: { publication: Publication }) {
+  return (
+    <article className="rounded-lg bg-foreground p-4 text-background">
+      <div className="mb-3 flex flex-wrap items-center gap-2.5">
+        <LogoAkora sombre className="size-5" />
+        <span className="text-courant font-semibold">Akora · prix du marché</span>
+        <span className="text-legende text-background/60">{depuis(publication.publie_le)}</span>
+      </div>
+      <p className="mb-3.5 text-produit">{publication.texte}</p>
+      {publication.produits.length > 0 ? (
+        <div className="flex gap-3 overflow-x-auto lg:grid lg:grid-cols-3 lg:overflow-visible">
+          {publication.produits.map((mediane) => (
+            <div key={mediane.id} className="shrink-0 rounded-md bg-background/10 px-3.5 py-3">
+              <p className="text-legende text-background/75">{mediane.nom_affiche}</p>
+              <p className="nombres mt-0.5 text-[1.25rem] font-bold">
+                {formaterAriary(mediane.prix_unitaire)}
+              </p>
+            </div>
+          ))}
+        </div>
+      ) : null}
+      <p className="mt-3.5 text-legende text-background/60">
+        Publié seulement à partir de trois offres actives.
+      </p>
+    </article>
+  );
+}
+
+/* ── Demande d'un acheteur ──────────────────────────────────────────────── */
+
+function PostDemande({ publication }: { publication: Publication }) {
+  return (
+    <article className="rounded-lg border border-dashed border-border bg-card p-4">
+      <header className="mb-2.5 flex items-start gap-3">
+        <span
+          aria-hidden="true"
+          className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted text-legende font-bold"
+        >
+          <Heart size={16} />
+        </span>
+        <div className="flex-1">
+          <p className="text-produit">Demande · {publication.localite_nom ?? "Madagascar"}</p>
+          <p className="text-legende text-muted-foreground">{depuis(publication.publie_le)}</p>
+        </div>
+        <span className="nombres shrink-0 rounded-full bg-muted px-2.5 py-1 text-[0.66rem] font-semibold uppercase tracking-wide text-muted-foreground">
+          Devis ouvert
+        </span>
+      </header>
+      <p className="mb-3 whitespace-pre-line text-courant">{publication.texte}</p>
+      <Link
+        to="/demandes/nouvelle"
+        className="cible-44 inline-flex items-center rounded-md border border-foreground px-4 text-courant font-semibold"
+      >
+        Publier ma propre demande
+      </Link>
+    </article>
+  );
+}

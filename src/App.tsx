@@ -15,6 +15,7 @@ import Accueil from "@/pages/Accueil";
  * ne doit pas attendre un second aller-retour reseau (A4).
  */
 const NonTrouve = lazy(() => import("@/pages/NonTrouve"));
+const DemandeNouvelle = lazy(() => import("@/pages/public/DemandeNouvelle"));
 const Connexion = lazy(() => import("@/pages/auth/Connexion"));
 const Inscription = lazy(() => import("@/pages/auth/Inscription"));
 const MotDePasseOublie = lazy(() => import("@/pages/auth/MotDePasseOublie"));
@@ -27,6 +28,7 @@ const CoquillePro = lazy(() =>
 );
 const ProTableauDeBord = lazy(() => import("@/pages/pro/TableauDeBord"));
 const ProVerification = lazy(() => import("@/pages/pro/Verification"));
+const ProPublier = lazy(() => import("@/pages/pro/Publier"));
 const ProCatalogue = lazy(() => import("@/pages/pro/Catalogue"));
 const ProProduitEditeur = lazy(() => import("@/pages/pro/ProduitEditeur"));
 const ProLivraison = lazy(() => import("@/pages/pro/Livraison"));
@@ -130,6 +132,7 @@ export default function App() {
           <Route path="commande/:numero" element={<CommandeSuivi />} />
           <Route path="paiement/:numero" element={<Paiement />} />
 
+          <Route path="demandes/nouvelle" element={<DemandeNouvelle />} />
           <Route path="calculateurs" element={<Calculateurs />} />
           <Route path="calculateurs/:type" element={<CalculateurDetail />} />
           <Route path="prix/:materiau/:ville" element={<PrixMarche />} />
@@ -168,6 +171,7 @@ export default function App() {
           >
             <Route index element={<ProTableauDeBord />} />
             <Route path="verification" element={<ProVerification />} />
+            <Route path="publier" element={<ProPublier />} />
             <Route path="catalogue" element={<ProCatalogue />} />
             <Route path="catalogue/nouveau" element={<ProProduitEditeur />} />
             <Route path="catalogue/:id" element={<ProProduitEditeur />} />

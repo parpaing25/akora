@@ -15,6 +15,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      abonnements: {
+        Row: {
+          created_at: string
+          fournisseur_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          fournisseur_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          fournisseur_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "abonnements_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "fil_publications"
+            referencedColumns: ["fournisseur_id"]
+          },
+          {
+            foreignKeyName: "abonnements_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "fournisseurs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "abonnements_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "fournisseurs_publics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "abonnements_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "produits_publics"
+            referencedColumns: ["fournisseur_id"]
+          },
+          {
+            foreignKeyName: "abonnements_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       abonnements_push: {
         Row: {
           agent: string | null
@@ -175,6 +229,13 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "commandes"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "avis_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "fil_publications"
+            referencedColumns: ["fournisseur_id"]
           },
           {
             foreignKeyName: "avis_fournisseur_id_fkey"
@@ -375,6 +436,13 @@ export type Database = {
             foreignKeyName: "commandes_fournisseur_id_fkey"
             columns: ["fournisseur_id"]
             isOneToOne: false
+            referencedRelation: "fil_publications"
+            referencedColumns: ["fournisseur_id"]
+          },
+          {
+            foreignKeyName: "commandes_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
             referencedRelation: "fournisseurs"
             referencedColumns: ["id"]
           },
@@ -522,6 +590,13 @@ export type Database = {
             foreignKeyName: "demandes_materiau_fournisseur_id_fkey"
             columns: ["fournisseur_id"]
             isOneToOne: false
+            referencedRelation: "fil_publications"
+            referencedColumns: ["fournisseur_id"]
+          },
+          {
+            foreignKeyName: "demandes_materiau_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
             referencedRelation: "fournisseurs"
             referencedColumns: ["id"]
           },
@@ -596,6 +671,13 @@ export type Database = {
             foreignKeyName: "documents_fournisseur_fournisseur_id_fkey"
             columns: ["fournisseur_id"]
             isOneToOne: false
+            referencedRelation: "fil_publications"
+            referencedColumns: ["fournisseur_id"]
+          },
+          {
+            foreignKeyName: "documents_fournisseur_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
             referencedRelation: "fournisseurs"
             referencedColumns: ["id"]
           },
@@ -638,6 +720,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "favoris_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "fil_publications"
+            referencedColumns: ["fournisseur_id"]
+          },
           {
             foreignKeyName: "favoris_fournisseur_id_fkey"
             columns: ["fournisseur_id"]
@@ -698,6 +787,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fournisseur_membres_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "fil_publications"
+            referencedColumns: ["fournisseur_id"]
+          },
           {
             foreignKeyName: "fournisseur_membres_fournisseur_id_fkey"
             columns: ["fournisseur_id"]
@@ -887,6 +983,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "commandes"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ledger_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "fil_publications"
+            referencedColumns: ["fournisseur_id"]
           },
           {
             foreignKeyName: "ledger_fournisseur_id_fkey"
@@ -1264,6 +1367,13 @@ export type Database = {
             foreignKeyName: "portefeuilles_fournisseur_id_fkey"
             columns: ["fournisseur_id"]
             isOneToOne: true
+            referencedRelation: "fil_publications"
+            referencedColumns: ["fournisseur_id"]
+          },
+          {
+            foreignKeyName: "portefeuilles_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: true
             referencedRelation: "fournisseurs"
             referencedColumns: ["id"]
           },
@@ -1414,6 +1524,13 @@ export type Database = {
             foreignKeyName: "produits_fournisseur_id_fkey"
             columns: ["fournisseur_id"]
             isOneToOne: false
+            referencedRelation: "fil_publications"
+            referencedColumns: ["fournisseur_id"]
+          },
+          {
+            foreignKeyName: "produits_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
             referencedRelation: "fournisseurs"
             referencedColumns: ["id"]
           },
@@ -1521,6 +1638,144 @@ export type Database = {
         }
         Relationships: []
       }
+      publication_produits: {
+        Row: {
+          ordre: number
+          produit_id: string
+          publication_id: string
+        }
+        Insert: {
+          ordre?: number
+          produit_id: string
+          publication_id: string
+        }
+        Update: {
+          ordre?: number
+          produit_id?: string
+          publication_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "publication_produits_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "publication_produits_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits_publics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "publication_produits_publication_id_fkey"
+            columns: ["publication_id"]
+            isOneToOne: false
+            referencedRelation: "fil_publications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "publication_produits_publication_id_fkey"
+            columns: ["publication_id"]
+            isOneToOne: false
+            referencedRelation: "publications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      publications: {
+        Row: {
+          auteur_id: string | null
+          created_at: string
+          epingle: boolean
+          expire_le: string | null
+          fournisseur_id: string | null
+          id: string
+          localite_id: string | null
+          photos: string[]
+          publie_le: string
+          statut: Database["public"]["Enums"]["statut_publication"]
+          texte: string
+          type: Database["public"]["Enums"]["type_publication"]
+          updated_at: string
+        }
+        Insert: {
+          auteur_id?: string | null
+          created_at?: string
+          epingle?: boolean
+          expire_le?: string | null
+          fournisseur_id?: string | null
+          id?: string
+          localite_id?: string | null
+          photos?: string[]
+          publie_le?: string
+          statut?: Database["public"]["Enums"]["statut_publication"]
+          texte: string
+          type: Database["public"]["Enums"]["type_publication"]
+          updated_at?: string
+        }
+        Update: {
+          auteur_id?: string | null
+          created_at?: string
+          epingle?: boolean
+          expire_le?: string | null
+          fournisseur_id?: string | null
+          id?: string
+          localite_id?: string | null
+          photos?: string[]
+          publie_le?: string
+          statut?: Database["public"]["Enums"]["statut_publication"]
+          texte?: string
+          type?: Database["public"]["Enums"]["type_publication"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "publications_auteur_id_fkey"
+            columns: ["auteur_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "publications_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "fil_publications"
+            referencedColumns: ["fournisseur_id"]
+          },
+          {
+            foreignKeyName: "publications_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "fournisseurs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "publications_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "fournisseurs_publics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "publications_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "produits_publics"
+            referencedColumns: ["fournisseur_id"]
+          },
+          {
+            foreignKeyName: "publications_localite_id_fkey"
+            columns: ["localite_id"]
+            isOneToOne: false
+            referencedRelation: "localites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rate_limits: {
         Row: {
           cle: string
@@ -1619,6 +1874,13 @@ export type Database = {
           traite_par?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "retraits_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "fil_publications"
+            referencedColumns: ["fournisseur_id"]
+          },
           {
             foreignKeyName: "retraits_fournisseur_id_fkey"
             columns: ["fournisseur_id"]
@@ -1756,6 +2018,13 @@ export type Database = {
             foreignKeyName: "vehicules_livraison_fournisseur_id_fkey"
             columns: ["fournisseur_id"]
             isOneToOne: false
+            referencedRelation: "fil_publications"
+            referencedColumns: ["fournisseur_id"]
+          },
+          {
+            foreignKeyName: "vehicules_livraison_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
             referencedRelation: "fournisseurs"
             referencedColumns: ["id"]
           },
@@ -1883,6 +2152,13 @@ export type Database = {
             foreignKeyName: "zones_livraison_fournisseur_id_fkey"
             columns: ["fournisseur_id"]
             isOneToOne: false
+            referencedRelation: "fil_publications"
+            referencedColumns: ["fournisseur_id"]
+          },
+          {
+            foreignKeyName: "zones_livraison_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
             referencedRelation: "fournisseurs"
             referencedColumns: ["id"]
           },
@@ -1904,6 +2180,32 @@ export type Database = {
       }
     }
     Views: {
+      fil_publications: {
+        Row: {
+          epingle: boolean | null
+          fournisseur_coef_sinuosite: number | null
+          fournisseur_id: string | null
+          fournisseur_lat: number | null
+          fournisseur_lng: number | null
+          fournisseur_nb_avis: number | null
+          fournisseur_niveau:
+            | Database["public"]["Enums"]["niveau_verification"]
+            | null
+          fournisseur_nom: string | null
+          fournisseur_note: number | null
+          fournisseur_rayon_max_km: number | null
+          fournisseur_slug: string | null
+          id: string | null
+          localite_nom: string | null
+          photos: string[] | null
+          produits: Json | null
+          publie_le: string | null
+          suivi: boolean | null
+          texte: string | null
+          type: Database["public"]["Enums"]["type_publication"] | null
+        }
+        Relationships: []
+      }
       fournisseurs_publics: {
         Row: {
           assujetti_tva: boolean | null
@@ -2123,6 +2425,7 @@ export type Database = {
         Returns: undefined
       }
       attribuer_badges_partenaire: { Args: never; Returns: number }
+      compter_abonnes: { Args: { _fournisseur_id: string }; Returns: number }
       compter_vue_produit: { Args: { _produit_id: string }; Returns: undefined }
       confirmer_email_oauth: { Args: never; Returns: boolean }
       confirmer_livraison: {
@@ -2313,6 +2616,7 @@ export type Database = {
         | "expire"
         | "echoue"
       statut_produit: "brouillon" | "en_attente_materiau" | "actif" | "inactif"
+      statut_publication: "publiee" | "masquee" | "signalee" | "supprimee"
       statut_retrait: "demande" | "en_cours" | "paye" | "refuse"
       stock_statut: "en_stock" | "sur_commande" | "rupture"
       type_client: "particulier" | "entreprise"
@@ -2332,6 +2636,12 @@ export type Database = {
         | "remboursement"
         | "ajustement"
       type_localite: "region" | "district" | "commune" | "quartier"
+      type_publication:
+        | "stock"
+        | "baisse_prix"
+        | "livraison"
+        | "prix_marche"
+        | "demande"
       unite:
         | "piece"
         | "sac"
@@ -2512,6 +2822,7 @@ export const Constants = {
         "echoue",
       ],
       statut_produit: ["brouillon", "en_attente_materiau", "actif", "inactif"],
+      statut_publication: ["publiee", "masquee", "signalee", "supprimee"],
       statut_retrait: ["demande", "en_cours", "paye", "refuse"],
       stock_statut: ["en_stock", "sur_commande", "rupture"],
       type_client: ["particulier", "entreprise"],
@@ -2533,6 +2844,13 @@ export const Constants = {
         "ajustement",
       ],
       type_localite: ["region", "district", "commune", "quartier"],
+      type_publication: [
+        "stock",
+        "baisse_prix",
+        "livraison",
+        "prix_marche",
+        "demande",
+      ],
       unite: [
         "piece",
         "sac",

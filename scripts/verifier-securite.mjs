@@ -80,6 +80,44 @@ verifier("la vue publique n'expose aucune donnee personnelle", sv === 200 && fui
          fuite.length ? `colonnes exposees : ${fuite.join(", ")}` : "aucune");
 
 // ── Rapport ───────────────────────────────────────────────────────────────
+// ── Les fonctions doivent etre APPELABLES DEPUIS UN NAVIGATEUR ───────────
+// Un appel depuis Node ne declenche aucune requete prealable CORS : tout
+// passait en test et rien ne partait du navigateur. Le 22/08/2026, l'envoi du
+// code d'inscription est reste muet pendant des heures pour cette seule
+// raison — le client Supabase pose `x-application-name` sur chaque requete, le
+// navigateur le declarait dans son preflight, et la fonction ne l'autorisait
+// pas. On rejoue donc ici le preflight EXACT du navigateur.
+const ENTETES_NAVIGATEUR = [
+  "authorization",
+  "x-client-info",
+  "apikey",
+  "content-type",
+  "x-application-name",
+];
+for (const fonction of ["envoyer-code", "verifier-code", "mot-de-passe-code",
+                        "mot-de-passe-reinitialiser", "commande-creer", "paiement-initier"]) {
+  let autorises = "";
+  let statut = 0;
+  try {
+    const r = await fetch(`${base}/functions/v1/${fonction}`, {
+      method: "OPTIONS",
+      headers: {
+        Origin: "https://akora.fonenako.mg",
+        "Access-Control-Request-Method": "POST",
+        "Access-Control-Request-Headers": ENTETES_NAVIGATEUR.join(", "),
+      },
+    });
+    statut = r.status;
+    autorises = (r.headers.get("access-control-allow-headers") ?? "").toLowerCase();
+  } catch (erreur) {
+    statut = -1;
+  }
+  const manquants = ENTETES_NAVIGATEUR.filter((h) => !autorises.includes(h));
+  verifier(`${fonction} accepte le preflight du navigateur`,
+    statut === 200 && manquants.length === 0,
+    manquants.length ? `manque : ${manquants.join(", ")}` : `HTTP ${statut}`);
+}
+
 const echecs = resultats.filter((r) => !r.ok);
 for (const r of resultats) {
   if (!r.ok) console.log(`  ECHEC  ${r.intitule} — ${r.detail}`);

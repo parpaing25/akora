@@ -9,10 +9,21 @@ import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2";
  * paiement ou une ligne de ledger.
  */
 
+// `x-application-name` n'est pas decoratif dans cette liste : le client
+// Supabase du site le pose sur CHAQUE requete (cf. `global.headers`), donc le
+// navigateur le declare dans sa requete prealable. Un en-tete demande et non
+// autorise fait echouer le preflight, et l'appel n'est jamais emis — d'ou
+// « Failed to send a request to the Edge Function », qui ressemble a une panne
+// serveur alors que rien n'est parti. Vecu le 22/08/2026 sur l'envoi du code :
+// invisible en test, parce qu'un appel depuis Node ne declenche aucun CORS.
 export const enTetesCors = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-application-name, x-supabase-api-version",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
+  // Sans cela, chaque appel coute un aller-retour de plus. Sur une 3G, cela se
+  // sent.
+  "Access-Control-Max-Age": "86400",
 };
 
 export function reponse(statut: number, corps: unknown): Response {
