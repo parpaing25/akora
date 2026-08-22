@@ -1,7 +1,7 @@
 import { NavLink } from "react-router-dom";
 import { Home, Layers, ShoppingCart, ClipboardList, User } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { usePanier, nombreArticles } from "@/lib/panier";
+import { usePanier, nombreProduits } from "@/lib/panier";
 
 /**
  * Barre inférieure fixe, 5 entrées (AKORA-DESIGN §8).
@@ -17,7 +17,9 @@ const ENTREES = [
 
 export function BarreMobile() {
   const lignes = usePanier((etat) => etat.lignes);
-  const articles = nombreArticles(lignes);
+  // Le nombre de PRODUITS, pas la somme des quantites : 1 200 briques
+  // saturaient la pastille des le premier ajout.
+  const articles = nombreProduits(lignes);
 
   return (
     <nav
@@ -44,13 +46,13 @@ export function BarreMobile() {
                     className="nombres absolute -right-2.5 -top-1.5 min-w-[1.1rem] rounded-full bg-primary px-1 text-center text-[0.65rem] font-bold leading-[1.1rem] text-primary-foreground"
                     aria-hidden="true"
                   >
-                    {articles > 99 ? "99+" : articles}
+                    {articles}
                   </span>
                 ) : null}
               </span>
               {libelle}
               {to === "/panier" && articles > 0 ? (
-                <span className="sr-only">{`, ${articles} article${articles > 1 ? "s" : ""}`}</span>
+                <span className="sr-only">{`, ${articles} produit${articles > 1 ? "s" : ""}`}</span>
               ) : null}
             </NavLink>
           </li>

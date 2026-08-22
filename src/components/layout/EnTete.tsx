@@ -3,7 +3,7 @@ import { Link, NavLink, useNavigate } from "react-router-dom";
 import { Search, ShoppingCart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
-import { usePanier, nombreArticles } from "@/lib/panier";
+import { usePanier, nombreProduits } from "@/lib/panier";
 import { Bouton } from "@/components/ui/button";
 import { Saisie } from "@/components/ui/input";
 import { LogoAkora } from "@/components/marque/LogoAkora";
@@ -24,7 +24,9 @@ const LIENS = [
 export function EnTete() {
   const { session } = useAuth();
   const lignes = usePanier((etat) => etat.lignes);
-  const articles = nombreArticles(lignes);
+  // Le nombre de PRODUITS, pas la somme des quantites : 1 200 briques
+  // saturaient la pastille des le premier ajout.
+  const articles = nombreProduits(lignes);
   const naviguer = useNavigate();
   const [recherche, setRecherche] = React.useState("");
 
@@ -34,7 +36,7 @@ export function EnTete() {
     naviguer(q ? "/recherche?q=" + encodeURIComponent(q) : "/recherche");
   };
 
-  const libellePanier = "Panier, " + articles + (articles > 1 ? " articles" : " article");
+  const libellePanier = "Panier, " + articles + (articles > 1 ? " produits" : " produit");
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur">
@@ -92,7 +94,7 @@ export function EnTete() {
                 aria-hidden="true"
                 className="nombres absolute right-1 top-1 min-w-[1.1rem] rounded-full bg-primary px-1 text-center text-[0.65rem] font-bold leading-[1.1rem] text-primary-foreground"
               >
-                {articles > 99 ? "99+" : articles}
+                {articles}
               </span>
             ) : null}
           </Link>
