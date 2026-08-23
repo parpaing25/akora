@@ -592,3 +592,9 @@ label.case input { width: auto; min-height: 0; }
 .actions-collecte .bouton { margin: 0; }
 .sous-liste { list-style: none; margin: 6px 0 0; padding: 0; font-size: 12.5px; }
 .sous-liste li { padding: 3px 0; color: var(--beton-doux); }
+
+/* Version compacte des cartes d'automatisation, pour le tableau de bord. */
+.grille-auto.compacte { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.carte-auto.compacte { padding: 12px 14px; gap: 6px; }
+.carte-auto.compacte h3 { font-size: 13.5px; }
+.carte-auto.compacte .fait { font-size: 12.5px; color: var(--beton-doux); }

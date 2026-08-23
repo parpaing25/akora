@@ -93,18 +93,39 @@ function carteAutomatisation(a) {
   </div>`;
 }
 
-async function chargerAutomatisations() {
-  etat.config = await api("/api/config");
-  for (const groupe of ["locales", "privees", "publiques"]) {
-    $("#auto-" + groupe).innerHTML = AUTOMATISATIONS
-      .filter((a) => a.groupe === groupe).map(carteAutomatisation).join("");
-  }
-  $("#heures-collecte").value = (etat.config.heures_collecte || []).join(", ");
-  $("#objectif-jour").value = etat.config.objectif_par_jour ?? 0;
-  $$("[data-auto-num]").forEach((e) => { e.value = etat.config[e.dataset.autoNum] ?? ""; });
-  $$("[data-auto-txt]").forEach((e) => { e.value = etat.config[e.dataset.autoTxt] ?? ""; });
+/** Version compacte, pour le tableau de bord : tout est allumable de là.
+ *
+ * Le détail long reste dans l'onglet dédié — mais devoir changer d'onglet
+ * pour éteindre une automatisation qui s'emballe est exactement ce qu'on ne
+ * veut pas. */
+function rendreAutoRapide() {
+  const zone = $("#auto-rapide");
+  if (!zone) return;
+  const config = etat.config || {};
+  // On ne redessine que si l'état a bougé : sans ça, la boucle de deux
+  // secondes remplacerait l'interrupteur sous le doigt de l'utilisateur.
+  const signature = AUTOMATISATIONS.map((a) => (config[a.cle] ? "1" : "0")).join("");
+  if (zone.dataset.signature === signature) return;
+  zone.dataset.signature = signature;
 
-  $$("[data-auto]").forEach((bascule) => {
+  zone.innerHTML = AUTOMATISATIONS.map((a) => `
+    <div class="carte-auto compacte ${config[a.cle] ? "actif" : ""} ${a.danger ? "publique" : ""}"
+         data-carte-auto-rapide="${a.cle}">
+      <div class="carte-auto-tete">
+        <h3>${echapper(a.titre)}</h3>
+        <label class="interrupteur">
+          <input type="checkbox" data-auto="${a.cle}" ${config[a.cle] ? "checked" : ""}>
+          <span class="piste"></span>
+        </label>
+      </div>
+      <p class="fait">${echapper(a.fait.split(".")[0])}.</p>
+    </div>`).join("");
+  brancherInterrupteurs(zone);
+}
+
+/** Le même comportement pour les deux rendus : un seul endroit à corriger. */
+function brancherInterrupteurs(racine) {
+  $$("[data-auto]", racine).forEach((bascule) => {
     bascule.addEventListener("change", async () => {
       const cle = bascule.dataset.auto;
       const definition = AUTOMATISATIONS.find((a) => a.cle === cle);
@@ -124,7 +145,13 @@ async function chargerAutomatisations() {
         etat.config = await api("/api/config", {
           method: "POST", corps: { config: { [cle]: bascule.checked } },
         });
-        $(`[data-carte-auto="${cle}"]`).classList.toggle("actif", bascule.checked);
+        $$(`[data-carte-auto="${cle}"], [data-carte-auto-rapide="${cle}"]`)
+          .forEach((carte) => carte.classList.toggle("actif", bascule.checked));
+        // Les deux rendus montrent les mêmes interrupteurs : l'autre doit
+        // suivre, sinon le tableau de bord ment sur ce qui tourne.
+        $$(`[data-auto="${cle}"]`).forEach((autre) => { autre.checked = bascule.checked; });
+        const zone = $("#auto-rapide");
+        if (zone) delete zone.dataset.signature;
         toast(`${definition ? definition.titre : cle} : ${bascule.checked ? "activé" : "éteint"}.`,
               bascule.checked ? "succes" : "");
       } catch (e) {
@@ -133,6 +160,20 @@ async function chargerAutomatisations() {
       }
     });
   });
+}
+
+async function chargerAutomatisations() {
+  etat.config = await api("/api/config");
+  for (const groupe of ["locales", "privees", "publiques"]) {
+    $("#auto-" + groupe).innerHTML = AUTOMATISATIONS
+      .filter((a) => a.groupe === groupe).map(carteAutomatisation).join("");
+  }
+  $("#heures-collecte").value = (etat.config.heures_collecte || []).join(", ");
+  $("#objectif-jour").value = etat.config.objectif_par_jour ?? 0;
+  $$("[data-auto-num]").forEach((e) => { e.value = etat.config[e.dataset.autoNum] ?? ""; });
+  $$("[data-auto-txt]").forEach((e) => { e.value = etat.config[e.dataset.autoTxt] ?? ""; });
+
+  brancherInterrupteurs($("#vue-automatisations"));
 }
 
 $("#btn-auto-horaires").onclick = async () => {

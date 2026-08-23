@@ -65,6 +65,19 @@ function echapper(t) {
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
+/** Branche un gestionnaire, sans mourir si l'élément n'existe pas.
+ *
+ * Ce garde-fou n'est pas de la prudence de principe : `$("#absent").onclick = f`
+ * lève une TypeError AU CHARGEMENT, ce qui avorte le reste du script — y
+ * compris la boucle d'état. Le tableau de bord restait alors à zéro, la
+ * pastille Facebook grise, et rien n'indiquait la cause. Un bouton déplacé
+ * d'un onglet à l'autre ne doit plus pouvoir éteindre toute l'interface. */
+function surClic(selecteur, fonction) {
+  const element = $(selecteur);
+  if (element) element.onclick = fonction;
+  return element;
+}
+
 let minuterieToast;
 function toast(message, genre = "") {
   const boite = $("#toast");
@@ -193,20 +206,21 @@ async function rafraichirEtat() {
        <span>·</span><span>Prochain passage : <strong>${p.prochain || "—"}</strong></span>`
     : `<span>Collectes automatiques désactivées — le bot ne démarrera rien tout seul.</span>`;
 
-  // Les pastilles du tableau de bord : un coup d'œil pour savoir ce qui
-  // tourne sans vous, sans avoir à ouvrir l'onglet Automatisations.
-  const c2 = etat.config || {};
-  $("#pastilles-auto").innerHTML = [
-    ["collecte_auto", "Collecte automatique", ""],
-    ["auto_synchro", "Retour du site", ""],
-    ["auto_relances", "Signal des relances", ""],
-    ["auto_recherches", "Recherches auto", ""],
-    ["auto_reservation", "Réservation auto", ""],
-    ["auto_bulletin", "Bulletin préparé", ""],
-    ["auto_bulletin_publier", "Bulletin PUBLIÉ", "publique"],
-  ].map(([cle, libelle, genre]) =>
-    `<span class="pastille-auto ${c2[cle] ? "on " + genre : ""}">
-       <i></i>${libelle}</span>`).join("");
+  // Les réglages de collecte, sur le tableau de bord comme chez Fonenako.
+  // Ils ne sont écrasés que si l'utilisateur n'est pas en train de les taper.
+  const champHeures = $("#heures-collecte-bord");
+  if (champHeures && document.activeElement !== champHeures) {
+    champHeures.value = (etat.config.heures_collecte || []).join(", ");
+  }
+  const champObjectif = $("#objectif-jour-bord");
+  if (champObjectif && document.activeElement !== champObjectif) {
+    champObjectif.value = etat.config.objectif_par_jour ?? 0;
+  }
+  const caseAuto = $("#collecte-auto-bord");
+  if (caseAuto) caseAuto.checked = !!etat.config.collecte_auto;
+
+  // Les interrupteurs d'automatisation, allumables depuis le tableau de bord.
+  if (typeof rendreAutoRapide === "function") rendreAutoRapide();
 
   // Entonnoir
   const b = donnees.bilan;
@@ -277,23 +291,25 @@ $("#btn-synchro").onclick = async () => {
 };
 $("#btn-sync-ref-banniere").onclick = () => synchroniserReferentiel();
 
-$("#btn-planning").onclick = async () => {
-  const heures = $("#heures-collecte").value.split(",")
+surClic("#btn-planning", async () => {
+  const heures = $("#heures-collecte-bord").value.split(",")
     .map((h) => h.trim()).filter(Boolean);
   try {
     etat.config = await api("/api/config", {
       method: "POST",
       corps: {
         config: {
-          collecte_auto: $('[data-cfg="collecte_auto"]').checked,
+          collecte_auto: $("#collecte-auto-bord").checked,
           heures_collecte: heures,
-          objectif_par_jour: Number($("#objectif-jour").value) || 0,
+          objectif_par_jour: Number($("#objectif-jour-bord").value) || 0,
         },
       },
     });
     toast("Réglages enregistrés.", "succes");
+    if (typeof chargerAutomatisations === "function"
+        && etat.vue === "automatisations") chargerAutomatisations();
   } catch (e) { toast(e.message, "erreur"); }
-};
+});
 
 $$(".lien-statut").forEach((bouton) => {
   bouton.addEventListener("click", () => {
