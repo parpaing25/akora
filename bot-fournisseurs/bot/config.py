@@ -39,6 +39,17 @@ SITE = "https://akora.fonenako.mg"
 API_UPLOAD = f"{SITE}/api/o2upload.php"
 
 DEFAUTS = {
+    # Prospection de sources : le bot cherche lui-même de nouveaux groupes et
+    # pages. Les requêtes décrivent le métier — c'est ce qui change d'un bot à
+    # l'autre. Vide = la liste par défaut de sources_prospection.py.
+    "auto_sources": False,            # chercher de nouvelles sources tout seul
+    "prospection_auto_jours": 0,      # 0 = jamais ; 7 = une fois par semaine
+    "prospection_requetes": [],
+    "prospection_mots_metier": [],
+    "prospection_repoussoirs": [],
+    "prospection_note_min": 60,       # en dessous, le candidat n'est pas proposé
+    "prospection_auto_adopter": False,  # adopter tout seul au-dessus du seuil
+    "prospection_auto_seuil": 90,
     # ── Cadence. Volontairement lente : on imite une lecture humaine, et un
     # compte Facebook qui déroule trop vite finit limité.
     "posts_max_par_source": 40,

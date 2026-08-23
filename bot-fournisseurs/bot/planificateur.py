@@ -21,6 +21,7 @@ from . import base
 from .config import charger
 
 CLE_DERNIER = "planificateur_dernier_creneau"
+CLE_PROSPECTION_SOURCES = "derniere_prospection_sources"
 CLE_SYNCHRO = "planificateur_derniere_synchro"
 CLE_TACHES = "planificateur_dernieres_taches"
 VERIFICATION = 30      # secondes entre deux regards à l'horloge
@@ -146,6 +147,35 @@ class Planificateur:
             self._reserver_les_valides(config)
         if config.get("auto_bulletin"):
             self._preparer_bulletin(config)
+        if config.get("auto_sources"):
+            self._prospecter_sources(config)
+
+    def _prospecter_sources(self, config: dict) -> None:
+        """Cherche de nouveaux groupes et pages, sans rien adopter d'office.
+
+        Espacée en jours : les groupes Facebook ne naissent pas toutes les
+        nuits, et enchaîner des recherches attirerait l'attention sur le
+        compte pour rien. Les candidats attendent dans « Nouvelles sources ».
+        """
+        jours = int(config.get("prospection_auto_jours", 0) or 0)
+        if jours <= 0:
+            return
+        derniere = base.lire_etat(CLE_PROSPECTION_SOURCES, "")
+        if derniere:
+            try:
+                if date.fromisoformat(derniere) > date.today() - timedelta(days=jours):
+                    return
+            except ValueError:
+                pass
+        base.ecrire_etat(CLE_PROSPECTION_SOURCES, date.today().isoformat())
+
+        from . import collecteur as col
+
+        base.logguer("Recherche automatique de nouvelles sources Facebook.", "info")
+        try:
+            col.collecteur.prospecter_sources()
+        except Exception as e:                       # noqa: BLE001
+            base.logguer(f"Prospection de sources : {e}", "erreur")
 
     def _signaler_relances(self, config: dict) -> None:
         """Compte les relances dues. N'envoie RIEN — c'est la règle du bot."""
