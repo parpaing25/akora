@@ -52,7 +52,19 @@ MOTIF_TONNES = re.compile(r"(\d{1,3}(?:[.,]\d{1,2})?)\s*(?:tonnes?|t)\b(?!\w)")
 # Barème : « 250 000 Ar le voyage », « 15 000 Ar/km », « forfait 80 000 »
 MOTS_VOYAGE = ("voyage", "trajet", "course", "rotation", "aller", "livraison",
                "dia", "fandehanana")
-MOTS_KM = ("km", "kilometre", "kilometres", "par km", "le km", "/km")
+
+# Ce qui doit suivre IMMÉDIATEMENT un montant pour le qualifier. La devise et
+# les articles sont facultatifs — « 15 000 Ar/km », « 15000 le km »,
+# « 400 000 isaky ny dia » s'écrivent tous les trois.
+_LIAISON = r"^\s*(?:ar(?:iary)?|mga)?\s*(?:[/-]|par|le|la|pour|isaky\s+ny|amin'?ny)?\s*"
+MOTIF_APRES_KM = re.compile(_LIAISON + r"(?:km|kilometres?)\b")
+MOTIF_APRES_VOYAGE = re.compile(
+    _LIAISON + r"(?:" + "|".join(MOTS_VOYAGE) + r")\b"
+)
+# « forfait 80 000 », « le voyage 250 000 » : le mot-clé peut aussi précéder.
+MOTIF_AVANT_VOYAGE = re.compile(
+    r"(?:forfait|prix\s+du|" + "|".join(MOTS_VOYAGE) + r")\W{0,8}$"
+)
 
 # Zone et franco
 MOTIF_RAYON = re.compile(
@@ -124,16 +136,17 @@ def _bareme(ligne: str, cfg: dict) -> dict:
             valeur = round(valeur / int(cfg.get("taux_fmg_ar", 5) or 5))
         if not (plancher <= valeur <= plafond):
             continue
-        # Les 26 caractères qui suivent le montant décident de sa nature.
-        suite = reduit[trouve.end():trouve.end() + 26]
-        avant = reduit[max(0, trouve.start() - 20):trouve.start()]
-        if any(mot in suite for mot in MOTS_KM) or "/km" in suite:
+        # Ce qui suit IMMÉDIATEMENT le montant décide de sa nature. Chercher
+        # le mot-clé « quelque part dans les 26 caractères suivants » lisait
+        # « à partir de 500 parpaings, rayon 25 km » comme un prix de 500 Ar
+        # au kilomètre : le « km » était bien là, mais il appartenait au rayon.
+        suite = reduit[trouve.end():trouve.end() + 30]
+        avant = reduit[max(0, trouve.start() - 24):trouve.start()]
+        if MOTIF_APRES_KM.match(suite):
             resultat["prix_par_km"] = resultat["prix_par_km"] or valeur
-        elif any(mot in suite for mot in MOTS_VOYAGE) or any(
-            mot in avant for mot in MOTS_VOYAGE
-        ):
+        elif MOTIF_APRES_VOYAGE.match(suite) or MOTIF_AVANT_VOYAGE.search(avant):
             resultat["forfait_base"] = resultat["forfait_base"] or valeur
-        elif "minimum" in suite or "minimum" in avant:
+        elif "minimum" in suite[:16] or "minimum" in avant:
             resultat["prix_minimum"] = resultat["prix_minimum"] or valeur
     return resultat
 
@@ -204,6 +217,27 @@ def vehicules(texte: str, cfg: dict) -> list[dict]:
             "certitude": min(100, certitude),
             **bareme,
         })
+
+    # Le tarif est presque toujours sur une AUTRE ligne que le camion :
+    #
+    #     Camion benne 8m3 dispo tous les jours
+    #     250 000 Ar le voyage sur Tana
+    #     15 000 Ar/km au-delà de 20 km
+    #
+    # Lire ligne à ligne rendait donc un camion sans aucun prix. On rattrape en
+    # relisant le texte entier — mais SEULEMENT s'il n'y a qu'un véhicule :
+    # avec deux camions et deux tarifs, rien ne dit lequel va avec lequel, et
+    # attribuer au hasard vaudrait moins que laisser vide.
+    if len(trouves) == 1:
+        global_ = _bareme(texte or "", cfg)
+        vehicule = trouves[0]
+        complete = False
+        for champ in ("forfait_base", "prix_par_km", "prix_minimum"):
+            if not vehicule.get(champ) and global_.get(champ):
+                vehicule[champ] = global_[champ]
+                complete = True
+        if complete:
+            vehicule["certitude"] = min(100, vehicule["certitude"] + 20)
     return trouves
 
 

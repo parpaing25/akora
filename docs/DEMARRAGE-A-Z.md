@@ -333,3 +333,71 @@ une vente ; un secret en base, si.
 | **I** | Identifiants marchands MVola / Orange / Airtel |
 | **Google** | Créer l'ID client (voir la section précédente), puis `npm run google` |
 | **MX** | Ajouter un enregistrement MX sur `akora.fonenako.mg`, sinon personne ne peut répondre à `akora@akora.fonenako.mg` |
+
+---
+
+## Mise à jour du 23/08/2026 — la dette technique
+
+### ~~K.~~ Le cron n'existe plus comme étape
+
+Les tâches vivent maintenant **dans la base**, ordonnancées par `pg_cron` :
+push chaque minute, réconciliation des paiements à 3 h, purge des codes le
+dimanche. Le secret d'appel est chiffré dans le coffre Supabase (`vault`), pas
+en clair dans une fonction SQL.
+
+Rien à faire dans cPanel. Vérifié de bout en bout : une notification posée est
+traitée toute seule en trente secondes.
+
+```bash
+npm run coffre     # redéposer les secrets du coffre, si besoin
+```
+
+### Les calculateurs
+
+Les cinq calculateurs ont été repris. Trois posaient un compte impossible à
+construire, deux étaient justes :
+
+| Calculateur | État |
+|---|---|
+| Dalle en hourdis | corrigé — calepinage par files |
+| Mur en parpaings | corrigé — rangées entières |
+| Toiture en tôles | corrigé — tôles entières, demande la longueur du bâtiment |
+| Béton dosé | déjà juste — c'est un volume |
+| Chape et enduit | déjà juste — c'est un volume |
+
+### Prix indicatifs
+
+Tant qu'aucun dépôt ne publie son prix, une **fourchette** peut s'afficher, avec
+sa **source** et sa **date** — toutes deux obligatoires en base. Elle ne se
+commande pas, n'entre dans aucun calcul de prix rendu, et disparaît dès qu'une
+vraie offre existe.
+
+Seul le ciment est renseigné : c'est le seul matériau pour lequel la presse
+malgache publie des chiffres vérifiables. Pour le sable, les parpaings ou les
+hourdis, aucune source publique — ces lignes restent vides, et c'est plus
+honnête qu'une estimation au doigt mouillé.
+
+### I. Mobile money — ce qu'il vous reste à faire
+
+```bash
+npm run marchand -- --etat     # où on en est
+npm run marchand -- mvola <client_id> <client_secret> <votre_msisdn_marchand>
+npm run marchand -- mvola <client_id> <client_secret> <msisdn> --production
+```
+
+Les URL et chemins d'API de MVola sont **pré-remplis** d'après sa documentation
+publique : `devapi.mvola.mg` en bac à sable, `api.mvola.mg` en production,
+jeton sur `/token`, transaction sur
+`/mvola/mm/transactions/type/merchantpay/1.0.0/`.
+
+Ce qui manque n'est pas du code, c'est un **contrat marchand** :
+
+1. **MVola** — créez un compte sur [le portail développeur](https://www.mvola.mg/devportal/).
+   Le bac à sable donne des identifiants tout de suite ; la production demande
+   un compte marchand Telma.
+2. **Orange Money** — [developer.orange.com](https://developer.orange.com/apis/om-webpay).
+3. **Airtel Money** — [developers.airtel.africa](https://developers.airtel.africa/).
+
+Tant qu'un opérateur n'est pas configuré, Akora **ne le propose pas** au
+paiement, plutôt que d'échouer sous les doigts de l'acheteur. Le règlement
+retombe sur la référence manuelle, qui fonctionne sans aucun identifiant.

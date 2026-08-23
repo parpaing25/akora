@@ -43,6 +43,11 @@ create table if not exists public.prospects_fournisseurs (
   localite_id       uuid references public.localites(id) on delete set null,
   photos            text[] not null default '{}',
   langue            text not null default 'fr',
+  -- 'depot' | 'transporteur' | 'mixte'. Un transporteur ne vend aucun
+  -- materiau : il loue sa benne. Sans lui, aucun prix rendu chantier.
+  nature            text not null default 'depot',
+  rayon_km          numeric(6,1),
+  seuil_franco      bigint,
   source            text not null default 'facebook',
   source_url        text,
   score             integer,
@@ -56,6 +61,8 @@ create table if not exists public.prospects_fournisseurs (
   updated_at        timestamptz not null default now(),
   constraint prospects_statut_connu
     check (statut in ('reserve', 'revendique', 'refuse', 'retire')),
+  constraint prospects_nature_connue
+    check (nature in ('depot', 'transporteur', 'mixte')),
   constraint prospects_jeton_assez_long check (length(jeton) >= 20),
   constraint prospects_photos_bornees check (cardinality(photos) <= 8),
   constraint prospects_lat_plausible check (lat is null or (lat between -26.0 and -11.0)),
@@ -92,14 +99,58 @@ create table if not exists public.prospects_produits (
 );
 create index if not exists idx_prospects_produits on public.prospects_produits(prospect_id, ordre);
 
+-- ── Les vehicules releves ─────────────────────────────────────────────────
+-- Miroir de `vehicules_livraison`. C'est la piece qui rend le prix rendu
+-- chantier calculable : un fournisseur sans vehicule ne peut livrer personne,
+-- et la fiche la plus complete du monde ne sert alors a rien.
+--
+-- Capacite et tarif sont NULLABLES a dessein. « 10 roues » est la facon
+-- malgache de dire la taille d'un camion, mais la convertir en metres cubes
+-- serait une estimation deguisee en mesure (regle A2.8) : on garde le libelle,
+-- on laisse le chiffre vide, et le transporteur le remplira.
+create table if not exists public.prospects_vehicules (
+  id            uuid primary key default gen_random_uuid(),
+  prospect_id   uuid not null references public.prospects_fournisseurs(id) on delete cascade,
+  nom           text not null,
+  categorie     text,
+  capacite_m3   numeric(8,2),
+  capacite_kg   numeric(10,1),
+  prix_par_km   bigint,
+  forfait_base  bigint,
+  km_inclus     numeric(6,1),
+  prix_minimum  bigint,
+  aller_retour  boolean not null default false,
+  ordre         smallint not null default 0,
+  created_at    timestamptz not null default now(),
+  unique (prospect_id, nom),
+  constraint prospects_vehicules_capacites_positives
+    check ((capacite_m3 is null or capacite_m3 > 0)
+       and (capacite_kg is null or capacite_kg > 0)),
+  constraint prospects_vehicules_montants_positifs
+    check ((prix_par_km is null or prix_par_km >= 0)
+       and (forfait_base is null or forfait_base >= 0)
+       and (prix_minimum is null or prix_minimum >= 0))
+);
+create index if not exists idx_prospects_vehicules
+  on public.prospects_vehicules(prospect_id, ordre);
+
 -- ── Droits : tout est fermé, on ne passe que par les fonctions ────────────
 alter table public.prospects_fournisseurs enable row level security;
 alter table public.prospects_produits     enable row level security;
+alter table public.prospects_vehicules    enable row level security;
 
 revoke all on public.prospects_fournisseurs from anon, authenticated;
 revoke all on public.prospects_produits     from anon, authenticated;
+revoke all on public.prospects_vehicules    from anon, authenticated;
 grant all  on public.prospects_fournisseurs to service_role;
 grant all  on public.prospects_produits     to service_role;
+grant all  on public.prospects_vehicules    to service_role;
+
+drop policy if exists "vehicules de prospect vus par un admin" on public.prospects_vehicules;
+create policy "vehicules de prospect vus par un admin" on public.prospects_vehicules
+  for all to authenticated
+  using (public.has_role((select auth.uid()), 'admin'))
+  with check (public.has_role((select auth.uid()), 'admin'));
 
 drop policy if exists "prospects vus par un admin" on public.prospects_fournisseurs;
 create policy "prospects vus par un admin" on public.prospects_fournisseurs
@@ -126,6 +177,7 @@ as $$
 declare
   fiche public.prospects_fournisseurs;
   produits jsonb;
+  flotte   jsonb;
 begin
   if _jeton is null or length(_jeton) < 20 then
     return null;
@@ -159,8 +211,27 @@ begin
     join public.categories c on c.id = m.categorie_id
    where p.prospect_id = fiche.id;
 
+  -- La flotte compte autant que les produits : c'est elle qui rend le prix
+  -- rendu chantier calculable, et le transporteur qui ouvre sa fiche veut y
+  -- voir SON camion, pas une page vide.
+  select coalesce(jsonb_agg(jsonb_build_object(
+           'nom', v.nom,
+           'categorie', v.categorie,
+           'capacite_m3', v.capacite_m3,
+           'capacite_kg', v.capacite_kg,
+           'forfait_base', v.forfait_base,
+           'prix_par_km', v.prix_par_km,
+           'aller_retour', v.aller_retour
+         ) order by v.ordre), '[]'::jsonb)
+    into flotte
+    from public.prospects_vehicules v
+   where v.prospect_id = fiche.id;
+
   return jsonb_build_object(
     'jeton', fiche.jeton,
+    'nature', fiche.nature,
+    'rayon_km', fiche.rayon_km,
+    'vehicules', flotte,
     'raison_sociale', fiche.raison_sociale,
     'metier', fiche.metier,
     'ville', fiche.ville,
@@ -268,6 +339,38 @@ begin
       from public.materiaux_ref m where m.id = ligne.materiau_ref_id
     on conflict (fournisseur_id, slug) do nothing;
   end loop;
+
+  -- La flotte relevee devient de VRAIS vehicules de livraison. Une capacite
+  -- inconnue est remplacee par un minimum symbolique : la table l'exige
+  -- positive, et le transporteur corrigera. Rien n'est visible tant que le
+  -- fournisseur est en brouillon.
+  for ligne in
+    select * from public.prospects_vehicules
+     where prospect_id = fiche.id order by ordre
+  loop
+    insert into public.vehicules_livraison (
+      fournisseur_id, nom, capacite_m3, capacite_kg,
+      prix_par_km, forfait_base, km_inclus, prix_minimum,
+      facturer_aller_retour, actif)
+    values (
+      nouveau_id, ligne.nom,
+      coalesce(ligne.capacite_m3, 1), coalesce(ligne.capacite_kg, 1000),
+      coalesce(ligne.prix_par_km, 0), coalesce(ligne.forfait_base, 0),
+      coalesce(ligne.km_inclus, 0), coalesce(ligne.prix_minimum, 0),
+      ligne.aller_retour,
+      -- Un vehicule sans capacite mesuree n'entre pas dans un calcul de
+      -- livraison : il est cree, mais inactif, pour que le transporteur le
+      -- complete au lieu de facturer sur une capacite inventee.
+      ligne.capacite_m3 is not null or ligne.capacite_kg is not null);
+  end loop;
+
+  -- La zone annoncee, si elle a ete relevee.
+  if fiche.rayon_km is not null then
+    insert into public.zones_livraison (fournisseur_id, nom, rayon_km, actif)
+    values (nouveau_id, 'Zone annoncee', fiche.rayon_km, true);
+    update public.fournisseurs set rayon_max_km = fiche.rayon_km
+     where id = nouveau_id;
+  end if;
 
   update public.prospects_fournisseurs
      set statut = 'revendique', revendique_le = now(), fournisseur_id = nouveau_id

@@ -1211,6 +1211,10 @@ export type Database = {
           ordre_format: number | null
           photo: string | null
           poids_kg_unite_defaut: number
+          prix_indicatif_le: string | null
+          prix_indicatif_max: number | null
+          prix_indicatif_min: number | null
+          prix_indicatif_source: string | null
           slug: string
           type_id: string | null
           unite_defaut: Database["public"]["Enums"]["unite"]
@@ -1234,6 +1238,10 @@ export type Database = {
           ordre_format?: number | null
           photo?: string | null
           poids_kg_unite_defaut: number
+          prix_indicatif_le?: string | null
+          prix_indicatif_max?: number | null
+          prix_indicatif_min?: number | null
+          prix_indicatif_source?: string | null
           slug: string
           type_id?: string | null
           unite_defaut: Database["public"]["Enums"]["unite"]
@@ -1257,6 +1265,10 @@ export type Database = {
           ordre_format?: number | null
           photo?: string | null
           poids_kg_unite_defaut?: number
+          prix_indicatif_le?: string | null
+          prix_indicatif_max?: number | null
+          prix_indicatif_min?: number | null
+          prix_indicatif_source?: string | null
           slug?: string
           type_id?: string | null
           unite_defaut?: Database["public"]["Enums"]["unite"]
@@ -2349,6 +2361,10 @@ export type Database = {
           photo: string | null
           poids_kg_unite: number | null
           prix_des: number | null
+          prix_indicatif_le: string | null
+          prix_indicatif_max: number | null
+          prix_indicatif_min: number | null
+          prix_indicatif_source: string | null
           slug: string | null
           type_nom: string | null
           type_slug: string | null
@@ -2579,6 +2595,7 @@ export type Database = {
           types: string[]
         }[]
       }
+      appeler_fonction_akora: { Args: { _nom: string }; Returns: number }
       arbitrer_litige: {
         Args: {
           _decision: string

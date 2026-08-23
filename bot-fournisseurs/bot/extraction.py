@@ -354,6 +354,20 @@ def analyser(texte: str, cfg: dict) -> dict:
     # Ce qu'il EST : un dépôt vend des matériaux, un transporteur loue sa
     # benne, et beaucoup font les deux. La distinction commande le score, le
     # message envoyé, et ce qu'on écrit dans sa fiche réservée.
+    #
+    # Le piège : « Fandefasana fasika sy vato » (transport de sable et de
+    # pierre) nomme du sable — mais c'est ce que le camion CHARGE, pas ce que
+    # son propriétaire VEND. Le départage tient en une question : ces matériaux
+    # ont-ils un prix ? Un dépôt affiche un tarif par matériau ; un
+    # transporteur affiche un tarif par voyage.
+    cargaison = (
+        flotte["est_transporteur"]
+        and offres_lues
+        and not any(o.get("prix") for o in offres_lues)
+    )
+    if cargaison:
+        offres_lues = []
+
     if offres_lues and flotte["vehicules"]:
         nature = "mixte"
     elif flotte["est_transporteur"] or (flotte["vehicules"] and not offres_lues):

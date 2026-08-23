@@ -67,6 +67,54 @@ def _lignes_produits(offres: list[dict], langue: str, maxi: int = 5) -> list[str
     return lignes
 
 
+def _lignes_vehicules(vehicules: list[dict], langue: str, maxi: int = 4) -> list[str]:
+    """La flotte, telle qu'un transporteur la reconnaîtra."""
+    gardes = [v for v in vehicules if v.get("garder", 1)]
+    lignes = []
+    for vehicule in gardes[:maxi]:
+        morceaux = [vehicule["nom"]]
+        if vehicule.get("forfait_base"):
+            morceaux.append(
+                f"{prix_ar(vehicule['forfait_base'])} "
+                + ("isaky ny dia" if langue == "mg" else "le voyage")
+            )
+        if vehicule.get("prix_par_km"):
+            morceaux.append(f"{prix_ar(vehicule['prix_par_km'])} / km")
+        lignes.append("• " + " — ".join(morceaux))
+    reste = len(gardes) - maxi
+    if reste > 0:
+        lignes.append(f"• … sy {reste} hafa" if langue == "mg"
+                      else f"• … et {reste} autre(s)")
+    return lignes
+
+
+def argument_demandes(prospect_id: str) -> str:
+    """« Voici ce que les acheteurs ont cherché chez vous cette semaine. »
+
+    Le seul argument qui déplace un dépôt : pas la promesse de visibilité, la
+    preuve d'une demande qu'il ne voit pas passer. Silencieux s'il n'y en a
+    aucune — une phrase creuse vaut moins que rien.
+    """
+    from . import demandes as mod_demandes
+
+    bilan = mod_demandes.argumentaire(prospect_id)
+    if not bilan["demandes"]:
+        return ""
+    exemples = []
+    for demande in bilan["demandes"][:3]:
+        morceau = demande["materiau"]
+        if demande["quantite"]:
+            morceau += f" ({demande['quantite']})"
+        if demande["lieu"]:
+            morceau += f" à {demande['lieu']}"
+        exemples.append(morceau)
+    return (
+        f"Ces {bilan['jours']} derniers jours, {bilan['total']} acheteur(s) ont "
+        "cherché ce que vous vendez, près de chez vous : "
+        + " ; ".join(exemples) + "."
+    )
+
+
 def argument_prix(offres: list[dict]) -> str:
     """« Votre parpaing 15 est 12 % sous la médiane du marché » — s'il y a de quoi.
 
@@ -94,8 +142,14 @@ def premier_contact(fiche: dict, offres: list[dict]) -> str:
     langue = fiche.get("langue") or "fr"
     nom = (fiche.get("nom") or "").strip()
     lieu = fiche.get("quartier") or fiche.get("ville") or ""
-    produits = "\n".join(_lignes_produits(offres, langue))
     lien = lien_fiche(fiche)
+
+    # Un transporteur n'a pas de tarif matériau : lui envoyer une liste de
+    # produits vide le convaincrait surtout qu'on s'est trompé de numéro.
+    if (fiche.get("nature") or "depot") == "transporteur":
+        return contact_transporteur(fiche, langue, nom, lieu, lien)
+
+    produits = "\n".join(_lignes_produits(offres, langue))
 
     if langue == "mg":
         salutation = f"Manao ahoana {nom}," if nom else "Manao ahoana,"
@@ -134,7 +188,63 @@ def premier_contact(fiche: dict, offres: list[dict]) -> str:
         "livraison, et les acheteurs vous contactent directement.",
         "",
         f"Elle est ici : {lien}" if lien else "",
+        # Deux arguments, et l'ordre compte : la demande d'abord (ce qu'il
+        # rate), le prix ensuite (ce qu'il fait bien). Chacun se tait s'il n'a
+        # rien de vrai à dire.
+        argument_demandes(fiche.get("id") or ""),
         argument_prix(offres),
+        "",
+        "Si cela ne vous intéresse pas, dites-le simplement : nous la "
+        "supprimons et nous ne vous recontactons plus.",
+    ]))
+
+
+def contact_transporteur(fiche: dict, langue: str, nom: str, lieu: str,
+                         lien: str) -> str:
+    """Le même argument, mais pour quelqu'un qui vend des kilomètres.
+
+    Ce qu'on lui promet n'est pas de la visibilité : ce sont des chantiers qui
+    cherchent un camion, et un prix de livraison calculé automatiquement à
+    partir de SON barème.
+    """
+    flotte = "\n".join(_lignes_vehicules(fiche.get("vehicules") or [], langue))
+
+    if langue == "mg":
+        return "\n".join(filter(None, [
+            f"Manao ahoana {nom}," if nom else "Manao ahoana,",
+            "",
+            "Akora izahay — tranonkala fampitahana vidin'ny fitaovana fanorenana. "
+            "Mila fiara fitaterana ny mpanjifa rehetra manafatra fitaovana aminay.",
+            "",
+            f"Efa vonona ny pejinao{f' ({lieu})' if lieu else ''}, "
+            "nalaina avy amin'ny lahatsoratrao :",
+            flotte,
+            "",
+            "Ny vidin'ny fitaterana dia kajiana avy amin'ny tarifanao, "
+            "arakaraka ny halaviran'ny toerana. Tsy misy tsy maintsy soratanao : "
+            "mila manamarina fotsiny.",
+            "",
+            f"Jereo eto : {lien}" if lien else "",
+            "",
+            "Raha tsy tianao dia lazao fotsiny, dia esorinay. Misaotra.",
+        ]))
+
+    return "\n".join(filter(None, [
+        f"Bonjour {nom}," if nom else "Bonjour,",
+        "",
+        "Ici Akora, le site qui compare les fournisseurs de matériaux de "
+        "construction à Madagascar. Tout ce qui s'y vend doit être livré — "
+        "et c'est là que nous manquons de camions.",
+        "",
+        f"Votre fiche transporteur est déjà prête{f' ({lieu})' if lieu else ''}, "
+        "remplie à partir de vos propres publications :",
+        flotte,
+        "",
+        "Le prix de livraison est calculé automatiquement à partir de VOTRE "
+        "barème et de la distance jusqu'au chantier. Vous n'avez rien à saisir "
+        "— seulement à confirmer, et à corriger vos tarifs.",
+        "",
+        f"Elle est ici : {lien}" if lien else "",
         "",
         "Si cela ne vous intéresse pas, dites-le simplement : nous la "
         "supprimons et nous ne vous recontactons plus.",

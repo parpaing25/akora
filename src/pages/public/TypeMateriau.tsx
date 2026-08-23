@@ -214,8 +214,31 @@ export default function TypeMateriau() {
                     <td className="nombres px-4 py-3 align-top text-legende text-muted-foreground">
                       {Number(f.poids_kg_unite)} kg · {Number(f.volume_m3_unite)} m³
                     </td>
-                    <td className="nombres px-4 py-3 text-right align-top text-courant font-semibold">
-                      {f.prix_des != null ? formaterAriary(f.prix_des) : "—"}
+                    <td className="px-4 py-3 text-right align-top">
+                      {f.prix_des != null ? (
+                        <span className="nombres text-courant font-semibold">
+                          {formaterAriary(f.prix_des)}
+                        </span>
+                      ) : f.prix_indicatif_min != null ? (
+                        // Une fourchette relevee publiquement, pas une offre :
+                        // elle ne se commande pas et n'entre dans aucun calcul
+                        // de prix rendu. Elle dit l'ordre de grandeur, et d'ou
+                        // il vient.
+                        <span title={f.prix_indicatif_source ?? undefined}>
+                          <span className="nombres block text-courant text-muted-foreground">
+                            {formaterAriary(f.prix_indicatif_min)} à{" "}
+                            {formaterAriary(f.prix_indicatif_max ?? f.prix_indicatif_min)}
+                          </span>
+                          <span className="block text-[0.66rem] text-muted-foreground">
+                            indicatif, relevé le{" "}
+                            {f.prix_indicatif_le
+                              ? new Date(f.prix_indicatif_le).toLocaleDateString("fr-FR")
+                              : ""}
+                          </span>
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-right align-top">
                       {estimation ? (
@@ -272,9 +295,15 @@ export default function TypeMateriau() {
                 </p>
                 <div className="mt-3 grid grid-cols-2 gap-2">
                   <div className="rounded-md border border-border p-2.5">
-                    <p className="text-[0.72rem] text-muted-foreground">Dépôt dès</p>
+                    <p className="text-[0.72rem] text-muted-foreground">
+                      {f.prix_des != null ? "Dépôt dès" : "Indicatif"}
+                    </p>
                     <p className="nombres text-produit">
-                      {f.prix_des != null ? formaterAriary(f.prix_des) : "—"}
+                      {f.prix_des != null
+                        ? formaterAriary(f.prix_des)
+                        : f.prix_indicatif_min != null
+                          ? `${formaterAriary(f.prix_indicatif_min)}–${formaterAriary(f.prix_indicatif_max ?? f.prix_indicatif_min)}`
+                          : "—"}
                     </p>
                   </div>
                   <div className="rounded-md border border-primary bg-primary-soft p-2.5">

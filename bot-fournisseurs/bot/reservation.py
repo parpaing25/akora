@@ -152,6 +152,9 @@ def _sql_upsert_fiche(fiche: dict, urls: list[str], localite_id: str | None) -> 
         "localite_id": (f"{akora.txt(localite_id)}::uuid" if localite_id else "NULL"),
         "photos": photos,
         "langue": akora.txt(fiche.get("langue") or "fr"),
+        "nature": akora.txt(fiche.get("nature") or "depot"),
+        "rayon_km": akora.reel(fiche.get("rayon_km")),
+        "seuil_franco": akora.num(fiche.get("seuil_franco")),
         "source": "'facebook'",
         "source_url": akora.txt(source_url),
         "score": akora.num(fiche.get("score")),
@@ -206,6 +209,44 @@ def _sql_produits(prospect_distant: str, offres: list[dict]) -> str:
     )
 
 
+def _sql_vehicules(prospect_distant: str, vehicules: list[dict]) -> str:
+    """Remplace la flotte relevée. Capacités et tarifs peuvent rester vides.
+
+    C'est voulu : la table distante les accepte NULL, et une capacité inventée
+    ferait facturer une livraison sur un camion qui n'existe pas.
+    """
+    suppression = (
+        "DELETE FROM public.prospects_vehicules WHERE prospect_id = "
+        f"{akora.txt(prospect_distant)}::uuid;"
+    )
+    lignes = []
+    for rang, vehicule in enumerate(vehicules):
+        lignes.append(
+            "(" + ", ".join([
+                f"{akora.txt(prospect_distant)}::uuid",
+                akora.txt(vehicule.get("nom")),
+                akora.txt(vehicule.get("categorie")),
+                akora.reel(vehicule.get("capacite_m3")),
+                akora.reel(vehicule.get("capacite_kg")),
+                akora.num(vehicule.get("prix_par_km")),
+                akora.num(vehicule.get("forfait_base")),
+                akora.reel(vehicule.get("km_inclus")),
+                akora.num(vehicule.get("prix_minimum")),
+                akora.bool_sql(vehicule.get("aller_retour")),
+                str(rang),
+            ]) + ")"
+        )
+    if not lignes:
+        return suppression
+    return suppression + (
+        "INSERT INTO public.prospects_vehicules "
+        "(prospect_id, nom, categorie, capacite_m3, capacite_kg, prix_par_km, "
+        "forfait_base, km_inclus, prix_minimum, aller_retour, ordre) VALUES "
+        + ", ".join(lignes) +
+        " ON CONFLICT (prospect_id, nom) DO NOTHING;"
+    )
+
+
 def reserver(prospect_id: str, rappel=None) -> dict:
     """Réserve la place d'un prospect sur le site. Renvoie {url, produits, photos}."""
     fiche = base.prospect(prospect_id)
@@ -224,10 +265,14 @@ def reserver(prospect_id: str, rappel=None) -> dict:
     offres = [
         o for o in fiche["offres"] if o["garder"] and o.get("materiau_slug")
     ]
-    if not offres:
+    flotte = [v for v in fiche.get("vehicules", []) if v["garder"]]
+    # Un transporteur n'a AUCUNE offre de matériau — exiger un produit l'aurait
+    # rendu irréservable. Ce qu'on exige, c'est qu'il y ait quelque chose à
+    # montrer : des produits, ou des camions.
+    if not offres and not flotte:
         raise ErreurReservation(
-            "Aucune offre appariée au catalogue : il n'y aurait rien à montrer. "
-            "Précisez au moins un format dans le panneau."
+            "Ni produit apparié au catalogue, ni véhicule : il n'y aurait rien "
+            "à montrer sur la fiche. Précisez au moins un format, ou un camion."
         )
 
     base.logguer(f"Réservation de « {fiche['nom']} » — envoi des photos…", "info")
@@ -250,6 +295,7 @@ def reserver(prospect_id: str, rappel=None) -> dict:
         raise ErreurReservation("La fiche n'a pas été écrite (aucun identifiant rendu).")
     distant = lignes[0]["id"]
     akora.executer(_sql_produits(distant, offres))
+    akora.executer(_sql_vehicules(distant, flotte))
 
     url = f"{SITE}/depot-reserve/{fiche['jeton']}"
     base.modifier_prospect(prospect_id, {
@@ -261,10 +307,12 @@ def reserver(prospect_id: str, rappel=None) -> dict:
     })
     base.evenement(
         prospect_id, "reservation",
-        f"Fiche réservée avec {len(offres)} produit(s) et {len(urls)} photo(s).",
+        f"Fiche réservée avec {len(offres)} produit(s), {len(flotte)} véhicule(s) "
+        f"et {len(urls)} photo(s).",
     )
     base.logguer(f"Fiche réservée : {url}", "succes")
-    return {"url": url, "produits": len(offres), "photos": len(urls)}
+    return {"url": url, "produits": len(offres), "vehicules": len(flotte),
+            "photos": len(urls)}
 
 
 def retirer(prospect_id: str, motif: str = "") -> None:
@@ -276,6 +324,8 @@ def retirer(prospect_id: str, motif: str = "") -> None:
         "UPDATE public.prospects_fournisseurs SET statut = 'retire', updated_at = now() "
         f"WHERE jeton = {akora.txt(fiche['jeton'])} AND statut = 'reserve';"
         "DELETE FROM public.prospects_produits WHERE prospect_id IN "
+        f"(SELECT id FROM public.prospects_fournisseurs WHERE jeton = {akora.txt(fiche['jeton'])});"
+        "DELETE FROM public.prospects_vehicules WHERE prospect_id IN "
         f"(SELECT id FROM public.prospects_fournisseurs WHERE jeton = {akora.txt(fiche['jeton'])});"
     )
     base.evenement(prospect_id, "statut", f"Fiche retirée du site. {motif}".strip())

@@ -22,6 +22,7 @@ from .config import charger
 
 CLE_DERNIER = "planificateur_dernier_creneau"
 CLE_SYNCHRO = "planificateur_derniere_synchro"
+CLE_TACHES = "planificateur_dernieres_taches"
 VERIFICATION = 30      # secondes entre deux regards à l'horloge
 
 
@@ -121,11 +122,149 @@ class Planificateur:
             base.ecrire_etat(CLE_DERNIER, marque)
             self._retour_du_site()
             self._declencher(config, heure, heures)
+            # Les automatisations tournent APRÈS la collecte, une fois par
+            # jour : elles se nourrissent de ce qui vient d'être ramassé.
+            self._taches_du_jour(config)
             return
+
+    def _taches_du_jour(self, config: dict) -> None:
+        """Les automatisations réglables, chacune muette si elle est éteinte.
+
+        Aucune n'est irréversible, et aucune ne parle à un fournisseur : le
+        bot n'envoie jamais de message, il prépare et signale.
+        """
+        aujourdhui = date.today().isoformat()
+        if base.lire_etat(CLE_TACHES) == aujourdhui:
+            return
+        base.ecrire_etat(CLE_TACHES, aujourdhui)
+
+        if config.get("auto_relances"):
+            self._signaler_relances(config)
+        if config.get("auto_recherches"):
+            self._combler_les_trous(config)
+        if config.get("auto_reservation"):
+            self._reserver_les_valides(config)
+        if config.get("auto_bulletin"):
+            self._preparer_bulletin(config)
+
+    def _signaler_relances(self, config: dict) -> None:
+        """Compte les relances dues. N'envoie RIEN — c'est la règle du bot."""
+        dus = base.a_relancer(
+            int(config.get("delai_relance_jours", 3)),
+            int(config.get("relances_max", 2)),
+        )
+        if dus:
+            base.logguer(
+                f"{len(dus)} relance(s) à faire aujourd'hui — onglet Prospection. "
+                "Le bot prépare les messages, c'est vous qui envoyez.",
+                "avert",
+            )
+
+    def _combler_les_trous(self, config: dict) -> None:
+        """Ajoute des recherches Facebook là où personne ne sert un matériau.
+
+        C'est l'automatisation qui fait grossir la liste des sources toute
+        seule : le bot voit qu'aucun dépôt ne vend de tôle à Toamasina, et
+        ajoute la recherche qui pourrait en trouver.
+        """
+        from . import marche
+        from .collecteur import analyser_source
+
+        try:
+            couverture = marche.couverture()
+        except Exception as e:
+            base.logguer(f"Trous de couverture illisibles : {e}", "avert")
+            return
+
+        existantes = {
+            (s.get("requete") or "").lower() for s in base.sources()
+        }
+        ajoutees = 0
+        for trou in couverture["trous"]:
+            if ajoutees >= int(config.get("auto_recherches_max", 3)):
+                break
+            if trou["ville"] == "Lieu inconnu":
+                continue
+            requete = f"{trou['famille_nom'].split(' ')[0]} {trou['ville']}"
+            if requete.lower() in existantes:
+                continue
+            try:
+                url, genre, texte = analyser_source(requete)
+            except ValueError:
+                continue
+            base.ajouter_source(requete, url, genre, texte)
+            existantes.add(requete.lower())
+            ajoutees += 1
+        if ajoutees:
+            base.logguer(
+                f"{ajoutees} recherche(s) ajoutée(s) pour combler des trous de "
+                "couverture. Elles seront parcourues au prochain passage.",
+                "info",
+            )
+
+    def _reserver_les_valides(self, config: dict) -> None:
+        """Réserve les fiches validées. Écrit en base Akora, mais en PRIVÉ.
+
+        Une fiche réservée n'est ni publique, ni indexée, ni dans l'annuaire :
+        elle ne s'ouvre qu'avec son jeton. C'est pour ça que cette
+        automatisation peut exister, là où la publication, elle, reste
+        manuelle.
+        """
+        from . import reservation
+
+        a_faire = base.lister_prospects(statut="valide", tri="score", limite=25)
+        if not a_faire:
+            return
+        reussies = 0
+        for prospect in a_faire:
+            try:
+                reservation.reserver(prospect["id"])
+                reussies += 1
+            except Exception as e:
+                base.logguer(f"« {prospect.get('nom')} » non réservé : {e}", "erreur")
+        base.logguer(
+            f"Réservation automatique : {reussies}/{len(a_faire)} fiche(s).",
+            "succes" if reussies else "avert",
+        )
+
+    def _preparer_bulletin(self, config: dict) -> None:
+        """Prépare — et ne publie que si on le lui a EXPLICITEMENT demandé.
+
+        Deux réglages séparés, et ce n'est pas de la coquetterie : préparer un
+        brouillon n'engage rien, le publier signe une page publique au nom
+        d'Akora. Le second interrupteur doit se choisir à part.
+        """
+        from . import fil
+
+        ville = config.get("auto_bulletin_ville") or ""
+        try:
+            brouillon = fil.apercu(ville)
+        except fil.ErreurFil as e:
+            base.logguer(f"Bulletin non préparé : {e}", "info")
+            return
+        except Exception as e:
+            base.logguer(f"Bulletin indisponible : {e}", "avert")
+            return
+
+        if not brouillon["publiable"]:
+            return
+
+        if not config.get("auto_bulletin_publier"):
+            base.logguer(
+                f"Bulletin de prix prêt ({brouillon['lignes']} matériaux) — "
+                "onglet Marché pour le relire et le publier.",
+                "avert",
+            )
+            return
+
+        try:
+            fil.publier(ville)
+        except Exception as e:
+            base.logguer(f"Bulletin non publié : {e}", "erreur")
 
     def _retour_du_site(self) -> None:
         """Une fois par jour : qui a revendiqué, qui a refusé, qui a regardé."""
-        if not self.synchroniser:
+        if not self.synchroniser or not charger().get("auto_synchro", True):
             return
         aujourdhui = date.today().isoformat()
         if base.lire_etat(CLE_SYNCHRO) == aujourdhui:

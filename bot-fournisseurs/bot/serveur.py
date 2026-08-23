@@ -16,7 +16,8 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
 from pydantic import BaseModel
 
-from . import analyse_llm, akora, base, marche, prospection, referentiel, reservation
+from . import analyse_llm, akora, base, fil, marche, prospection, referentiel, reservation
+from . import demandes as mod_demandes
 from . import planificateur as plan
 from .collecteur import (
     analyser_source,
@@ -83,6 +84,15 @@ class MotifEntree(BaseModel):
     motif: str = ""
 
 
+class BulletinEntree(BaseModel):
+    ville: str = ""
+    forcer: bool = False
+
+
+class PublicationEntree(BaseModel):
+    id: str
+
+
 # -- Interface ---------------------------------------------------------------
 @app.get("/")
 def accueil():
@@ -136,6 +146,7 @@ def etat():
         "referentiel": referentiel.est_charge(),
         "bilan": prospection.bilan(),
         "marche": marche.resume(),
+        "demandes": base.compter_demandes(),
     }
 
 
@@ -190,6 +201,9 @@ def voir_prospect(pid: str):
 CHAMPS_MODIFIABLES = {
     "nom", "metier", "telephone", "whatsapp", "ville", "quartier", "adresse",
     "langue", "livre", "retrait_sur_place", "note", "lat", "lng",
+    # `nature` se corrige à la main : un dépôt qui liste ses matériaux sans
+    # prix tout en parlant de livraison peut être lu comme un transporteur.
+    "nature", "rayon_km", "seuil_franco",
 }
 
 
@@ -318,6 +332,104 @@ def synchroniser_referentiel():
 def materiaux_absents():
     """Ce que le terrain vend et que le catalogue fermé d'Akora ignore encore."""
     return base.materiaux_absents()
+
+
+# -- API : véhicules ---------------------------------------------------------
+@app.patch("/api/vehicules/{vid}")
+def corriger_vehicule(vid: int, entree: ChampsEntree):
+    """Corrige un camion. C'est ici qu'on saisit la capacité que le texte ne dit pas.
+
+    « 10 roues » ne se convertit pas en mètres cubes tout seul (règle A2.8) :
+    le bot garde le libellé et laisse le chiffre vide. C'est ce champ qui le
+    remplit, et sans lui aucun prix rendu chantier n'est calculable.
+    """
+    base.modifier_vehicule(vid, **entree.champs)
+    with base._verrou, base.connexion() as cx:
+        ligne = cx.execute(
+            "SELECT prospect_id FROM vehicules WHERE id = ?", (vid,)
+        ).fetchone()
+    if not ligne:
+        raise HTTPException(404, "Véhicule inconnu")
+    from . import fusion
+    return fusion.evaluer(ligne["prospect_id"], charger())
+
+
+@app.delete("/api/vehicules/{vid}")
+def effacer_vehicule(vid: int):
+    base.supprimer_vehicule(vid)
+    return {"ok": True}
+
+
+# -- API : demandes d'acheteurs ----------------------------------------------
+@app.get("/api/demandes")
+def liste_demandes(statut: str = "", famille: str = "", ville: str = ""):
+    return base.lister_demandes(statut=statut, famille=famille, ville=ville)
+
+
+@app.get("/api/demandes/pression")
+def pression(jours: int = 7):
+    """Ce que les acheteurs réclament, du plus demandé au moins."""
+    return mod_demandes.pression_du_marche(jours)
+
+
+@app.get("/api/demandes/{did}")
+def voir_demande(did: str):
+    fiche = base.demande(did)
+    if not fiche:
+        raise HTTPException(404, "Demande inconnue")
+    return fiche
+
+
+@app.get("/api/demandes/{did}/fournisseurs")
+def qui_peut_servir(did: str):
+    """Qui, parmi les prospects, peut servir cette demande."""
+    return mod_demandes.fournisseurs_capables(did)
+
+
+@app.post("/api/demandes/{did}/statut")
+def statut_demande(did: str, entree: StatutEntree):
+    try:
+        return mod_demandes.changer_statut(did, entree.statut, entree.note)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/prospects/{pid}/argumentaire")
+def argumentaire(pid: str):
+    """Les demandes que CE prospect pourrait servir — l'argument qui fait signer."""
+    return mod_demandes.argumentaire(pid)
+
+
+# -- API : fil d'Akora -------------------------------------------------------
+@app.get("/api/fil/apercu")
+def apercu_bulletin(ville: str = ""):
+    """Le brouillon du bulletin de prix. Ne publie RIEN."""
+    try:
+        return fil.apercu(ville)
+    except fil.ErreurFil as e:
+        raise HTTPException(409, str(e))
+    except Exception as e:
+        raise HTTPException(502, str(e))
+
+
+@app.post("/api/fil/publier")
+def publier_bulletin(entree: BulletinEntree):
+    """Écrit le bulletin dans le fil public d'Akora. Sur clic humain uniquement."""
+    try:
+        return fil.publier(entree.ville, entree.forcer)
+    except fil.ErreurFil as e:
+        raise HTTPException(409, str(e))
+    except Exception as e:
+        raise HTTPException(502, str(e))
+
+
+@app.post("/api/fil/retirer")
+def retirer_bulletin(entree: PublicationEntree):
+    try:
+        fil.retirer(entree.id)
+    except Exception as e:
+        raise HTTPException(502, str(e))
+    return {"ok": True}
 
 
 # -- API : marché ------------------------------------------------------------

@@ -280,10 +280,14 @@ def analyser_source(url: str) -> tuple[str, str, str]:
 
     segments = [s for s in decoupe.path.split("/") if s]
     if not segments:
-        raise ValueError(
-            "Cette adresse pointe sur l'accueil de Facebook, pas sur un groupe "
-            "ni une page."
-        )
+        # L'accueil de Facebook n'est pas une impasse : c'est le FIL, et
+        # l'algorithme y pousse justement ce que le compte a l'habitude de
+        # regarder. Sur un compte dédié à la veille matériaux, c'est la source
+        # la plus riche du lot — et la seule qui s'améliore toute seule.
+        tri = dict(parse_qsl(decoupe.query)).get("sk", "")
+        adresse = f"https://www.facebook.com/?sk={tri}" if tri \
+            else "https://www.facebook.com/"
+        return adresse, "fil", ""
     premier = segments[0].lower()
 
     if premier == "search":
@@ -680,9 +684,17 @@ class Collecteur:
                 url += "?sorting_setting=CHRONOLOGICAL"
         elif genre == "page":
             url = _url_fil_de_page(url)
+        elif genre == "fil":
+            # Ici, contrairement aux groupes, on garde le tri PAR DÉFAUT :
+            # c'est tout l'intérêt. L'algorithme de Facebook connaît les
+            # habitudes du compte de veille et lui pousse les dépôts qu'il
+            # regarde — un tri chronologique nous ferait perdre exactement ce
+            # qu'on vient chercher.
+            url = url or "https://www.facebook.com/"
         # genre == 'recherche' : l'adresse porte déjà la requête, on n'y touche pas.
 
-        libelle = {"groupe": "Groupe", "page": "Page", "recherche": "Recherche"}[genre]
+        libelle = {"groupe": "Groupe", "page": "Page", "recherche": "Recherche",
+                   "fil": "Fil d'actualité"}[genre]
         base.logguer(f"{libelle} « {source['nom']} » — ouverture.", "info")
         page.goto(url, wait_until="domcontentloaded", timeout=60_000)
         page.wait_for_timeout(4000)
@@ -847,7 +859,10 @@ class Collecteur:
             shutil.rmtree(dossier, ignore_errors=True)
             return
 
-        if not lecture["offres"]:
+        # Rien à vendre ET rien à transporter : la publication n'apprend rien.
+        # Le « et » compte : un transporteur pur n'a AUCUNE offre de matériau,
+        # et n'exiger que des offres l'aurait fait disparaître en silence.
+        if not lecture["offres"] and not lecture.get("vehicules"):
             base.supprimer_publication(publication_id)
             shutil.rmtree(dossier, ignore_errors=True)
             return
@@ -866,6 +881,10 @@ class Collecteur:
             for offre in lecture["offres"]:
                 if base.ajouter_offre(prospect_id, publication_id, offre):
                     gardees += 1
+            # La flotte : sans elle, aucun « prix rendu chantier » n'est
+            # calculable, et c'est tout le produit d'Akora.
+            for vehicule in lecture.get("vehicules") or []:
+                base.ajouter_vehicule(prospect_id, publication_id, vehicule)
             base.rattacher_publication(publication_id, prospect_id, gardees)
 
         _telecharger_photos(
