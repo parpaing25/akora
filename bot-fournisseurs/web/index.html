@@ -214,6 +214,21 @@
     </div>
     <div class="grille-fiches" id="grille"></div>
     <p class="vide" id="vide" hidden>Rien ici pour l'instant.</p>
+
+    <div class="barre-selection" id="barre-selection" hidden>
+      <span class="compte" id="selection-compte">0 fiche sélectionnée</span>
+      <div class="actions">
+        <button class="bouton fin" id="sel-tout">Tout cocher</button>
+        <button class="bouton fin" id="sel-rien">Décocher</button>
+        <button class="bouton fin" id="sel-rejeter">Écarter</button>
+        <button class="bouton fin" id="sel-valider">Valider</button>
+        <button class="bouton principal fin" id="sel-reserver">Réserver les fiches</button>
+      </div>
+      <small class="note-selection">
+        Le refus définitif reste fiche par fiche : il met un numéro en liste
+        rouge pour toujours.
+      </small>
+    </div>
   </section>
 
   <!-- ══════════════════ DEMANDES ══════════════════ -->
@@ -517,12 +532,22 @@
       </form>
       <div class="actions-collecte">
         <button class="bouton" id="btn-ajouter-fil">+ Ajouter mon fil d'actualité</button>
+        <button class="bouton" id="btn-couper-muettes">Désactiver les sources muettes</button>
       </div>
+      <p class="aide fine">
+        La note dit une seule chose : <strong>faut-il continuer à parcourir
+        cette source ?</strong> Elle se recalcule depuis les données à chaque
+        affichage — fournisseurs distincts, offres appariées au catalogue,
+        offres <em>avec un prix</em>, et fraîcheur. Un compteur de publications
+        ne dit pas si l'une d'elles portait un tarif.
+      </p>
       <div class="tableau-defilant">
         <table class="tableau" id="table-sources">
           <thead><tr>
-            <th>Nom</th><th>Genre</th><th>Adresse</th>
-            <th class="nombre">Trouvés</th><th>Dernière</th><th>Actif</th><th></th>
+            <th class="nombre">Note</th><th>Nom</th><th>Genre</th>
+            <th>Ce qu'elle a donné</th>
+            <th class="nombre">Fourn.</th><th class="nombre">Prix</th>
+            <th>Dernière</th><th>Actif</th><th></th>
           </tr></thead>
           <tbody></tbody>
         </table>

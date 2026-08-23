@@ -290,6 +290,9 @@ COLONNES_AJOUTEES = {
         ("nature", "TEXT NOT NULL DEFAULT 'depot'"),
         ("rayon_km", "REAL"),
         ("seuil_franco", "INTEGER"),
+        # Le site d'un dépôt, quand il en donne un dans sa publication : un
+        # canal de contact de plus, et le signe d'une entreprise établie.
+        ("site_web", "TEXT"),
     ],
 }
 
@@ -526,6 +529,122 @@ def modifier_source(sid: int, **champs) -> None:
         cx.execute(
             f"UPDATE sources SET {assignations} WHERE id = ?", (*champs.values(), sid)
         )
+
+
+def rendement_des_sources() -> list[dict]:
+    """Ce que chaque source a VRAIMENT rapporté, et une note sur 100.
+
+    Le compteur `nb_trouves` disait combien de publications une source avait
+    mises en file — pas si elles valaient quelque chose. Une source peut en
+    donner quarante et pas un seul prix.
+
+    Tout est donc recalculé depuis les données, jamais depuis un compteur qui
+    dérive : publications gardées, fournisseurs distincts, offres appariées au
+    catalogue, offres avec un prix. Une source parcourue sans rien donner
+    depuis longtemps se voit, et se coupe.
+
+    La note répond à une seule question : **faut-il continuer à la parcourir ?**
+    """
+    with _verrou, connexion() as cx:
+        lignes = cx.execute(
+            """SELECT s.*,
+                 (SELECT COUNT(*) FROM publications v WHERE v.source_id = s.id)
+                   AS publications,
+                 (SELECT COUNT(DISTINCT v.prospect_id) FROM publications v
+                   WHERE v.source_id = s.id AND v.prospect_id IS NOT NULL)
+                   AS fournisseurs,
+                 (SELECT COUNT(*) FROM offres o
+                    JOIN publications v ON v.id = o.publication_id
+                   WHERE v.source_id = s.id) AS offres,
+                 (SELECT COUNT(*) FROM offres o
+                    JOIN publications v ON v.id = o.publication_id
+                   WHERE v.source_id = s.id AND o.materiau_slug IS NOT NULL)
+                   AS offres_appariees,
+                 (SELECT COUNT(*) FROM offres o
+                    JOIN publications v ON v.id = o.publication_id
+                   WHERE v.source_id = s.id AND o.prix IS NOT NULL)
+                   AS offres_avec_prix,
+                 (SELECT COUNT(*) FROM demandes d WHERE d.source_id = s.id)
+                   AS demandes,
+                 (SELECT MAX(v.collecte_le) FROM publications v
+                   WHERE v.source_id = s.id) AS derniere_trouvaille
+               FROM sources s ORDER BY s.id"""
+        ).fetchall()
+
+    resultat = []
+    for ligne in lignes:
+        source = dict(ligne)
+        source.update(_noter_source(source))
+        resultat.append(source)
+    # La meilleure d'abord ; celles jamais parcourues restent en bas, sans note
+    # — les classer à zéro laisserait croire qu'elles ont démérité.
+    resultat.sort(key=lambda s: (s["note"] is None, -(s["note"] or 0)))
+    return resultat
+
+
+def _noter_source(source: dict) -> dict:
+    """{note, niveau, verdict} — ou note None si la source n'a jamais tourné."""
+    if not source.get("derniere_collecte"):
+        return {"note": None, "niveau": "neuve",
+                "verdict": "jamais parcourue"}
+
+    fournisseurs = source.get("fournisseurs") or 0
+    appariees = source.get("offres_appariees") or 0
+    avec_prix = source.get("offres_avec_prix") or 0
+    demandes_ = source.get("demandes") or 0
+
+    # Les paliers, plutôt qu'une règle de trois : une source qui donne trois
+    # fournisseurs vaut déjà largement le détour, et la vingtième n'apporte
+    # pas sept fois plus que la troisième.
+    def palier(valeur: int, seuils, points) -> int:
+        for seuil, gain in zip(seuils, points):
+            if valeur <= seuil:
+                return gain
+        return points[-1]
+
+    note = 0
+    note += palier(fournisseurs, (0, 1, 3, 8), (0, 12, 24, 32, 35))
+    note += palier(appariees, (0, 2, 6, 15), (0, 8, 16, 22, 25))
+    # Le prix pèse autant que l'appariement : c'est ce qui manque le plus, et
+    # une source qui en ramène régulièrement vaut deux qui n'en donnent aucun.
+    note += palier(avec_prix, (0, 1, 4, 10), (0, 10, 18, 22, 25))
+    note += palier(demandes_, (0, 1, 4), (0, 3, 5, 5))
+
+    age = _age_en_jours(source.get("derniere_trouvaille"))
+    if age is None:
+        fraicheur, mot = 0, "rien trouvé pour l'instant"
+    elif age <= 7:
+        fraicheur, mot = 10, "active cette semaine"
+    elif age <= 30:
+        fraicheur, mot = 6, f"dernière trouvaille il y a {age} j"
+    elif age <= 90:
+        fraicheur, mot = 2, f"muette depuis {age} j"
+    else:
+        fraicheur, mot = 0, f"muette depuis {age} j"
+    note += fraicheur
+
+    note = max(0, min(100, note))
+    if note >= 65:
+        niveau, verdict = "fiable", f"{fournisseurs} fournisseur(s), {avec_prix} prix — {mot}"
+    elif note >= 35:
+        niveau, verdict = "moyenne", f"{fournisseurs} fournisseur(s), {avec_prix} prix — {mot}"
+    elif source.get("publications"):
+        niveau, verdict = "faible", f"{source['publications']} publication(s), rien d'exploitable — {mot}"
+    else:
+        niveau, verdict = "muette", f"parcourue, aucune publication retenue — {mot}"
+    return {"note": note, "niveau": niveau, "verdict": verdict}
+
+
+def _age_en_jours(horodatage: str | None) -> int | None:
+    if not horodatage:
+        return None
+    try:
+        quand = datetime.fromisoformat(horodatage)
+    except ValueError:
+        return None
+    if quand.tzinfo is None:
+        quand = quand.replace(tzinfo=timezone.utc)
+    return max(0, int((datetime.now(timezone.utc) - quand).total_seconds() // 86400))
 
 
 def supprimer_source(sid: int) -> None:

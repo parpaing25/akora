@@ -649,3 +649,50 @@ label.case input { width: auto; min-height: 0; }
 .repli textarea { width: 100%; font-family: inherit; font-size: .88rem;
                   padding: 8px; border: 1px solid var(--bordure);
                   border-radius: 8px; margin: 6px 0; color: var(--beton); }
+
+/* ── Sélection multiple sur les cartes ────────────────────────────────────── */
+.enveloppe-fiche { position: relative; display: flex; }
+.enveloppe-fiche .fiche { flex: 1; }
+.enveloppe-fiche.cochee .fiche { border-color: var(--laterite); box-shadow: 0 0 0 2px var(--laterite-doux), var(--ombre); }
+.coche {
+  position: absolute; top: 10px; left: 10px; z-index: 2;
+  width: 26px; height: 26px; margin: 0; cursor: pointer;
+}
+.coche input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+.coche span {
+  display: block; width: 26px; height: 26px; border-radius: 7px;
+  background: rgb(255 255 255 / .94); border: 1.5px solid var(--bordure);
+  transition: background .12s, border-color .12s;
+}
+.coche span::after {
+  content: ""; position: absolute; left: 9px; top: 5px;
+  width: 6px; height: 12px; border: solid #fff; border-width: 0 2.5px 2.5px 0;
+  transform: rotate(45deg); opacity: 0;
+}
+.coche input:checked + span { background: var(--laterite); border-color: var(--laterite); }
+.coche input:checked + span::after { opacity: 1; }
+.coche input:focus-visible + span { outline: 2px solid var(--laterite); outline-offset: 2px; }
+
+.barre-selection {
+  position: sticky; bottom: 16px; z-index: 30;
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  margin-top: 18px; padding: 12px 18px;
+  background: var(--beton); color: #fff;
+  border-radius: var(--rayon); box-shadow: var(--ombre);
+}
+.barre-selection .compte { font-weight: 600; font-variant-numeric: tabular-nums; }
+.barre-selection .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+.barre-selection .bouton { margin: 0; background: #fff; border-color: #fff; }
+.barre-selection .bouton.principal { background: var(--laterite); border-color: var(--laterite); color: #fff; }
+.barre-selection .note-selection { flex-basis: 100%; font-size: 12px; opacity: .75; }
+
+/* ── Rendement des sources ────────────────────────────────────────────────── */
+.note-source {
+  display: inline-block; min-width: 34px; padding: 2px 8px; border-radius: 999px;
+  font-size: 12px; font-weight: 700; text-align: center; font-variant-numeric: tabular-nums;
+}
+.note-source.fiable  { background: var(--succes-doux); color: var(--succes); }
+.note-source.moyenne { background: var(--jaune-doux); color: hsl(38 80% 34%); }
+.note-source.faible  { background: var(--danger-doux); color: var(--danger); }
+.note-source.muette  { background: var(--danger-doux); color: var(--danger); }
+.note-source.neuve   { background: var(--muted); color: var(--beton-doux); }

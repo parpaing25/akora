@@ -253,6 +253,23 @@ JS_EXTRAIRE_FIL = """
         /facebook\\.com\\/(profile\\.php\\?id=|[A-Za-z0-9.]+\\/?$)/.test(h)) || '';
     }
 
+    // D'OÙ vient cette publication. Dans le fil, une publication de groupe
+    // porte un lien vers son groupe : c'est ce qui permet de DÉCOUVRIR des
+    // sources sans aller les chercher — et pas n'importe lesquelles, celles
+    // qui donnent déjà ce qu'on veut.
+    const lienGroupe = liens.find(h => /facebook\\.com\\/groups\\/[^/?]+/.test(h)) || '';
+    let origineNom = '';
+    if (lienGroupe) {
+      const ancre = [...el.querySelectorAll('a[href]')]
+        .find(a => a.href.includes('/groups/') && (a.innerText || '').trim().length > 2);
+      origineNom = (ancre?.innerText || '').split('\\n')[0].trim();
+    }
+
+    // Les sites cités dans le texte. Un dépôt qui a son site est une
+    // entreprise établie, et c'est un canal de contact de plus.
+    const sites = (texte.match(/https?:\\/\\/[^\\s)]+/g) || [])
+      .filter(u => !/facebook\\.com|fb\\.me|fb\\.watch|messenger\\.com/.test(u));
+
     return {
       texte,
       permalien: permalien.split('?')[0],
@@ -261,6 +278,9 @@ JS_EXTRAIRE_FIL = """
       heure,
       auteur,
       auteur_url: auteurUrl.split('?ref=')[0],
+      origine_url: lienGroupe.split('?')[0],
+      origine_nom: origineNom,
+      sites,
       posinset: el.getAttribute('aria-posinset') || '',
     };
   }).filter(p => p.texte.length > 10 || p.nb_images > 0);
@@ -671,6 +691,9 @@ class Collecteur:
         # peuvent tomber sur le MÊME dépôt (il poste dans plusieurs groupes),
         # et deux créations simultanées feraient deux fiches au lieu d'une.
         self._verrou_fusion = threading.Lock()
+        # Combien de publications retenues viennent de chaque groupe repéré
+        # dans le fil : c'est la preuve qui fait monter la note d'un candidat.
+        self._origines: dict[str, int] = {}
 
     # -- Session Facebook ---------------------------------------------------
     def _contexte(self, pw, visible: bool):
@@ -969,6 +992,11 @@ class Collecteur:
 
                 if self._inscrire_post(page, post, source, cle):
                     retenues += 1
+                    # Retenue, donc la source d'origine a fait ses preuves.
+                    try:
+                        self._noter_origine(post, source)
+                    except Exception as e:
+                        base.logguer(f"Origine non notée : {str(e)[:80]}", "avert")
 
             steriles = steriles + 1 if neufs == 0 else 0
             if steriles >= 2 or retenues >= plafond:
@@ -1090,6 +1118,72 @@ class Collecteur:
         self.etat["prix_commentaires"] = self.etat.get("prix_commentaires", 0) + 1
         return "\n" + "\n".join(gardes[:4])
 
+    def _noter_origine(self, post: dict, source: dict) -> None:
+        """Propose comme source le groupe d'où vient une publication retenue.
+
+        C'est la découverte à l'endroit : au lieu de deviner quels groupes
+        pourraient être bons, on regarde **d'où viennent les publications qu'on
+        a effectivement gardées**. Une source qui a déjà donné un vendeur avec
+        un prix n'est plus une hypothèse.
+
+        Elle n'est pas adoptée pour autant : elle rejoint les candidats, avec
+        pour preuve le nombre de publications utiles qu'elle a déjà fournies.
+        C'est Andry qui tranche — adhérer à un groupe est un acte visible
+        depuis son compte.
+        """
+        url = (post.get("origine_url") or "").split("?")[0].rstrip("/")
+        if not url or "/groups/" not in url:
+            return
+        cle = url.rsplit("/", 1)[-1]
+        if not cle:
+            return
+
+        # Déjà surveillée : rien à proposer. La comparaison se fait sur
+        # l'identifiant, pas sur l'adresse — « /groups/123 » et
+        # « /groups/123/ » sont le même groupe.
+        for connue in base.sources():
+            if cle and cle in (connue.get("url") or ""):
+                return
+        if cle in base.candidats_ecartes():
+            return
+
+        vues = self._origines.get(cle, 0) + 1
+        self._origines[cle] = vues
+
+        # La note monte avec les preuves : une publication utile ne fait pas
+        # une source, trois commencent à le dire.
+        note = min(90, 35 + vues * 18)
+        nouveau = base.ajouter_candidat({
+            "cle": cle,
+            "genre": "groupe",
+            "nom": (post.get("origine_nom") or f"Groupe {cle}")[:90],
+            "url": url,
+            "requete": f"repéré dans le fil via « {source.get('nom')} »",
+            "note": note,
+            "niveau": "chaud" if vues >= 3 else "tiede",
+            "details": [f"{vues} publication(s) retenue(s) viennent de ce groupe"],
+        })
+        if nouveau:
+            base.logguer(
+                f"Nouvelle source repérée dans le fil : « {post.get('origine_nom') or cle} » "
+                "— onglet Nouvelles sources pour trancher.",
+                "info",
+            )
+
+    def _noter_sites(self, post: dict, prospect_id: str) -> None:
+        """Garde le site web cité par un dépôt, sur SA fiche.
+
+        Le bot ne parcourt pas les sites — ce n'est pas construit. Mais un
+        dépôt qui donne son adresse web est une entreprise établie, et c'est un
+        canal de contact de plus au moment d'appeler.
+        """
+        sites = [s for s in (post.get("sites") or []) if len(s) > 12][:1]
+        if not sites:
+            return
+        fiche = base.prospect(prospect_id)
+        if fiche and not fiche.get("site_web"):
+            base.modifier_prospect(prospect_id, {"site_web": sites[0][:200]})
+
     def _inscrire_demande(self, post: dict, source: dict, cle: str) -> bool:
         """Range une demande d'acheteur. Pas de photo, pas d'atelier.
 
@@ -1172,6 +1266,7 @@ class Collecteur:
         _telecharger_photos(
             post.get("images") or [], dossier, prospect_id, publication_id, cfg
         )
+        self._noter_sites(post, prospect_id)
 
         if nouveau:
             fusion.controler_annuaire(prospect_id)

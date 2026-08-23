@@ -67,6 +67,10 @@ class ChoixEntree(BaseModel):
     ids: list[str]
 
 
+class SeuilEntree(BaseModel):
+    seuil: int = 20
+
+
 class SourceEntree(BaseModel):
     nom: str = ""
     url: str
@@ -251,6 +255,42 @@ def maj_source(sid: int, entree: ChampsEntree):
     return {"ok": True}
 
 
+@app.get("/api/sources/rendement")
+def rendement_sources():
+    """Ce que chaque source a vraiment rapporté, et une note sur 100.
+
+    Recalculé depuis les données à chaque appel — jamais depuis un compteur.
+    Un compteur dit combien de publications une source a mises en file ; il ne
+    dit pas si l'une d'elles portait un prix.
+    """
+    return base.rendement_des_sources()
+
+
+@app.post("/api/sources/couper-les-muettes")
+def couper_les_muettes(entree: SeuilEntree | None = None):
+    """Désactive les sources qui n'ont rien donné, sans les supprimer.
+
+    Désactiver plutôt que supprimer : un groupe peut se réveiller, et une
+    source supprimée emporte l'historique qui explique pourquoi on l'avait
+    ajoutée.
+    """
+    seuil = (entree.seuil if entree else 20)
+    coupees = []
+    for source in base.rendement_des_sources():
+        if not source["actif"] or source["note"] is None:
+            continue
+        if source["note"] < seuil:
+            base.modifier_source(source["id"], actif=0)
+            coupees.append(source["nom"])
+    if coupees:
+        base.logguer(
+            f"{len(coupees)} source(s) muette(s) désactivée(s) : "
+            + ", ".join(coupees[:6]) + ("…" if len(coupees) > 6 else ""),
+            "avert",
+        )
+    return {"coupees": len(coupees), "noms": coupees}
+
+
 @app.delete("/api/sources/{sid}")
 def effacer_source(sid: int):
     base.supprimer_source(sid)
@@ -280,7 +320,7 @@ CHAMPS_MODIFIABLES = {
     "langue", "livre", "retrait_sur_place", "note", "lat", "lng",
     # `nature` se corrige à la main : un dépôt qui liste ses matériaux sans
     # prix tout en parlant de livraison peut être lu comme un transporteur.
-    "nature", "rayon_km", "seuil_franco",
+    "nature", "rayon_km", "seuil_franco", "site_web",
 }
 
 
@@ -305,6 +345,64 @@ def corriger_prospect(pid: str, entree: ChampsEntree):
     base.modifier_prospect(pid, champs)
     from . import fusion
     return fusion.evaluer(pid, charger())
+
+
+# ⚠ Cette route doit rester AVANT `/api/prospects/lot/{action}` :
+# FastAPI teste dans l'ordre de declaration, et « reserver » serait
+# sinon lu comme une valeur d'`action`, donc refuse.
+@app.post("/api/prospects/lot/reserver")
+def reserver_selection(entree: ChoixEntree):
+    """Réserve la fiche des prospects cochés, l'un après l'autre."""
+    def travail():
+        reussies = 0
+        for rang, pid in enumerate(entree.ids[:200], start=1):
+            fiche = base.prospect(pid)
+            tache["detail"] = f"{rang}/{len(entree.ids)} — {(fiche or {}).get('nom', '')}"
+            try:
+                reservation.reserver(pid)
+                reussies += 1
+            except Exception as e:
+                base.logguer(f"« {(fiche or {}).get('nom')} » non réservé : {e}", "erreur")
+        base.logguer(
+            f"Réservation de la sélection : {reussies}/{len(entree.ids)} fiche(s).",
+            "succes" if reussies else "avert",
+        )
+
+    if not _lancer("reservation_lot", travail):
+        raise HTTPException(409, "Une autre tâche est déjà en cours.")
+    return {"lancee": True, "nombre": len(entree.ids)}
+
+
+@app.post("/api/prospects/lot/{action}")
+def trancher_prospects_en_lot(action: str, entree: ChoixEntree):
+    """Valide, écarte ou réserve plusieurs fiches cochées d'un coup.
+
+    Valider trente dépôts un par un, c'est trente allers-retours dans le
+    panneau. La sélection multiple existait déjà pour les candidats de
+    sources ; elle manquait là où il y a le plus de volume.
+
+    Le refus n'est PAS proposé en lot, et c'est délibéré : il met un numéro en
+    liste rouge pour toujours et retire la fiche du site. Une case cochée par
+    mégarde ne doit pas pouvoir faire ça à trente dépôts.
+    """
+    if action not in ("valide", "rejete", "a_trier"):
+        raise HTTPException(
+            400,
+            "Action en lot inconnue. Le refus définitif se fait fiche par fiche.",
+        )
+    faits, echecs = 0, []
+    for pid in entree.ids[:500]:
+        try:
+            prospection.changer_statut(pid, action)
+            faits += 1
+        except Exception as e:
+            echecs.append(f"{pid[:8]} : {e}")
+    base.logguer(
+        f"{faits} fiche(s) passée(s) en « {action} » en une fois."
+        + (f" {len(echecs)} échec(s)." if echecs else ""),
+        "succes" if faits else "avert",
+    )
+    return {"faits": faits, "echecs": echecs[:5]}
 
 
 @app.post("/api/prospects/{pid}/statut")

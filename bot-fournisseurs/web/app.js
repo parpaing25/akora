@@ -21,6 +21,10 @@ const etat = {
   config: {},
   sources: [],
   dernierEtat: null,
+  // Les fiches cochees. Un Set, pas un tableau : on coche, on filtre, on
+  // recoche — l'appartenance doit se tester en temps constant, et la
+  // selection survit au rechargement de la grille.
+  selection: new Set(),
 };
 
 // ── Utilitaires ────────────────────────────────────────────────────────────
@@ -336,6 +340,14 @@ async function chargerProspects() {
   $$(".fiche", grille).forEach((carte) => {
     carte.addEventListener("click", () => ouvrirPanneau(carte.dataset.id));
   });
+  $$("[data-cocher]", grille).forEach((case_) => {
+    case_.addEventListener("change", () =>
+      basculerSelection(case_.dataset.cocher, case_.checked));
+  });
+  // Une fiche disparue du filtre reste selectionnee : c'est voulu, on peut
+  // constituer une selection en plusieurs passes. Mais la barre doit dire
+  // combien, pas combien sont visibles.
+  rendreBarreSelection();
 }
 
 function carteProspect(p) {
@@ -344,7 +356,13 @@ function carteProspect(p) {
     : `<span class="sans-photo">pas de photo</span>`;
   const types = (p.types_vendus || "").split(",").filter(Boolean).slice(0, 3);
   const manques = (p.manques || []).slice(0, 2);
+  const cochee = etat.selection.has(p.id);
   return `
+  <div class="enveloppe-fiche ${cochee ? "cochee" : ""}" data-enveloppe="${p.id}">
+  <label class="coche" title="Sélectionner pour agir en lot">
+    <input type="checkbox" data-cocher="${p.id}" ${cochee ? "checked" : ""}>
+    <span></span>
+  </label>
   <button class="fiche" data-id="${p.id}">
     <div class="fiche-image">
       ${photo}
@@ -364,8 +382,69 @@ function carteProspect(p) {
         ${manques.map((m) => `<span class="badge pointille">${echapper(m)}</span>`).join("")}
       </div>
     </div>
-  </button>`;
+  </button>
+  </div>`;
 }
+
+/* ── Sélection multiple ────────────────────────────────────────────────────
+   Valider trente dépôts un par un, c'est trente allers-retours dans le
+   panneau. La sélection survit au rechargement de la grille : on coche, on
+   filtre, on coche encore, puis on agit. */
+
+function basculerSelection(pid, coche) {
+  if (coche) etat.selection.add(pid); else etat.selection.delete(pid);
+  const enveloppe = $(`[data-enveloppe="${pid}"]`);
+  if (enveloppe) enveloppe.classList.toggle("cochee", coche);
+  rendreBarreSelection();
+}
+
+function rendreBarreSelection() {
+  const barre = $("#barre-selection");
+  if (!barre) return;
+  const nombre = etat.selection.size;
+  barre.hidden = nombre === 0;
+  if (!nombre) return;
+  $("#selection-compte").textContent =
+    `${nombre} fiche${nombre > 1 ? "s" : ""} sélectionnée${nombre > 1 ? "s" : ""}`;
+}
+
+async function agirSurLaSelection(action) {
+  const ids = [...etat.selection];
+  if (!ids.length) return;
+  try {
+    if (action === "reserver") {
+      await api("/api/prospects/lot/reserver", { method: "POST", corps: { ids } });
+      toast(`Réservation de ${ids.length} fiche(s) lancée.`, "succes");
+    } else {
+      const r = await api("/api/prospects/lot/" + action, {
+        method: "POST", corps: { ids },
+      });
+      toast(`${r.faits} fiche(s) mise(s) à jour.`, "succes");
+    }
+    etat.selection.clear();
+    rendreBarreSelection();
+    chargerProspects();
+  } catch (e) { toast(e.message, "erreur"); }
+}
+
+surClic("#sel-valider", () => agirSurLaSelection("valide"));
+surClic("#sel-rejeter", () => agirSurLaSelection("rejete"));
+surClic("#sel-reserver", () => agirSurLaSelection("reserver"));
+surClic("#sel-rien", () => {
+  etat.selection.clear();
+  $$("[data-cocher]").forEach((c) => { c.checked = false; });
+  $$("[data-enveloppe]").forEach((e) => e.classList.remove("cochee"));
+  rendreBarreSelection();
+});
+surClic("#sel-tout", () => {
+  // « Tout » veut dire ce qui est AFFICHE, pas toute la base : cocher
+  // silencieusement des fiches qu'on ne voit pas est la meilleure facon de
+  // valider ce qu'on n'a pas regarde.
+  etat.prospects.forEach((p) => etat.selection.add(p.id));
+  $$("[data-cocher]").forEach((c) => { c.checked = true; });
+  $$("[data-enveloppe]").forEach((e) => e.classList.add("cochee"));
+  rendreBarreSelection();
+});
 
 $$("#filtres-statut .puce").forEach((puce) => {
   puce.addEventListener("click", () => {
@@ -884,20 +963,33 @@ $("#marche-famille").onchange = chargerMarche;
 $("#marche-ville").onchange = chargerMarche;
 
 // ── Vue Sources ────────────────────────────────────────────────────────────
-const LIBELLES_GENRE = { groupe: "Groupe", page: "Page", recherche: "Recherche" };
+const LIBELLES_GENRE = {
+  groupe: "Groupe", page: "Page", recherche: "Recherche", fil: "Fil",
+};
 
 async function chargerSources() {
-  etat.sources = await api("/api/sources");
+  // Le RENDEMENT, pas la liste brute : une source se juge sur ce qu'elle a
+  // donné, pas sur le fait qu'elle existe. Tout est recalculé côté serveur à
+  // chaque affichage, jamais lu dans un compteur qui dérive.
+  etat.sources = await api("/api/sources/rendement");
   $("#table-sources tbody").innerHTML = etat.sources.map((s) => `
     <tr data-source="${s.id}">
-      <td><input type="text" data-source-champ="nom" value="${echapper(s.nom)}"></td>
-      <td><span class="badge ${s.genre === "recherche" ? "jaune" : "gris"}">${LIBELLES_GENRE[s.genre] || s.genre}</span></td>
-      <td><a href="${echapper(s.url)}" target="_blank" rel="noopener"><small>${echapper(s.url.slice(0, 60))}</small></a></td>
-      <td class="nombre">${s.nb_trouves}</td>
+      <td class="nombre">
+        <span class="note-source ${s.niveau}">${s.note === null ? "—" : s.note}</span>
+      </td>
+      <td>
+        <input type="text" data-source-champ="nom" value="${echapper(s.nom)}">
+        <a href="${echapper(s.url)}" target="_blank" rel="noopener"
+           title="${echapper(s.url)}"><small>ouvrir</small></a>
+      </td>
+      <td><span class="badge ${s.genre === "recherche" ? "jaune" : s.genre === "fil" ? "bleu" : "gris"}">${LIBELLES_GENRE[s.genre] || s.genre}</span></td>
+      <td><small>${echapper(s.verdict || "")}</small></td>
+      <td class="nombre">${s.fournisseurs ?? 0}</td>
+      <td class="nombre">${s.offres_avec_prix ?? 0}</td>
       <td><small>${jour(s.derniere_collecte)}</small></td>
       <td><input type="checkbox" data-source-actif ${s.actif ? "checked" : ""}></td>
       <td><button class="lien-discret" data-supprimer-source>Supprimer</button></td>
-    </tr>`).join("") || '<tr><td colspan="7" class="vide">Aucune source.</td></tr>';
+    </tr>`).join("") || '<tr><td colspan="9" class="vide">Aucune source.</td></tr>';
 
   $$("#table-sources [data-source-champ]").forEach((entree) => {
     entree.addEventListener("change", () => {
@@ -942,6 +1034,32 @@ $("#form-source").addEventListener("submit", async (e) => {
     $("#source-url").value = "";
     chargerSources();
     toast("Source ajoutée.", "succes");
+  } catch (e) { toast(e.message, "erreur"); }
+});
+
+surClic("#btn-couper-muettes", async () => {
+  const muettes = etat.sources.filter((s) => s.actif && s.note !== null && s.note < 20);
+  if (!muettes.length) return toast("Aucune source muette a couper.");
+  const lignes = muettes.slice(0, 8).map((s) => `• ${s.nom} — ${s.verdict}`);
+  if (muettes.length > 8) lignes.push(`… et ${muettes.length - 8} autre(s)`);
+  const accord = confirm(
+    [
+      `Désactiver ${muettes.length} source(s) qui n'ont rien donné ?`,
+      "",
+      ...lignes,
+      "",
+      "Elles sont DÉSACTIVÉES, pas supprimées : un groupe peut se réveiller,",
+      "et une source supprimée emporte l'historique qui explique pourquoi on",
+      "l'avait ajoutée.",
+    ].join("\n")
+  );
+  if (!accord) return;
+  try {
+    const r = await api("/api/sources/couper-les-muettes", {
+      method: "POST", corps: { seuil: 20 },
+    });
+    toast(`${r.coupees} source(s) desactivee(s).`, "succes");
+    chargerSources();
   } catch (e) { toast(e.message, "erreur"); }
 });
 
