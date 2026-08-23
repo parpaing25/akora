@@ -1219,11 +1219,12 @@ async function chargerArbre() {
  *  Nouvelles sources : le bot cherche, vous tranchez.
  * ------------------------------------------------------------------------ */
 const cochesCandidats = new Set();
+let origineCandidats = "";
 
 async function chargerCandidats() {
   let d;
   try {
-    d = await api("/api/candidats");
+    d = await api(`/api/candidats?origine=${origineCandidats}`);
   } catch (e) {
     toast(e.message, "erreur");
     return;
@@ -1246,8 +1247,15 @@ async function chargerCandidats() {
     .map((c) => {
       const eff = c.effectif
         ? `${c.effectif.toLocaleString("fr-FR")} ${c.genre === "page" ? "abonnés" : "membres"}`
+        : c.origine === "fil"
+        ? ""
         : "effectif inconnu";
       const ryt = c.rythme ? `${c.rythme} pub./jour` : "";
+      // Une source repérée sur le fil se juge sur ce qu'elle a DONNÉ.
+      const vu = c.vues
+        ? `<strong>${c.retenues}/${c.vues}</strong> utiles` +
+          (c.publiees ? ` · <strong>${c.publiees}</strong> publiée(s)` : "")
+        : "";
       const alertes = (c.alertes || [])
         .map((a) => `<li>${echapper(a)}</li>`)
         .join("");
@@ -1268,17 +1276,25 @@ async function chargerCandidats() {
         <div class="candidat-corps">
           <h3>${echapper(c.nom)}
             <span class="badge ${c.genre}">${c.genre}</span>
+            ${c.origine === "fil" ? '<span class="badge fil">vu sur le fil</span>' : ""}
             ${c.prive ? '<span class="badge manque">privé</span>' : ""}
           </h3>
           <p class="candidat-chiffres">
-            <strong>${eff}</strong>${ryt ? " · " + ryt : ""}
+            ${vu ? vu + (eff || ryt ? " · " : "") : ""}
+            ${eff ? `<strong>${eff}</strong>` : ""}${ryt ? " · " + ryt : ""}
             ${c.categorie ? " · " + echapper(c.categorie) : ""}
             ${c.lieu ? " · " + echapper(c.lieu) : ""}
           </p>
           <div class="candidat-barres">${barres}</div>
           ${alertes ? `<ul class="candidat-alertes">${alertes}</ul>` : ""}
-          <p class="discret">Trouvé par « ${echapper(c.requete || "")} » —
-            <a href="${c.url}" target="_blank" rel="noopener">voir sur Facebook</a></p>
+          <p class="discret">${
+            c.origine === "fil"
+              ? "Repéré sur votre fil d'actualité"
+              : `Trouvé par « ${echapper(c.requete || "")} »`
+          } —
+            <a href="${c.url}" target="_blank" rel="noopener">${
+              c.genre === "site" ? "voir le site" : "voir sur Facebook"
+            }</a></p>
         </div>
         <div class="candidat-actions">
           <button class="bouton" data-decider="ecarte" data-cle="${c.cle}">Écarter</button>
@@ -1336,6 +1352,16 @@ async function trancherLot(decision) {
   }
   chargerCandidats();
 }
+
+$$(".filtres-candidats .puce").forEach((b) =>
+  b.addEventListener("click", () => {
+    origineCandidats = b.dataset.origine;
+    $$(".filtres-candidats .puce").forEach((p) =>
+      p.classList.toggle("actif", p === b)
+    );
+    chargerCandidats();
+  })
+);
 
 $("#btn-cand-adopter").addEventListener("click", () => trancherLot("adopte"));
 $("#btn-cand-ecarter").addEventListener("click", () => trancherLot("ecarte"));

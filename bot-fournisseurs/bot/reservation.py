@@ -310,6 +310,12 @@ def reserver(prospect_id: str, rappel=None) -> dict:
         f"Fiche réservée avec {len(offres)} produit(s), {len(flotte)} véhicule(s) "
         f"et {len(urls)} photo(s).",
     )
+    # On crédite le groupe d'où venait la publication : une fiche arrivée
+    # jusqu'en ligne est la seule preuve solide qu'il vaut la peine d'être
+    # suivi. Le nombre de membres, lui, ne prouve rien.
+    if fiche.get("origine_cle"):
+        base.compter_publication_source(fiche["origine_cle"])
+
     base.logguer(f"Fiche réservée : {url}", "succes")
     return {"url": url, "produits": len(offres), "vehicules": len(flotte),
             "photos": len(urls)}

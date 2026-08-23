@@ -696,3 +696,7 @@ label.case input { width: auto; min-height: 0; }
 .note-source.faible  { background: var(--danger-doux); color: var(--danger); }
 .note-source.muette  { background: var(--danger-doux); color: var(--danger); }
 .note-source.neuve   { background: var(--muted); color: var(--beton-doux); }
+
+.badge.site   { background: #e8f6ef; color: #1f6b4d; }
+.badge.fil    { background: var(--bleu-doux); color: var(--laterite-fort); }
+.filtres-candidats { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }

@@ -113,6 +113,11 @@ def enregistrer(lecture: dict, post: dict, source: dict, cfg: dict) -> tuple[str
         "page_url": _url_propre(post.get("auteur_url") or "")
         or (_url_propre(source.get("url") or "") if source.get("genre") == "page" else None),
         "auteur_fb": auteur,
+        # D'où venait la publication : sert à créditer la source une fois la
+        # fiche réservée.
+        "origine_cle": ((post.get("origine_url") or "").split("?")[0]
+                        .rstrip("/").rsplit("/", 1)[-1]
+                        if "/groups/" in (post.get("origine_url") or "") else None),
         "ville": lecture.get("ville"),
         "quartier": lecture.get("quartier"),
         "adresse": lecture.get("adresse"),

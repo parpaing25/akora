@@ -938,6 +938,13 @@ class Collecteur:
                     continue
                 vus_dans_ce_tour.add(cle)
                 self.etat["parcourues"] += 1
+                # La vue se compte ICI, avant tout filtre. Comptée plus bas,
+                # après le tri, chaque source afficherait 100 % de rendement et
+                # le chiffre ne voudrait plus rien dire.
+                try:
+                    self._noter_origine(post, source, retenue=False)
+                except Exception as e:                       # noqa: BLE001
+                    base.logguer(f"Origine non notée : {str(e)[:80]}", "avert")
 
                 age = _age_en_jours(post.get("heure", ""))
                 if age is not None and age > int(cfg["jours_max"]):
@@ -994,7 +1001,8 @@ class Collecteur:
                     retenues += 1
                     # Retenue, donc la source d'origine a fait ses preuves.
                     try:
-                        self._noter_origine(post, source)
+                        self._noter_origine(post, source, retenue=True,
+                                            deja_vue=True)
                     except Exception as e:
                         base.logguer(f"Origine non notée : {str(e)[:80]}", "avert")
 
@@ -1118,57 +1126,35 @@ class Collecteur:
         self.etat["prix_commentaires"] = self.etat.get("prix_commentaires", 0) + 1
         return "\n" + "\n".join(gardes[:4])
 
-    def _noter_origine(self, post: dict, source: dict) -> None:
-        """Propose comme source le groupe d'où vient une publication retenue.
+    def _noter_origine(self, post: dict, source: dict, retenue: bool = False,
+                       deja_vue: bool = False) -> None:
+        """Propose comme source le groupe d'où vient une publication du fil.
 
         C'est la découverte à l'endroit : au lieu de deviner quels groupes
-        pourraient être bons, on regarde **d'où viennent les publications qu'on
-        a effectivement gardées**. Une source qui a déjà donné un vendeur avec
-        un prix n'est plus une hypothèse.
+        pourraient être bons, on regarde **d'où viennent les publications**, et
+        surtout quelle proportion d'entre elles nous sert. Compter seulement
+        les retenues donnait une note qui montait avec le temps sans jamais
+        dire si le groupe fait perdre neuf lectures sur dix.
 
         Elle n'est pas adoptée pour autant : elle rejoint les candidats, avec
-        pour preuve le nombre de publications utiles qu'elle a déjà fournies.
-        C'est Andry qui tranche — adhérer à un groupe est un acte visible
-        depuis son compte.
+        pour preuve son rendement. C'est Andry qui tranche — adhérer à un
+        groupe est un acte visible depuis son compte.
         """
         url = (post.get("origine_url") or "").split("?")[0].rstrip("/")
-        if not url or "/groups/" not in url:
-            return
-        cle = url.rsplit("/", 1)[-1]
-        if not cle:
-            return
+        if url and "/groups/" in url:
+            cle = url.rsplit("/", 1)[-1]
+            if cle:
+                base.observer_source(
+                    cle, "groupe",
+                    (post.get("origine_nom") or f"Groupe {cle}")[:90], url,
+                    retenue=retenue, deja_vue=deja_vue,
+                )
 
-        # Déjà surveillée : rien à proposer. La comparaison se fait sur
-        # l'identifiant, pas sur l'adresse — « /groups/123 » et
-        # « /groups/123/ » sont le même groupe.
-        for connue in base.sources():
-            if cle and cle in (connue.get("url") or ""):
-                return
-        if cle in base.candidats_ecartes():
-            return
-
-        vues = self._origines.get(cle, 0) + 1
-        self._origines[cle] = vues
-
-        # La note monte avec les preuves : une publication utile ne fait pas
-        # une source, trois commencent à le dire.
-        note = min(90, 35 + vues * 18)
-        nouveau = base.ajouter_candidat({
-            "cle": cle,
-            "genre": "groupe",
-            "nom": (post.get("origine_nom") or f"Groupe {cle}")[:90],
-            "url": url,
-            "requete": f"repéré dans le fil via « {source.get('nom')} »",
-            "note": note,
-            "niveau": "chaud" if vues >= 3 else "tiede",
-            "details": [f"{vues} publication(s) retenue(s) viennent de ce groupe"],
-        })
-        if nouveau:
-            base.logguer(
-                f"Nouvelle source repérée dans le fil : « {post.get('origine_nom') or cle} » "
-                "— onglet Nouvelles sources pour trancher.",
-                "info",
-            )
+        # Le site d'un dépôt cité dans une publication est une source à part
+        # entière — et souvent la meilleure : aucun algorithme entre lui et nous.
+        for domaine in (post.get("sites") or [])[:3]:
+            base.observer_source(domaine, "site", domaine, f"https://{domaine}",
+                                 retenue=retenue, deja_vue=deja_vue)
 
     def _noter_sites(self, post: dict, prospect_id: str) -> None:
         """Garde le site web cité par un dépôt, sur SA fiche.

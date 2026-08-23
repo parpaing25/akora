@@ -253,6 +253,15 @@ CREATE TABLE IF NOT EXISTS candidats_sources (
     lieu       TEXT,
     categorie  TEXT,
     requete    TEXT,                      -- la recherche qui l'a fait sortir
+    -- Comment on l'a connu, et ce qu'il a RÉELLEMENT donné. Une source vue à
+    -- l'œuvre sur le fil vaut mieux qu'une source jugée sur son nombre de
+    -- membres : « 5 annonces retenues sur 6 vues » est une preuve, pas un
+    -- pronostic.
+    origine    TEXT NOT NULL DEFAULT 'recherche',   -- 'recherche' | 'fil'
+    vues       INTEGER NOT NULL DEFAULT 0,   -- publications croisées
+    retenues   INTEGER NOT NULL DEFAULT 0,   -- celles qui remplissaient nos critères
+    publiees   INTEGER NOT NULL DEFAULT 0,   -- celles qui ont fini sur le site
+    vu_dabord  TEXT,                         -- première fois qu'on l'a croisé
     note       INTEGER NOT NULL DEFAULT 0,
     niveau     TEXT,
     alertes    TEXT,                      -- JSON
@@ -286,6 +295,13 @@ CREATE INDEX IF NOT EXISTS idx_demandes_mat     ON demandes(materiau_slug);
 # toutes les requêtes tombent sur « no such column » — et on ne jette pas la
 # base d'un utilisateur pour ajouter trois colonnes.
 COLONNES_AJOUTEES = {
+    "candidats_sources": [
+        ("origine", "TEXT NOT NULL DEFAULT 'recherche'"),
+        ("vues", "INTEGER NOT NULL DEFAULT 0"),
+        ("retenues", "INTEGER NOT NULL DEFAULT 0"),
+        ("publiees", "INTEGER NOT NULL DEFAULT 0"),
+        ("vu_dabord", "TEXT"),
+    ],
     "prospects": [
         ("nature", "TEXT NOT NULL DEFAULT 'depot'"),
         ("rayon_km", "REAL"),
@@ -293,6 +309,10 @@ COLONNES_AJOUTEES = {
         # Le site d'un dépôt, quand il en donne un dans sa publication : un
         # canal de contact de plus, et le signe d'une entreprise établie.
         ("site_web", "TEXT"),
+        # Le groupe ou la page d'où venait la publication. C'est ce qui permet
+        # de créditer la source quand la fiche part en ligne : une fiche
+        # réservée est la seule preuve solide qu'un groupe vaut la peine.
+        ("origine_cle", "TEXT"),
     ],
 }
 
@@ -455,6 +475,61 @@ def ajouter_candidat(c: dict) -> bool:
              json.dumps(c.get("details") or [], ensure_ascii=False), maintenant()),
         )
         return True
+
+
+def observer_source(cle: str, genre: str, nom: str, url: str,
+                    retenue: bool = False, deja_vue: bool = False) -> None:
+    """Note qu'on a croisé une publication venant de cette source.
+
+    C'est la mesure la plus honnête dont on dispose : elle ne prédit pas ce
+    qu'une source vaut, elle constate ce qu'elle a donné. Un groupe croisé
+    douze fois sur le fil sans qu'une seule publication remplisse nos critères
+    n'a pas à devenir une source, quel que soit son nombre de membres.
+
+    Une source DÉJÀ surveillée ou DÉJÀ écartée n'est pas comptée : le fil sert
+    à découvrir, pas à re-proposer ce qui est tranché.
+    """
+    if not cle or not nom:
+        return
+    with _verrou, connexion() as cx:
+        deja = cx.execute(
+            "SELECT statut FROM candidats_sources WHERE cle = ?", (cle,)
+        ).fetchone()
+        if deja and deja["statut"] != "nouveau":
+            return
+        if cx.execute("SELECT 1 FROM sources WHERE url = ?", (url,)).fetchone():
+            return
+        if deja:
+            # `deja_vue` : la vue a été comptée avant le tri, on n'ajoute ici
+            # que la retenue. Sans ça, une publication gardée compterait deux
+            # vues et fausserait le rendement vers le bas.
+            if deja_vue:
+                cx.execute(
+                    "UPDATE candidats_sources SET retenues = retenues + 1, "
+                    "vu_le = ? WHERE cle = ?", (maintenant(), cle))
+            else:
+                cx.execute(
+                    "UPDATE candidats_sources SET vues = vues + 1, "
+                    "retenues = retenues + ?, vu_le = ? WHERE cle = ?",
+                    (1 if retenue else 0, maintenant(), cle))
+        else:
+            cx.execute(
+                "INSERT INTO candidats_sources (cle, genre, nom, url, origine, "
+                "vues, retenues, vu_le, vu_dabord) VALUES (?,?,?,?,'fil',1,?,?,?)",
+                (cle, genre, nom, url, 1 if retenue else 0,
+                 maintenant(), maintenant()),
+            )
+
+
+def compter_publication_source(cle: str) -> None:
+    """Une annonce venue de cette source est passée en ligne : la meilleure preuve."""
+    if not cle:
+        return
+    with _verrou, connexion() as cx:
+        cx.execute(
+            "UPDATE candidats_sources SET publiees = publiees + 1 WHERE cle = ?",
+            (cle,),
+        )
 
 
 def candidats(statut: str = "nouveau", limite: int = 300) -> list[dict]:

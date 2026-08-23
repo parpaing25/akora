@@ -167,14 +167,38 @@ def etat():
 # -- API : sources -----------------------------------------------------------
 # -- Prospection de sources -------------------------------------------------
 @app.get("/api/candidats")
-def lister_candidats(statut: str = "nouveau"):
+def lister_candidats(statut: str = "nouveau", origine: str = ""):
     """Les groupes et pages repérés, avec leur note et leurs chiffres."""
     cfg = charger()
     seuil = int(cfg.get("prospection_note_min", 60))
     tous = base.candidats(statut)
+
+    # Une source repérée sur le fil se note sur ce qu'elle a donné, et ses
+    # compteurs bougent à chaque collecte : sa note doit suivre, sinon elle
+    # reste figée sur la première publication croisée.
+    for c in tous:
+        if c.get("origine") == "fil":
+            n = sources_prospection.noter(c, [])
+            c.update(note=n["note"], niveau=n["niveau"],
+                     alertes=n["alertes"], details=n["details"])
+
+    # Les sources encore en observation passent en tête : ce sont celles dont
+    # la prochaine collecte dira quelque chose.
+    tous.sort(key=lambda c: (c.get("note") is not None,
+                             -(c.get("note") or 0), -(c.get("effectif") or 0)))
+
+    if origine:
+        tous = [c for c in tous if c.get("origine") == origine]
     return {
-        "candidats": [c for c in tous if statut != "nouveau" or c["note"] >= seuil],
-        "sous_le_seuil": sum(1 for c in tous if c["note"] < seuil) if statut == "nouveau" else 0,
+        # `note is None` = encore en observation : elle n'est pas « sous le
+        # seuil », on ne sait simplement pas encore. La masquer la ferait
+        # disparaître avant d'avoir pu faire ses preuves.
+        "candidats": [c for c in tous
+                      if statut != "nouveau"
+                      or c["note"] is None or c["note"] >= seuil],
+        "sous_le_seuil": sum(1 for c in tous
+                             if c["note"] is not None and c["note"] < seuil)
+                         if statut == "nouveau" else 0,
         "seuil": seuil,
         "compteurs": base.compter_candidats(),
         "requetes": cfg.get("prospection_requetes")
