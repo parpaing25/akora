@@ -51,6 +51,16 @@ DEFAUTS = {
     "largeur_photo_min": 400,
     "jours_max": 60,          # un dépôt qui a publié il y a 2 mois vend encore
 
+    # ── Le prix est souvent AILLEURS que dans le texte ────────────────────
+    # Mesuré sur la première vraie collecte : 7 offres sur 46 portaient un
+    # prix. « Vidiny ao amin'ny commentaire » est la norme — le dépôt publie sa
+    # photo et met son tarif en premier commentaire. Le bot ouvre donc la
+    # publication, mais SEULEMENT si elle ressemble déjà à une offre sans prix,
+    # et pas plus de N fois par source : chaque ouverture est une page chargée
+    # de plus chez Facebook.
+    "lire_commentaires": True,
+    "commentaires_max_par_source": 8,
+
     # ── Ce qui fait un prospect exploitable. Le téléphone n'est pas
     # négociable : sans lui, personne à contacter, donc rien à prospecter.
     "criteres_obligatoires": ["telephone", "materiau"],

@@ -33,6 +33,13 @@ const AUTOMATISATIONS = [
   },
   {
     groupe: "locales",
+    cle: "lire_commentaires",
+    titre: "Chercher le prix en commentaire",
+    fait: "Ouvre la publication quand elle vend sans annoncer de prix, et lit les commentaires du vendeur — « vidiny ao amin'ny commentaire » est la norme ici.",
+    jamais: "N'ouvre jamais une publication qui a déjà un prix, ni plus de quelques-unes par source : chaque ouverture est une page chargée de plus chez Facebook. Ne retient que les commentaires DU vendeur — le prix qu'un passant croit se rappeler ne vaut rien.",
+  },
+  {
+    groupe: "locales",
     cle: "auto_recherches",
     titre: "Combler les trous de couverture",
     fait: "Repère les familles sans aucun fournisseur ni prospect dans une ville, et ajoute la recherche Facebook correspondante aux sources.",

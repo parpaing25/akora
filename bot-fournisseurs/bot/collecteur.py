@@ -53,8 +53,17 @@ MOTS_MATERIAUX = (
     "fer a beton", "fer 8", "fer 10", "fer 12", "treillis", "fil recuit", "vy",
     "planche", "chevron", "madrier", "latte", "contreplaque", "hazo", "rondin",
     "bambou", "eucalyptus", "poutrelle", "bordure", "buse", "pave", "claustra",
-    "btc", "adobe", "beton", "materiaux", "depot", "briqueterie", "carriere",
-    "scierie", "livraison", "amidy", "mivarotra", "vidiny",
+    "btc", "adobe", "beton",
+)
+
+# Mots qui signalent un VENDEUR sans nommer un matériau. Ils comptent pour
+# repérer une offre dans le fil, mais PAS pour trancher le périmètre : une
+# publication de carrelage qui parle de « dépôt » et de « livraison » gagnait
+# sinon 2 points de « matériaux » qu'elle ne vendait pas, et échappait au
+# filtre.
+MOTS_CONTEXTE = (
+    "materiaux", "depot", "briqueterie", "carriere", "scierie",
+    "livraison", "amidy", "mivarotra", "vidiny",
 )
 
 # Mots qui trahissent une DEMANDE et non une offre. Un acheteur publié comme
@@ -62,6 +71,128 @@ MOTS_MATERIAUX = (
 MOTS_DEMANDE = ("mila ", "mila fasika", "je cherche", "recherche ", "qui vend",
                 "iza no", "besoin de", "mba mila", "cherche fournisseur",
                 "avez-vous", "urgent besoin")
+
+# ── Anti-bruit ─────────────────────────────────────────────────────────────
+# Mesuré sur la première vraie collecte : 34 publications ramassées, dont
+# 9 questions, du carrelage (hors périmètre) et un bloc d'interface Facebook
+# pris pour une publication. Trier ça à la main use plus vite qu'un mauvais
+# prix — d'où ces trois filtres, appliqués AVANT tout le reste.
+
+# Akora ne prend que le gros œuvre. Le carrelage, la plomberie et
+# l'électricité sont explicitement refusés au formulaire du site : les laisser
+# entrer ici ne ferait que remplir la liste d'appels de choses invendables.
+MOTS_HORS_PERIMETRE = (
+    "carreau", "carrelage", "faience", "faïence", "sanitaire", "robinet",
+    "plomberie", "tuyau pvc", "pvc ", "electricite", "électricité", "cable",
+    "câble", "disjoncteur", "peinture", "vernis", "meuble", "canape",
+    "matelas", "climatis", "panneau solaire", "groupe electrogene",
+    "carrelage sol", "wc ", "douche", "lavabo", "evier", "évier",
+)
+
+# Une publication qui POSE une question n'est pas une offre. « Malany biriky
+# firy ? » (combien de briques faut-il ?) demande un métré, pas un dépôt.
+MOTS_QUESTION = (
+    "firy", "ohatrinona", "ahoana no", "mety ve", "misy mahay",
+    "conseil", "des conseils", "votre avis", "quelqu'un sait",
+    "qui peut me", "aidez-moi", "mba manampy",
+)
+
+# Le malgache intercale volontiers des mots dans une tournure interrogative :
+# « iza RY ZAREO no mety mahatafavoaka… ». Une liste de sous-chaînes ne les
+# attrape pas ; un motif souple, si.
+MOTIFS_QUESTION = (
+    re.compile(r"\biza\b.{0,20}\b(no|afaka|mahay|mety)\b"),
+    re.compile(r"\bmisy\b.{0,20}\b(mahay|afaka|mahavita)\b"),
+    re.compile(r"\bmanao ahoana\b|\bahoana no atao\b"),
+)
+
+# Ce que Facebook glisse DANS le fil : suggestions de groupes, publicités,
+# blocs « personnes que vous connaissez ». Le texte n'a pas d'auteur et parle
+# de membres et d'abonnements — jamais de matériaux.
+MOTS_CHROME_FB = (
+    "suggestions de groupes", "suggested for you", "rejoindre le groupe",
+    "publications par jour", "membres •", "personnes que vous connaissez",
+    "sponsorisé", "sponsorise", "en savoir plus sur cette page",
+    "voir les résultats", "voir tous les commentaires",
+)
+
+
+_MOTIFS: dict[str, re.Pattern] = {}
+
+
+def _motif_mot(mot: str) -> re.Pattern:
+    """Un mot-clé, avec ses frontières de mot et son pluriel."""
+    corps = re.escape(mot.strip()).replace(r"\ ", r"[\s\-']+")
+    return re.compile(rf"(?<![a-z0-9]){corps}(?:s|x|es)?(?![a-z0-9])")
+
+
+def compter_mots(mots, texte: str) -> int:
+    """Compte les mots-clés présents, frontières de mot et pluriels compris.
+
+    Deux erreurs successives ici, et les deux comptaient :
+
+    1. `"vy" in texte` mentait **par excès** — « vy », « tole », « hazo »,
+       « bloc », « pave » sont assez courts pour tomber au milieu d'un autre
+       mot. Une publication de carrelage remontait trois « matériaux » qu'elle
+       ne citait pas, et passait le filtre de périmètre ;
+    2. les frontières seules mentaient **par défaut** — « carreau » ne
+       reconnaissait plus « carreaux », ni « brique » ses « briques ». Un vrai
+       dépôt pouvait alors tomber sous le seuil de `semble_vendeur` et finir à
+       la poubelle.
+
+    D'où le pluriel toléré (`s`, `x`, `es`). Les motifs sont mis en cache : la
+    fonction tourne sur chaque publication du fil.
+    """
+    reduit = referentiel.sans_accents(texte or "")
+    total = 0
+    for mot in mots:
+        motif = _MOTIFS.get(mot)
+        if motif is None:
+            motif = _MOTIFS[mot] = _motif_mot(referentiel.sans_accents(mot))
+        if motif.search(reduit):
+            total += 1
+    return total
+
+
+def est_chrome_facebook(texte: str, auteur: str) -> bool:
+    """Est-ce un bloc d'interface Facebook plutôt qu'une publication ?
+
+    Vu en vrai : « Suggestions de groupes pour vous · 238 K membres · Plus de
+    10 publications par jour · Rejoindre le groupe » enregistré comme une
+    publication, sans auteur. Deux indices ensemble suffisent, et l'absence
+    d'auteur pèse : une vraie publication en a toujours un.
+    """
+    reduit = referentiel.sans_accents(texte or "")
+    marques = sum(1 for mot in MOTS_CHROME_FB if mot in reduit)
+    return marques >= 2 or (marques >= 1 and not (auteur or "").strip())
+
+
+def est_hors_perimetre(texte: str) -> bool:
+    """Carrelage, plomberie, électricité… — le hors-périmètre d'Akora.
+
+    On ne compte que si AUCUN matériau de gros œuvre n'est cité à côté : un
+    dépôt qui vend du ciment ET du carrelage reste un bon prospect, c'est son
+    ciment qui nous intéresse.
+    """
+    hors = compter_mots(MOTS_HORS_PERIMETRE, texte)
+    if not hors:
+        return False
+    return hors > compter_mots(MOTS_MATERIAUX, texte)
+
+
+def est_une_question(texte: str) -> bool:
+    """Une question de chantier, pas une offre.
+
+    Le point d'interrogation ne suffit pas : « Besoin de parpaing ? Antsoy
+    034… » est une accroche de vendeur. Il faut un mot interrogatif ET aucun
+    prix — un vendeur qui pose une question donne quand même son tarif.
+    """
+    reduit = referentiel.sans_accents(texte or "")
+    interrogatif = (any(mot in reduit for mot in MOTS_QUESTION)
+                    or any(m.search(reduit) for m in MOTIFS_QUESTION))
+    if not interrogatif:
+        return False
+    return not a_un_prix(texte)
 
 # Repérage d'une publication dans le fil.
 #
@@ -152,6 +283,58 @@ JS_DEPLIER = """
 """
 
 
+# Lit les commentaires d'une publication ouverte.
+#
+# ⚠ `div[role="article"]` ne désigne PLUS une publication dans le fil — il
+# désigne les COMMENTAIRES. Ce qui était un piège à la collecte devient ici
+# exactement le bon sélecteur.
+#
+# On garde le nom de l'auteur de chaque commentaire : le prix qui compte est
+# celui que donne le VENDEUR sous sa propre publication, pas celui qu'un
+# passant a cru se rappeler.
+JS_COMMENTAIRES = """
+() => {
+  const blocs = [...document.querySelectorAll('div[role="article"]')];
+  return blocs.slice(0, 25).map(el => {
+    const auteur = (el.querySelector('a[role="link"] span, strong span, span a')
+      ?.innerText || '').split('\\n')[0].trim();
+    // Le corps du commentaire porte dir="auto" ; le reste est de l'interface
+    // (« J'aime · Répondre · 2 h »).
+    const morceaux = [...el.querySelectorAll('div[dir="auto"]')]
+      .map(d => (d.innerText || '').trim())
+      .filter(t => t && !/^(j'aime|jaime|répondre|repondre|modifié|modifie|\\d+\\s*(min|h|j|sem))$/i.test(t));
+    return { auteur, texte: [...new Set(morceaux)].join(' ') };
+  }).filter(c => c.texte.length > 1);
+}
+"""
+
+# Ouvre le panneau des commentaires et demande « Tout » plutôt que « Les plus
+# pertinents » : le tarif du vendeur est souvent son premier commentaire, donc
+# le plus ancien, et « pertinent » le range derrière les « Combien ? ».
+JS_OUVRIR_COMMENTAIRES = """
+() => {
+  const libelles = ['Voir plus de commentaires', 'Afficher plus de commentaires',
+                    'View more comments', 'Voir les commentaires précédents',
+                    'Tout afficher', 'Voir 1 réponse'];
+  let cliques = 0;
+  for (const bouton of document.querySelectorAll('div[role="button"], span[role="button"]')) {
+    const texte = (bouton.innerText || '').trim();
+    if (libelles.some(l => texte.startsWith(l))) {
+      try { bouton.click(); cliques++; } catch (e) {}
+    }
+  }
+  return cliques;
+}
+"""
+
+# Un prix quelque part dans le texte : un montant à quatre chiffres, ou groupé.
+MOTIF_A_UN_PRIX = re.compile(r"\d{1,3}(?:[\s. ]\d{3})+|\d{4,}")
+
+
+def a_un_prix(texte: str) -> bool:
+    return bool(MOTIF_A_UN_PRIX.search(texte or ""))
+
+
 def _pause(bornes) -> None:
     time.sleep(random.uniform(float(bornes[0]), float(bornes[1])))
 
@@ -200,7 +383,7 @@ def semble_demande(texte: str) -> bool:
     reduit = referentiel.sans_accents(texte or "")
     if not any(mot in reduit for mot in MOTS_DEMANDE):
         return False
-    return any(mot in reduit for mot in MOTS_MATERIAUX)
+    return compter_mots(MOTS_MATERIAUX, texte) >= 1
 
 
 def semble_vendeur(texte: str, nb_photos: int = 0) -> bool:
@@ -216,7 +399,10 @@ def semble_vendeur(texte: str, nb_photos: int = 0) -> bool:
     reduit = referentiel.sans_accents(texte)
     if any(mot in reduit for mot in MOTS_DEMANDE):
         return False
-    trouves = sum(1 for mot in MOTS_MATERIAUX if mot in reduit)
+    # Le contexte compte ici — « dépôt », « livraison », « mivarotra » disent
+    # bien qu'on a affaire à un vendeur — mais il ne comptera pas pour trancher
+    # le périmètre.
+    trouves = compter_mots(MOTS_MATERIAUX, texte) + compter_mots(MOTS_CONTEXTE, texte)
     if trouves >= 2 or (trouves >= 1 and nb_photos >= 1):
         return True
     return transport.semble_transport(texte)
@@ -667,7 +853,7 @@ class Collecteur:
             f"{self.etat['revus']} déjà connu(s) enrichi(s), "
             f"{self.etat.get('demandes', 0)} demande(s) d'acheteur, sur "
             f"{self.etat['parcourues']} publication(s) parcourue(s). "
-            + _repartition(depart),
+            + _ecartes(self.etat) + _repartition(depart),
             "succes",
         )
         return dict(self.etat)
@@ -701,6 +887,7 @@ class Collecteur:
 
         vus_dans_ce_tour: set[str] = set()
         retenues = 0
+        commentaires_lus = 0    # ouvertures de publication, bornées par source
         plafond = int(cfg["posts_max_par_source"])
         steriles = 0        # défilements consécutifs sans rien de neuf
 
@@ -733,12 +920,30 @@ class Collecteur:
                 if age is not None and age > int(cfg["jours_max"]):
                     continue
 
+                # Anti-bruit, avant tout le reste. Sur la première vraie
+                # collecte, un tiers des publications retenues n'étaient ni des
+                # offres ni des demandes : des questions, du carrelage, et un
+                # bloc d'interface Facebook. Chaque rejet est compté pour que
+                # le bilan de fin de collecte dise ce qu'il a écarté.
+                if est_chrome_facebook(post["texte"], post.get("auteur", "")):
+                    self.etat["rejet_chrome"] = self.etat.get("rejet_chrome", 0) + 1
+                    continue
+                if est_hors_perimetre(post["texte"]):
+                    self.etat["rejet_perimetre"] = self.etat.get("rejet_perimetre", 0) + 1
+                    continue
+
                 # Un acheteur qui cherche part dans les demandes, pas a la
                 # poubelle : c'est ce qui prouve la demande a un depot qui
                 # hesite. Rien n'en sera republie.
                 if semble_demande(post["texte"]):
                     if not base.demande_existe(cle):
                         self._inscrire_demande(post, source, cle)
+                    continue
+
+                # Une question de chantier n'est ni une offre ni une demande
+                # exploitable : ni quantité, ni contact, ni prix.
+                if est_une_question(post["texte"]):
+                    self.etat["rejet_question"] = self.etat.get("rejet_question", 0) + 1
                     continue
 
                 if not semble_vendeur(post["texte"], post["nb_images"]):
@@ -748,6 +953,20 @@ class Collecteur:
 
                 neufs += 1
                 self.etat["examines"] += 1
+
+                # Le prix manque dans le texte : il est peut-être en
+                # commentaire. On n'ouvre la publication que dans ce cas, et
+                # pas plus de N fois par source — chaque ouverture est une page
+                # chargée de plus chez Facebook.
+                if (cfg.get("lire_commentaires")
+                        and not a_un_prix(post["texte"])
+                        and commentaires_lus < int(cfg.get("commentaires_max_par_source", 8))):
+                    commentaires_lus += 1
+                    ajout = self._lire_commentaires(ctx, post)
+                    if ajout:
+                        post["texte"] += ajout
+                    _pause(cfg["pause_entre_scrolls"])
+
                 if self._inscrire_post(page, post, source, cle):
                     retenues += 1
 
@@ -807,6 +1026,69 @@ class Collecteur:
             "config": dict(self.config),
         })
         return True
+
+    def _lire_commentaires(self, ctx, post: dict) -> str:
+        """Va chercher le prix dans les commentaires. Renvoie le texte ajouté.
+
+        « Vidiny ao amin'ny commentaire » est la norme ici : le dépôt publie sa
+        photo, et met son tarif en premier commentaire — souvent pour éviter que
+        la concurrence le voie dans le fil. Sur la première collecte, 6
+        publications sur 34 renvoyaient explicitement au privé ou aux
+        commentaires.
+
+        Deux règles, et elles comptent :
+          - on n'ouvre une publication que si elle **ressemble déjà à une offre
+            sans prix**. Ouvrir chaque publication du fil doublerait le nombre
+            de pages chargées, pour Facebook comme pour nous ;
+          - on ne garde que les commentaires **de l'auteur de la publication**.
+            Le prix qui engage est le sien ; celui qu'un passant croit se
+            rappeler ne vaut rien, et le publier serait pire que rien.
+        """
+        permalien = post.get("permalien") or ""
+        if not permalien:
+            return ""
+
+        auteur = referentiel.sans_accents((post.get("auteur") or "").strip())
+        onglet = None
+        try:
+            onglet = ctx.new_page()
+            onglet.goto(permalien, wait_until="domcontentloaded", timeout=45_000)
+            onglet.wait_for_timeout(2500)
+            try:
+                onglet.evaluate(JS_OUVRIR_COMMENTAIRES)
+                onglet.wait_for_timeout(1500)
+            except Exception:
+                pass
+            commentaires = onglet.evaluate(JS_COMMENTAIRES) or []
+        except Exception as e:
+            base.logguer(f"Commentaires illisibles : {str(e)[:90]}", "avert")
+            return ""
+        finally:
+            if onglet is not None:
+                try:
+                    onglet.close()
+                except Exception:
+                    pass
+
+        gardes = []
+        for commentaire in commentaires:
+            texte = (commentaire.get("texte") or "").strip()
+            if not texte or not a_un_prix(texte):
+                continue
+            nom = referentiel.sans_accents((commentaire.get("auteur") or "").strip())
+            # Le vendeur, ou personne. La comparaison est lâche : Facebook
+            # abrège parfois le nom sous les commentaires.
+            if auteur and nom and (nom in auteur or auteur in nom):
+                gardes.append(texte)
+
+        if not gardes:
+            return ""
+        base.logguer(
+            f"Prix trouvé dans les commentaires de « {post.get('auteur') or '?'} ».",
+            "succes",
+        )
+        self.etat["prix_commentaires"] = self.etat.get("prix_commentaires", 0) + 1
+        return "\n" + "\n".join(gardes[:4])
 
     def _inscrire_demande(self, post: dict, source: dict, cle: str) -> bool:
         """Range une demande d'acheteur. Pas de photo, pas d'atelier.
@@ -912,6 +1194,26 @@ class Collecteur:
             f"score {fiche.get('score', 0)}/100.",
             "succes",
         )
+
+
+def _ecartes(etat: dict) -> str:
+    """« 9 question(s), 3 hors périmètre, 1 bloc Facebook écarté(s). »
+
+    Un bilan qui ne montre que ce qui est retenu laisse croire que le fil est
+    pauvre. Il est surtout bruyant : le dire change la lecture d'une collecte
+    qui ramène cinq fournisseurs sur soixante publications.
+    """
+    morceaux = [
+        (etat.get("rejet_question", 0), "question(s)"),
+        (etat.get("rejet_perimetre", 0), "hors périmètre"),
+        (etat.get("rejet_chrome", 0), "bloc(s) Facebook"),
+    ]
+    ecartes = [f"{n} {mot}" for n, mot in morceaux if n]
+    phrase = ("Écarté : " + ", ".join(ecartes) + ". ") if ecartes else ""
+    trouves = etat.get("prix_commentaires", 0)
+    if trouves:
+        phrase += f"{trouves} prix trouvé(s) en commentaire. "
+    return phrase
 
 
 def _repartition(depuis: str) -> str:
