@@ -36,9 +36,31 @@ app = FastAPI(title="Bot fournisseurs Akora", docs_url=None, redoc_url=None)
 tache = {"type": None, "actif": False, "message": "", "detail": ""}
 
 
+# Ce que chaque tâche MOBILISE. Deux tâches ne s'excluent que si elles se
+# disputent la même ressource : il n'y a qu'un profil Chromium, donc les tâches
+# qui passent par Facebook se suivent. Les autres n'ont aucune raison
+# d'attendre — mesuré sur Diako : une moisson de huit minutes bloquait la
+# prospection Facebook tout ce temps, et le bouton répondait « une tâche est
+# déjà en cours » sans dire laquelle.
+RESSOURCE = {
+    "collecte": "navigateur",
+    "prospection_sources": "navigateur",
+    "connexion": "navigateur",
+    "reservation": "site",
+    "reservation_lot": "site",
+    "synchro": "reseau",
+}
+
+_ressources_prises: dict[str, str] = {}   # ressource -> type de tâche en cours
+_verrou_taches = threading.Lock()         # deux requêtes peuvent arriver ensemble
+
+
 def _lancer(type_tache: str, fonction) -> bool:
-    if tache["actif"]:
-        return False
+    ressource = RESSOURCE.get(type_tache, type_tache)
+    with _verrou_taches:
+        if ressource in _ressources_prises:
+            return False
+        _ressources_prises[ressource] = type_tache
     tache.update({"type": type_tache, "actif": True, "message": "", "detail": ""})
 
     def enveloppe():
@@ -48,7 +70,13 @@ def _lancer(type_tache: str, fonction) -> bool:
             base.logguer(f"{type_tache} : {e}", "erreur")
             tache["message"] = str(e)
         finally:
-            tache["actif"] = False
+            with _verrou_taches:
+                _ressources_prises.pop(ressource, None)
+                # `tache` ne montre qu'une chose à la fois : tant qu'il en
+                # reste une en cours, l'interface doit continuer à l'annoncer.
+                tache["actif"] = bool(_ressources_prises)
+                if _ressources_prises:
+                    tache["type"] = next(iter(_ressources_prises.values()))
 
     threading.Thread(target=enveloppe, daemon=True).start()
     return True
@@ -214,7 +242,7 @@ def lancer_prospection_sources(entree: RequetesEntree | None = None):
     def travail():
         def progression(fait, total, requete):
             tache["detail"] = f"{fait}/{total} · {requete}"
-        r = collecteur.collecteur.prospecter_sources(requetes, rappel=progression)
+        r = collecteur.prospecter_sources(requetes, rappel=progression)
         tache["message"] = (
             f"{r['examines']} candidat(s) examiné(s), {r['nouveaux']} nouveau(x) "
             "à trancher." if r["nouveaux"] else
