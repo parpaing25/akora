@@ -24,7 +24,8 @@
     "admin": "node scripts/promouvoir-admin.mjs",
     "google": "node scripts/configurer-google.mjs",
     "marchand": "node scripts/configurer-marchand.mjs",
-    "coffre": "node scripts/poser-secrets-coffre.mjs"
+    "coffre": "node scripts/poser-secrets-coffre.mjs",
+    "verif:domaine": "node scripts/verifier-domaine-google.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
