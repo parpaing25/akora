@@ -401,3 +401,36 @@ Ce qui manque n'est pas du code, c'est un **contrat marchand** :
 Tant qu'un opérateur n'est pas configuré, Akora **ne le propose pas** au
 paiement, plutôt que d'échouer sous les doigts de l'acheteur. Le règlement
 retombe sur la référence manuelle, qui fonctionne sans aucun identifiant.
+
+
+---
+
+## Mise à jour du 23/08/2026 — Google
+
+**Fait.** La connexion Google est active. Le bouton « Continuer avec Google »
+apparaît sur l'inscription et la connexion ; il interroge la configuration
+Supabase avant de s'afficher, donc rien à redéployer.
+
+Vérifié de bout en bout : Supabase annonce le fournisseur, `/authorize` renvoie
+bien vers `accounts.google.com` avec le bon `client_id`, la bonne URI de retour
+et les scopes `email profile` — les deux seuls demandés, tous deux non
+sensibles, ce qui évite toute procédure de validation Google.
+
+Un compte créé par Google est **vérifié d'emblée** : Google a déjà prouvé
+l'adresse, on ne redemande pas de code à six chiffres.
+
+Les identifiants sont archivés hors dépôt dans `~/.akora-secrets/google.txt` et
+déposés dans la configuration Supabase. Ils n'apparaissent nulle part dans le
+code.
+
+**Si le bouton renvoie une erreur d'accès**, c'est que l'application est restée
+en statut *Test* dans Google Auth Platform : seuls les utilisateurs de test
+listés peuvent alors se connecter. Onglet **Audience** → **Publier
+l'application**.
+
+Pour changer les identifiants plus tard :
+
+```bash
+npm run google -- --etat                              # où on en est
+npm run google -- <nouveau_client_id> <nouveau_secret>
+```
