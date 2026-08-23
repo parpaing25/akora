@@ -128,6 +128,16 @@ DEFAUTS = {
     "auto_bulletin_publier": False,  # ⚠ le publie vraiment, sans relecture
     "auto_bulletin_ville": "",
 
+    # ── Inscription sur le site ───────────────────────────────────────────
+    # `fournisseurs.owner_id` référence `auth.users` : un dépôt trouvé sur
+    # Facebook n'a pas de compte, sa fiche est donc créée au nom du compte
+    # Akora, jusqu'à ce qu'il la revendique. Vide = l'administrateur du site.
+    "compte_akora": "",
+    # FAUX : une fiche inscrite reste en brouillon, invisible, tant que
+    # personne n'a cliqué « Publier ». Mettre en ligne le nom d'un dépôt et
+    # des prix relevés sur Facebook n'est pas une décision qu'un bot prend.
+    "inscrire_en_actif": False,
+
     # ── Réservation de la fiche sur le site.
     "pousser_les_fiches": False,     # tant que la migration n'est pas appliquée
     "pause_entre_envois_photos": 3.0,

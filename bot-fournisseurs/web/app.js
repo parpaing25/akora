@@ -294,6 +294,36 @@ $("#btn-synchro").onclick = async () => {
     toast("Relecture du site lancée.");
   } catch (e) { toast(e.message, "erreur"); }
 };
+
+/** Inscrit d'un coup tous les prospects VALIDÉS comme vrais fournisseurs.
+ *
+ * C'est le geste qui remplit l'annuaire d'Akora. Il crée les fiches en
+ * brouillon : « Publier » reste un acte séparé, fiche par fiche. */
+surClic("#btn-inscrire-lot", async () => {
+  let valides = [];
+  try {
+    valides = await api("/api/prospects?statut=valide&tri=score");
+  } catch (e) { return toast(e.message, "erreur"); }
+  if (!valides.length) {
+    return toast("Aucun fournisseur validé à inscrire.", "erreur");
+  }
+  const accord = confirm([
+    `Inscrire ${valides.length} fournisseur(s) validé(s) sur akora.fonenako.mg ?`,
+    "",
+    "Chaque fiche crée un VRAI fournisseur, avec ses produits et ses prix.",
+    "Elle est créée EN BROUILLON : elle existe, elle n'apparaît nulle part",
+    "tant que vous n'avez pas cliqué « Publier » sur sa fiche.",
+    "",
+    "Les produits sans prix ne sont pas inscrits — Akora compare des prix.",
+  ].join("\n"));
+  if (!accord) return;
+  try {
+    await api("/api/prospects/lot/inscrire", {
+      method: "POST", corps: { ids: valides.map((p) => p.id) },
+    });
+    toast(`Inscription de ${valides.length} fournisseur(s) lancée.`, "succes");
+  } catch (e) { toast(e.message, "erreur"); }
+});
 $("#btn-sync-ref-banniere").onclick = () => synchroniserReferentiel();
 
 surClic("#btn-planning", async () => {
@@ -412,7 +442,20 @@ async function agirSurLaSelection(action) {
   const ids = [...etat.selection];
   if (!ids.length) return;
   try {
-    if (action === "reserver") {
+    if (action === "inscrire") {
+      const accord = confirm([
+        `Inscrire ${ids.length} fournisseur(s) sur akora.fonenako.mg ?`,
+        "",
+        "Chaque fiche crée un VRAI fournisseur, avec ses produits et ses prix.",
+        "Elle est créée EN BROUILLON : elle existe, elle n'apparaît nulle part",
+        "tant que vous n'avez pas cliqué « Publier » sur sa fiche.",
+        "",
+        "Les produits sans prix ne sont pas inscrits — Akora compare des prix.",
+      ].join("\n"));
+      if (!accord) return;
+      await api("/api/prospects/lot/inscrire", { method: "POST", corps: { ids } });
+      toast(`Inscription de ${ids.length} fournisseur(s) lancée.`, "succes");
+    } else if (action === "reserver") {
       await api("/api/prospects/lot/reserver", { method: "POST", corps: { ids } });
       toast(`Réservation de ${ids.length} fiche(s) lancée.`, "succes");
     } else {
@@ -430,6 +473,7 @@ async function agirSurLaSelection(action) {
 surClic("#sel-valider", () => agirSurLaSelection("valide"));
 surClic("#sel-rejeter", () => agirSurLaSelection("rejete"));
 surClic("#sel-reserver", () => agirSurLaSelection("reserver"));
+surClic("#sel-inscrire", () => agirSurLaSelection("inscrire"));
 surClic("#sel-rien", () => {
   etat.selection.clear();
   $$("[data-cocher]").forEach((c) => { c.checked = false; });
@@ -506,6 +550,17 @@ function rendrePanneau() {
       <div class="lien-fiche">
         <strong>Fiche réservée :</strong>
         <a href="${p.fiche_url}" target="_blank" rel="noopener">${p.fiche_url}</a>
+      </div>` : "",
+    p.fournisseur_id ? `
+      <div class="lien-fiche">
+        <strong>Inscrit sur Akora</strong>
+        <span class="badge bleu">${p.statut === "inscrit" ? "en brouillon ou publié" : echapper(p.statut)}</span>
+        <span style="flex-basis:100%;font-size:12px;color:var(--beton-doux)">
+          Un fournisseur en brouillon existe mais n'apparaît pas dans
+          l'annuaire. « Publier » le rend visible, avec son nom et ses prix.
+        </span>
+        <button class="bouton fin" id="p-publier">Publier dans l'annuaire</button>
+        <button class="bouton fin" id="p-depublier">Repasser en brouillon</button>
       </div>` : "",
     blocScore(p),
     blocIdentite(p),
@@ -763,6 +818,32 @@ function brancherPanneau() {
   // d'origine, et rien ne gagnait à les entasser ici.
   if (typeof brancherVehicules === "function") brancherVehicules(p.id);
 
+  // Publier, c'est rendre visible le nom d'un dépôt et des prix relevés sur
+  // Facebook. Une confirmation, et elle dit exactement ça.
+  surClic("#p-publier", async () => {
+    const accord = confirm([
+      `Publier « ${p.nom} » dans l'annuaire public d'Akora ?`,
+      "",
+      "Son nom, son quartier et ses prix deviennent visibles de tous les",
+      "visiteurs de akora.fonenako.mg — alors qu'il ne l'a pas demandé.",
+      "",
+      "Vous pouvez le repasser en brouillon à tout moment.",
+    ].join("\n"));
+    if (!accord) return;
+    try {
+      await api(`/api/prospects/${p.id}/publier`, { method: "POST" });
+      toast("Fiche publiée dans l'annuaire.", "succes");
+      await ouvrirPanneau(p.id);
+    } catch (e) { toast(e.message, "erreur"); }
+  });
+  surClic("#p-depublier", async () => {
+    try {
+      await api(`/api/prospects/${p.id}/depublier`, { method: "POST" });
+      toast("Fiche retirée de l'annuaire.");
+      await ouvrirPanneau(p.id);
+    } catch (e) { toast(e.message, "erreur"); }
+  });
+
   $("#btn-recharger-message").onclick = () => chargerMessage(p.id, $("#modele-message").value);
   $("#modele-message").onchange = () => chargerMessage(p.id, $("#modele-message").value);
   chargerMessage(p.id, "");
@@ -842,6 +923,53 @@ $("#p-reserver").onclick = async () => {
     toast("Réservation lancée — les photos partent d'abord.");
   } catch (e) { toast(e.message, "erreur"); }
 };
+
+/** Inscrit ce fournisseur sur le site, après lui avoir montré ce qui partira.
+ *
+ * L'aperçu n'est pas une politesse : il dit combien de produits ont un prix,
+ * lesquels n'en ont pas, et lesquels attendent encore un format. C'est
+ * exactement ce qui décide si la fiche vaut quelque chose une fois en ligne. */
+surClic("#p-inscrire", async () => {
+  const p = etat.ouvert;
+  if (!p) return;
+  let apercu;
+  try {
+    apercu = await api(`/api/prospects/${p.id}/inscription`);
+  } catch (e) { return toast(e.message, "erreur"); }
+
+  if (apercu.manque.length) {
+    return toast("Il manque " + apercu.manque.join(", ") + ".", "erreur");
+  }
+  const lignes = [
+    apercu.deja_inscrit
+      ? `Mettre à jour « ${apercu.nom} » sur akora.fonenako.mg ?`
+      : `Inscrire « ${apercu.nom} » sur akora.fonenako.mg ?`,
+    "",
+    `${apercu.produits.length} produit(s) partiront :`,
+    ...apercu.produits.slice(0, 8).map(
+      (x) => `• ${x.nom} — ${prixAr(x.prix)} ${UNITES[x.unite] || ""}`),
+  ];
+  if (apercu.produits.length > 8) {
+    lignes.push(`• … et ${apercu.produits.length - 8} autre(s)`);
+  }
+  if (apercu.sans_prix.length) {
+    lignes.push("", `Écartés faute de prix : ${apercu.sans_prix.join(", ")}`);
+  }
+  if (apercu.ambigus.length) {
+    lignes.push(`Format encore à préciser : ${apercu.ambigus.length} offre(s)`);
+  }
+  if (apercu.vehicules) lignes.push(`${apercu.vehicules} véhicule(s) de livraison`);
+  lignes.push("", "La fiche est créée EN BROUILLON : elle n'apparaîtra dans",
+              "l'annuaire qu'après un clic sur « Publier ».");
+
+  if (!confirm(lignes.join("\n"))) return;
+  try {
+    const r = await api(`/api/prospects/${p.id}/inscrire`, { method: "POST" });
+    toast(`Inscrit sur Akora en ${r.statut} — ${r.produits} produit(s).`, "succes");
+    await ouvrirPanneau(p.id);
+    chargerProspects();
+  } catch (e) { toast(e.message, "erreur"); }
+});
 
 // ── Vue Prospection ────────────────────────────────────────────────────────
 async function chargerFile() {

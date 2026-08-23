@@ -323,6 +323,10 @@ CHAMPS_JSON = ("manques", "detail_score", "telephones_autres")
 STATUTS = (
     "a_trier", "incomplet", "valide", "reserve", "a_contacter", "contacte",
     "relance", "revendique", "refuse", "rejete", "doublon", "deja_client",
+    # « inscrit » : le fournisseur EXISTE sur akora.fonenako.mg, avec ses
+    # produits. Distinct de « reserve », qui n'est qu'une fiche en attente
+    # derrière un jeton, et de « revendique », où le dépôt a repris la main.
+    "inscrit",
 )
 
 

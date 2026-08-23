@@ -16,7 +16,8 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
 from pydantic import BaseModel
 
-from . import analyse_llm, akora, base, fil, marche, prospection, referentiel, reservation
+from . import analyse_llm, akora, base, fil, inscription, marche, prospection
+from . import referentiel, reservation
 from . import sources_prospection
 from . import demandes as mod_demandes
 from . import planificateur as plan
@@ -399,9 +400,42 @@ def corriger_prospect(pid: str, entree: ChampsEntree):
     return fusion.evaluer(pid, charger())
 
 
-# ⚠ Cette route doit rester AVANT `/api/prospects/lot/{action}` :
-# FastAPI teste dans l'ordre de declaration, et « reserver » serait
-# sinon lu comme une valeur d'`action`, donc refuse.
+# ⚠ ORDRE CRITIQUE. Ces routes en lot doivent rester avant TOUTE route
+# `/api/prospects/{pid}/...` : sans quoi `/api/prospects/lot/inscrire`
+# est lu comme le prospect d'identifiant « lot », et repond « Prospect
+# introuvable ». FastAPI teste dans l'ordre de declaration, pas du plus
+# specifique au plus general.
+@app.post("/api/prospects/lot/inscrire")
+def inscrire_selection(entree: ChoixEntree):
+    """Inscrit les fiches cochées sur le site, l'une après l'autre.
+
+    Séquentiel : chaque inscription écrit un fournisseur, ses produits et sa
+    flotte. Les enchaîner en parallèle ne gagnerait rien et rendrait un échec
+    illisible.
+    """
+    def travail():
+        cfg = charger()
+        reussies, echecs = 0, 0
+        for rang, pid in enumerate(entree.ids[:200], start=1):
+            fiche = base.prospect(pid)
+            tache["detail"] = f"{rang}/{len(entree.ids)} — {(fiche or {}).get('nom', '')}"
+            try:
+                inscription.inscrire(pid, cfg.get("inscrire_en_actif", False))
+                reussies += 1
+            except Exception as e:
+                echecs += 1
+                base.logguer(f"« {(fiche or {}).get('nom')} » non inscrit : {e}", "erreur")
+        base.logguer(
+            f"Inscription en lot : {reussies}/{len(entree.ids)} fiche(s) sur Akora"
+            + (f", {echecs} échec(s)." if echecs else "."),
+            "succes" if reussies else "avert",
+        )
+
+    if not _lancer("inscription_lot", travail):
+        raise HTTPException(409, "Une autre tâche est déjà en cours.")
+    return {"lancee": True, "nombre": len(entree.ids)}
+
+
 @app.post("/api/prospects/lot/reserver")
 def reserver_selection(entree: ChoixEntree):
     """Réserve la fiche des prospects cochés, l'un après l'autre."""
@@ -423,6 +457,52 @@ def reserver_selection(entree: ChoixEntree):
     if not _lancer("reservation_lot", travail):
         raise HTTPException(409, "Une autre tâche est déjà en cours.")
     return {"lancee": True, "nombre": len(entree.ids)}
+
+
+
+@app.get("/api/prospects/{pid}/inscription")
+def apercu_inscription(pid: str):
+    """Ce qui partirait sur le site, sans rien écrire."""
+    try:
+        return inscription.apercu(pid)
+    except inscription.ErreurInscription as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/prospects/{pid}/inscrire")
+def inscrire_prospect(pid: str):
+    """Crée le fournisseur ET ses produits sur akora.fonenako.mg.
+
+    En BROUILLON par défaut : la fiche existe, elle n'apparaît nulle part.
+    C'est « Publier » qui la rend visible, et c'est un geste à part.
+    """
+    try:
+        return inscription.inscrire(pid, charger().get("inscrire_en_actif", False))
+    except inscription.ErreurInscription as e:
+        raise HTTPException(400, str(e))
+    except Exception as e:
+        raise HTTPException(502, str(e))
+
+
+@app.post("/api/prospects/{pid}/publier")
+def publier_fournisseur(pid: str):
+    """Rend la fiche visible dans l'annuaire public d'Akora."""
+    try:
+        return inscription.publier(pid)
+    except inscription.ErreurInscription as e:
+        raise HTTPException(400, str(e))
+    except Exception as e:
+        raise HTTPException(502, str(e))
+
+
+@app.post("/api/prospects/{pid}/depublier")
+def depublier_fournisseur(pid: str):
+    try:
+        return inscription.depublier(pid)
+    except inscription.ErreurInscription as e:
+        raise HTTPException(400, str(e))
+    except Exception as e:
+        raise HTTPException(502, str(e))
 
 
 @app.post("/api/prospects/lot/{action}")

@@ -288,6 +288,33 @@ begin
     raise exception 'Ce compte gère déjà un fournisseur.' using errcode = '23505';
   end if;
 
+  -- ── Le bot a-t-il DEJA cree ce fournisseur ? ────────────────────────────
+  -- Le bot peut inscrire un depot sur le site avant meme de le contacter : la
+  -- fiche existe alors deja, portee par le compte Akora, avec ses produits.
+  -- Dans ce cas on TRANSFERE la propriete au depot qui revendique — creer un
+  -- second fournisseur du meme nom a cote du premier serait la pire des
+  -- reponses, et c'est ce qui se serait passe sans ce bloc.
+  if fiche.fournisseur_id is not null
+     and exists (select 1 from public.fournisseurs where id = fiche.fournisseur_id) then
+    update public.fournisseurs
+       set owner_id = demandeur,
+           -- Le depot reprend la main : sa fiche repasse en brouillon pour
+           -- qu'il relise SES prix avant de les remettre en ligne.
+           statut = 'brouillon',
+           updated_at = now()
+     where id = fiche.fournisseur_id;
+
+    insert into public.user_roles (user_id, role)
+    values (demandeur, 'fournisseur')
+    on conflict (user_id, role) do nothing;
+
+    update public.prospects_fournisseurs
+       set statut = 'revendique', revendique_le = now()
+     where id = fiche.id;
+
+    return fiche.fournisseur_id;
+  end if;
+
   base_slug := regexp_replace(
     lower(public.sans_accent(fiche.raison_sociale)), '[^a-z0-9]+', '-', 'g');
   base_slug := trim(both '-' from base_slug);
