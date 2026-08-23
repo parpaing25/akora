@@ -8,11 +8,22 @@ côté site.
 from __future__ import annotations
 
 import json
+import os
 import re
 from pathlib import Path
 
 RACINE = Path(__file__).resolve().parent.parent
-DOSSIER_DONNEES = RACINE / "data"
+
+# Le dossier de travail se déplace par variable d'environnement.
+#
+# Ce n'est pas un confort : sans lui, un essai lancé contre le serveur écrit
+# dans la VRAIE base. C'est exactement comme ça que les 32 sources d'Andry ont
+# été effacées le 23/08 — une boucle de nettoyage de test qui supprimait
+# « toutes les sources » les a toutes supprimées, les siennes comprises.
+# Un test doit poser AKORA_BOT_DATA sur un dossier jetable.
+DOSSIER_DONNEES = Path(
+    os.environ.get("AKORA_BOT_DATA") or (RACINE / "data")
+)
 DOSSIER_PROSPECTS = DOSSIER_DONNEES / "prospects"
 PROFIL_NAVIGATEUR = DOSSIER_DONNEES / "profil-fb"
 BASE = DOSSIER_DONNEES / "bot.db"
