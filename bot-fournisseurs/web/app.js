@@ -102,8 +102,10 @@ function ouvrirVue(nom) {
   $$(".onglet").forEach((b) => b.classList.toggle("actif", b.dataset.vue === nom));
   $$(".vue").forEach((v) => v.classList.toggle("active", v.id === "vue-" + nom));
   if (nom === "fournisseurs") chargerProspects();
+  if (nom === "demandes") chargerDemandes();
   if (nom === "prospection") chargerFile();
   if (nom === "marche") chargerMarche();
+  if (nom === "automatisations") chargerAutomatisations();
   if (nom === "sources") chargerSources();
   if (nom === "reglages") chargerReglages();
 }
@@ -176,13 +178,35 @@ async function rafraichirEtat() {
       libelles[donnees.tache.type] || "Travail en cours…";
   }
 
+  // Demandes d'acheteurs
+  const d = donnees.demandes || { sept_jours: 0, nouvelle: 0 };
+  $("#n-demandes").textContent = d.sept_jours ?? 0;
+  const pd = $("#pastille-demandes");
+  pd.textContent = d.nouvelle ?? 0;
+  pd.classList.toggle("zero", !d.nouvelle);
+
   // Planning
   const p = donnees.planning;
   $("#etat-planning").innerHTML = p.actif
     ? `<span><strong>${p.trouves}</strong> / ${p.objectif} fournisseur(s) aujourd'hui
         ${p.atteint ? "— objectif atteint ✓" : ""}</span>
        <span>·</span><span>Prochain passage : <strong>${p.prochain || "—"}</strong></span>`
-    : `<span>Collectes automatiques désactivées.</span>`;
+    : `<span>Collectes automatiques désactivées — le bot ne démarrera rien tout seul.</span>`;
+
+  // Les pastilles du tableau de bord : un coup d'œil pour savoir ce qui
+  // tourne sans vous, sans avoir à ouvrir l'onglet Automatisations.
+  const c2 = etat.config || {};
+  $("#pastilles-auto").innerHTML = [
+    ["collecte_auto", "Collecte automatique", ""],
+    ["auto_synchro", "Retour du site", ""],
+    ["auto_relances", "Signal des relances", ""],
+    ["auto_recherches", "Recherches auto", ""],
+    ["auto_reservation", "Réservation auto", ""],
+    ["auto_bulletin", "Bulletin préparé", ""],
+    ["auto_bulletin_publier", "Bulletin PUBLIÉ", "publique"],
+  ].map(([cle, libelle, genre]) =>
+    `<span class="pastille-auto ${c2[cle] ? "on " + genre : ""}">
+       <i></i>${libelle}</span>`).join("");
 
   // Entonnoir
   const b = donnees.bilan;
@@ -370,6 +394,10 @@ document.addEventListener("keydown", (e) => {
 function rendrePanneau() {
   const p = etat.ouvert;
   if (!p) return;
+  // Le panneau sert aussi aux demandes d'acheteurs, qui masquent son pied :
+  // sans ce retour, « Valider » et « Réserver » disparaissaient dès qu'on
+  // avait ouvert une demande une fois.
+  $("#panneau .panneau-pied").hidden = false;
   $("#p-titre").textContent = p.nom || "Fournisseur sans nom";
   $("#p-sous-titre").innerHTML =
     `<span class="badge ${COULEURS_STATUT[p.statut] || "gris"}">${LIBELLES_STATUT[p.statut] || p.statut}</span>
@@ -386,6 +414,7 @@ function rendrePanneau() {
     blocScore(p),
     blocIdentite(p),
     blocOffres(p),
+    typeof blocVehicules === "function" ? blocVehicules(p) : "",
     blocPhotos(p),
     blocMessage(p),
     blocPublications(p),
@@ -426,12 +455,15 @@ function blocIdentite(p) {
     </p>
     <div class="champs">
       ${champ("nom", "Enseigne", p.nom)}
+      ${champ("nature", "Ce qu'il est", p.nature || "depot", ["depot", "transporteur", "mixte"])}
       ${champ("metier", "Métier", p.metier, ["", "Dépôt", "Briqueterie", "Carrière", "Scierie", "Centrale à béton", "Transporteur"])}
       ${champ("telephone", "Téléphone", p.telephone)}
       ${champ("ville", "Ville", p.ville)}
       ${champ("quartier", "Quartier", p.quartier)}
       ${champ("adresse", "Adresse / repère", p.adresse)}
       ${champ("langue", "Langue du message", p.langue, ["fr", "mg"])}
+      ${champ("rayon_km", "Rayon de livraison (km)", p.rayon_km)}
+      ${champ("seuil_franco", "Franco à partir de", p.seuil_franco)}
     </div>
     <div style="display:flex;gap:16px;margin-top:12px;flex-wrap:wrap">
       <label class="case"><input type="checkbox" data-bool="whatsapp" ${p.whatsapp ? "checked" : ""}> WhatsApp</label>
@@ -631,6 +663,10 @@ function brancherPanneau() {
     });
   });
 
+  // Les camions vivent dans modules.js — ils sont arrivés après les six vues
+  // d'origine, et rien ne gagnait à les entasser ici.
+  if (typeof brancherVehicules === "function") brancherVehicules(p.id);
+
   $("#btn-recharger-message").onclick = () => chargerMessage(p.id, $("#modele-message").value);
   $("#modele-message").onchange = () => chargerMessage(p.id, $("#modele-message").value);
   chargerMessage(p.id, "");
@@ -777,8 +813,14 @@ async function chargerMarche() {
     // ville sans aucun relevé ne mènerait qu'à un tableau vide.
     if (!ville && !famille) {
       const villes = [...new Set(lignes.flatMap((l) => l.villes))].sort();
-      $("#marche-ville").innerHTML = '<option value="">Toutes les villes</option>'
-        + villes.map((v) => `<option value="${echapper(v)}">${echapper(v)}</option>`).join("");
+      const options = villes
+        .map((v) => `<option value="${echapper(v)}">${echapper(v)}</option>`).join("");
+      $("#marche-ville").innerHTML =
+        '<option value="">Toutes les villes</option>' + options;
+      // Le bulletin se limite souvent à une ville : les prix d'Antananarivo et
+      // ceux de Toamasina dans la même publication ne comparent rien.
+      $("#bulletin-ville").innerHTML =
+        '<option value="">Tout Madagascar</option>' + options;
     }
   } catch (e) { toast(e.message, "erreur"); }
 
@@ -1026,6 +1068,9 @@ async function chargerArbre() {
 (async function demarrer() {
   await chargerArbre();
   await chargerSources();
+  // La config est lue AVANT le premier /api/etat : les pastilles du tableau
+  // de bord s'en servent, et elles s'afficheraient toutes éteintes sinon.
+  etat.config = await api("/api/config");
   // Les réglages sont chargés dès le départ, pas seulement à l'ouverture de
   // leur onglet : la carte « Collectes automatiques » du tableau de bord lit
   // les mêmes champs, et elle restait vide — heures en placeholder, objectif

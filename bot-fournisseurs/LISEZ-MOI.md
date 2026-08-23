@@ -94,14 +94,23 @@ offre, c'est une note à trier.
 
 ### 3. Déclarer les sources
 
-Onglet **Sources**. Trois genres, reconnus tout seuls :
+Onglet **Sources**. Quatre genres, reconnus tout seuls :
 
 | Ce que vous collez | Reconnu comme |
 |---|---|
+| `facebook.com` | **Fil d'actualité** du compte connecte |
 | `facebook.com/groups/materiaux.mada` | **Groupe** (il faut en être membre) |
 | `facebook.com/DepotAmbohibao` | **Page** |
 | `parpaing Antananarivo` | **Recherche** de publications |
 | `facebook.com/share/g/AbCdEf/` | refusé : ouvrez-le, puis copiez la vraie adresse |
+
+Le **fil d'actualité** merite une mention a part. C'est la seule source ou on
+garde le tri PAR DEFAUT, alors que les groupes sont forces en chronologique :
+l'algorithme de Facebook connait les habitudes du compte de veille et lui
+pousse les depots qu'il regarde. Un tri chronologique ferait perdre exactement
+ce qu'on vient y chercher. Sur un compte dedie aux materiaux, c'est la source
+la plus riche du lot — et la seule qui s'ameliore toute seule a mesure qu'on
+s'en sert.
 
 La **recherche par mot-clé** n'existe pas dans le bot Fonenako, et c'est elle
 qui fait grossir la liste toute seule : elle va chercher les dépôts *hors* des

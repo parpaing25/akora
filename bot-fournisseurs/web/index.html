@@ -18,14 +18,16 @@
   </div>
   <nav class="onglets">
     <button class="onglet actif" data-vue="bord">Tableau de bord</button>
-    <button class="onglet" data-vue="fournisseurs">Fournisseurs <span id="pastille-trier" class="compteur">0</span></button>
-    <button class="onglet" data-vue="prospection">Prospection <span id="pastille-file" class="compteur">0</span></button>
+    <button class="onglet" data-vue="fournisseurs">Fournisseurs <span id="pastille-trier" class="compteur zero">0</span></button>
+    <button class="onglet" data-vue="demandes">Demandes <span id="pastille-demandes" class="compteur zero">0</span></button>
+    <button class="onglet" data-vue="prospection">Prospection <span id="pastille-file" class="compteur zero">0</span></button>
     <button class="onglet" data-vue="marche">Marché</button>
+    <button class="onglet" data-vue="automatisations">Automatisations</button>
     <button class="onglet" data-vue="sources">Sources</button>
     <button class="onglet" data-vue="reglages">Réglages</button>
   </nav>
   <div class="etats">
-    <button class="etat" id="etat-ref" title="Référentiel des matériaux Akora">
+    <button class="etat" id="etat-ref" title="Catalogue des matériaux Akora">
       <i></i><span>Catalogue</span>
     </button>
     <button class="etat" id="etat-fb" title="Compte Facebook utilisé pour la collecte">
@@ -45,10 +47,9 @@
         <div>
           <strong class="banniere-titre">Connectez un compte Facebook pour commencer</strong>
           <p>
-            Le bot lit les groupes avec <em>votre</em> session, comme si vous les
-            ouvriez vous-même — il n'y a ni mot de passe à saisir ici, ni compte à
-            créer. À faire <strong>une seule fois</strong> : la session reste
-            enregistrée sur ce PC.
+            Le bot lit Facebook avec <em>votre</em> session, comme si vous
+            l'ouvriez vous-même — il n'y a ni mot de passe à saisir ici, ni
+            compte à créer. À faire <strong>une seule fois</strong>.
           </p>
           <ol class="etapes">
             <li>Cliquez le bouton : une fenêtre Facebook s'ouvre.</li>
@@ -68,7 +69,7 @@
         <div>
           <strong class="banniere-titre">Le catalogue Akora n'est pas encore chargé</strong>
           <p>
-            Sans lui, le bot ne peut rattacher aucune offre à une référence — et
+            Sans lui, aucune offre ne peut être rattachée à une référence — et
             un produit sans référence ne peut jamais être mis en ligne.
           </p>
         </div>
@@ -98,6 +99,9 @@
       <div class="chiffre">
         <span class="valeur" id="n-offres">0</span><span class="etiquette">offres appariées</span>
       </div>
+      <div class="chiffre">
+        <span class="valeur bleu" id="n-demandes">0</span><span class="etiquette">demandes 7 j</span>
+      </div>
     </div>
 
     <div class="entonnoir carte">
@@ -109,9 +113,10 @@
       <div class="carte">
         <h2>Collecte</h2>
         <p class="aide">
-          Le bot parcourt les groupes, pages et recherches actifs, garde les
-          publications qui <strong>vendent</strong> un matériau du catalogue, et
-          les range par <strong>fournisseur</strong> — pas par publication.
+          Le bot parcourt les sources actives, garde les publications qui
+          <strong>vendent</strong> un matériau du catalogue ou <strong>louent
+          un camion</strong>, et les range par <strong>fournisseur</strong> —
+          pas par publication. Les demandes d'acheteurs partent de leur côté.
         </p>
         <div class="ligne-compte" id="ligne-compte"></div>
         <div class="actions-collecte">
@@ -127,39 +132,26 @@
       <div class="carte">
         <h2>Fiches réservées</h2>
         <p class="aide">
-          Réserver, c'est écrire la fiche du dépôt sur akora.fonenako.mg :
-          son nom, son quartier, ses produits, ses prix. Elle n'est
+          Réserver, c'est écrire la fiche du dépôt sur akora.fonenako.mg : son
+          nom, son quartier, ses produits, ses prix, ses camions. Elle n'est
           <strong>ni publique ni indexée</strong> — elle ne s'ouvre qu'avec le
           lien qu'on lui envoie.
         </p>
         <button class="bouton principal" id="btn-reserver-lot">Réserver les fiches validées</button>
-        <button class="bouton" id="btn-synchro">Relire le site (qui a revendiqué ?)</button>
+        <button class="bouton" id="btn-synchro">Relire le site</button>
         <p class="aide fine" id="etat-reservation"></p>
       </div>
     </div>
 
     <div class="carte">
-      <h2>Collectes automatiques</h2>
-      <div class="ligne-compte" id="etat-planning"></div>
-      <div class="grille-reglages">
-        <div class="reglage">
-          <label>Activer</label>
-          <label class="case"><input type="checkbox" data-cfg="collecte_auto"> collectes automatiques</label>
-        </div>
-        <div class="reglage">
-          <label for="heures-collecte">Heures (séparées par une virgule)</label>
-          <input type="text" id="heures-collecte" placeholder="10:00, 17:00">
-        </div>
-        <div class="reglage">
-          <label for="objectif-jour">Nouveaux fournisseurs par jour</label>
-          <input type="number" id="objectif-jour" min="0" max="200">
-        </div>
-      </div>
-      <button class="bouton principal" id="btn-planning">Enregistrer</button>
-      <p class="aide fine">
-        L'horloge est dans le bot, pas dans Windows : fenêtre fermée, rien ne se
-        passe. Pour un démarrage automatique, voir <code>outils\installer-tache-planifiee.ps1</code>.
+      <h2>Ce qui tourne tout seul</h2>
+      <p class="aide">
+        Réglable en détail dans l'onglet <strong>Automatisations</strong>.
+        Tout est éteint par défaut : le bot ne fait rien que vous n'ayez
+        allumé.
       </p>
+      <div class="ligne-compte" id="etat-planning"></div>
+      <div class="pastilles-auto" id="pastilles-auto"></div>
     </div>
 
     <div class="carte">
@@ -198,12 +190,55 @@
     <p class="vide" id="vide" hidden>Rien ici pour l'instant.</p>
   </section>
 
+  <!-- ══════════════════ DEMANDES ══════════════════ -->
+  <section class="vue" id="vue-demandes">
+    <p class="intro">
+      Ce que les <strong>acheteurs</strong> cherchent sur Facebook. Le bot les
+      capturait comme des erreurs ; ce sont en fait les leads les plus utiles :
+      un besoin daté, chiffré, localisé — et l'argument qui fait signer un dépôt
+      qui hésite. <strong>Rien n'est republié</strong> : personne n'a donné son
+      accord pour que sa recherche de sable réapparaisse ailleurs.
+    </p>
+
+    <div class="carte">
+      <h2>Ce que le marché réclame</h2>
+      <p class="aide">
+        Sur 7 jours. Un matériau très demandé et servi par personne est un trou
+        à combler cette semaine, pas un jour.
+      </p>
+      <div class="tableau-defilant">
+        <table class="tableau" id="table-pression">
+          <thead><tr>
+            <th>Matériau</th><th class="nombre">Demandes</th><th class="nombre">Urgentes</th>
+            <th class="nombre">Joignables</th><th>Où</th><th></th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="filtres">
+      <div class="puces" id="filtres-demandes">
+        <button class="puce actif" data-statut="">Toutes</button>
+        <button class="puce" data-statut="nouvelle">Nouvelles</button>
+        <button class="puce" data-statut="traitee">Traitées</button>
+        <button class="puce" data-statut="ignoree">Ignorées</button>
+      </div>
+      <select id="demandes-famille"><option value="">Toutes les familles</option></select>
+    </div>
+    <div class="grille-fiches" id="grille-demandes"></div>
+    <p class="vide" id="vide-demandes" hidden>
+      Aucune demande collectée. Elles arrivent avec la collecte.
+    </p>
+  </section>
+
   <!-- ══════════════════ PROSPECTION ══════════════════ -->
   <section class="vue" id="vue-prospection">
     <p class="intro">
-      Le bot <strong>n'envoie aucun message</strong> : Facebook coupe les comptes
-      qui écrivent en série, et un dépôt démarché par un robot ne rappelle pas.
-      Il prépare le texte et ouvre la bonne conversation — vous appuyez.
+      Le bot <strong>n'envoie aucun message</strong> : Facebook coupe les
+      comptes qui écrivent en série, et un dépôt démarché par un robot ne
+      rappelle pas. Il prépare le texte et ouvre la bonne conversation — vous
+      appuyez.
     </p>
     <div class="grille-trois" id="piles"></div>
   </section>
@@ -235,11 +270,39 @@
     </div>
 
     <div class="carte">
+      <h2>Bulletin de prix pour le fil Akora</h2>
+      <p class="aide">
+        Le fil d'accueil du site prévoit un type de publication
+        <code>prix_marche</code>, écrit par Akora elle-même. Rien ne l'alimentait.
+        Un fil vide dit « il ne se passe rien ici » — le remplir avec des prix
+        réels donne au visiteur la seule chose qu'il cherche vraiment.
+      </p>
+      <div class="banniere douce compacte">
+        <div class="banniere-corps">
+          <span class="banniere-icone">⚠</span>
+          <div>
+            <strong class="banniere-titre">Ceci est public et signé Akora</strong>
+            <p>
+              Seules les lignes appuyées sur <strong>au moins trois dépôts</strong>
+              y entrent. Relisez avant de publier : une médiane fausse lue par un
+              professionnel décrédibilise le site pour de bon.
+            </p>
+          </div>
+        </div>
+      </div>
+      <div class="filtres fin">
+        <select id="bulletin-ville"><option value="">Tout Madagascar</option></select>
+        <button class="bouton fin" id="btn-bulletin-apercu">Préparer le brouillon</button>
+      </div>
+      <div id="bulletin-zone"></div>
+    </div>
+
+    <div class="carte">
       <h2>Trous de couverture</h2>
       <p class="aide">
-        Une case vide = aucun fournisseur en ligne sur Akora, et aucun prospect
-        à appeler. C'est là qu'il faut lancer une recherche Facebook —
-        le bouton de chaque case l'ajoute aux sources.
+        Une case rouge = aucun fournisseur en ligne sur Akora, et aucun prospect
+        à appeler. C'est là qu'il faut chercher — le clic ajoute la recherche
+        Facebook correspondante aux sources.
       </p>
       <div class="tableau-defilant">
         <table class="tableau grille-couverture" id="table-couverture"><tbody></tbody></table>
@@ -249,8 +312,8 @@
     <div class="carte">
       <h2>Matériaux vus, absents du catalogue</h2>
       <p class="aide">
-        Le catalogue Akora est une liste fermée : ce que le terrain vend et qu'il
-        ignore doit remonter, sinon l'offre est perdue sans qu'on le sache.
+        Le catalogue Akora est une liste fermée : ce que le terrain vend et
+        qu'il ignore doit remonter, sinon l'offre est perdue sans qu'on le sache.
       </p>
       <div class="tableau-defilant">
         <table class="tableau" id="table-absents">
@@ -261,23 +324,122 @@
     </div>
   </section>
 
+  <!-- ══════════════════ AUTOMATISATIONS ══════════════════ -->
+  <section class="vue" id="vue-automatisations">
+    <p class="intro">
+      Tout ce que le bot peut faire sans vous. <strong>Tout est éteint par
+      défaut</strong>, et chaque interrupteur dit ce qu'il fait
+      <em>et&nbsp;ce&nbsp;qu'il&nbsp;ne&nbsp;fera&nbsp;jamais</em>. Ils sont
+      classés par ce qu'ils touchent : votre PC, la base Akora en privé, puis
+      le site public.
+    </p>
+
+    <div class="groupe-auto">
+      <h2 class="titre-groupe">
+        <span class="jauge-impact locale"></span> Sur ce PC seulement
+        <small>rien ne sort de votre machine</small>
+      </h2>
+      <div class="grille-auto" id="auto-locales"></div>
+    </div>
+
+    <div class="groupe-auto">
+      <h2 class="titre-groupe">
+        <span class="jauge-impact privee"></span> Dans la base Akora, en privé
+        <small>écrit chez Akora, mais invisible du public</small>
+      </h2>
+      <div class="grille-auto" id="auto-privees"></div>
+    </div>
+
+    <div class="groupe-auto">
+      <h2 class="titre-groupe">
+        <span class="jauge-impact publique"></span> Visible par tout le monde
+        <small>publié sur akora.fonenako.mg, signé Akora</small>
+      </h2>
+      <div class="grille-auto" id="auto-publiques"></div>
+    </div>
+
+    <div class="carte">
+      <h2>Horaires et objectif</h2>
+      <div class="grille-reglages">
+        <div class="reglage">
+          <label for="heures-collecte">Heures de passage (séparées par une virgule)</label>
+          <input type="text" id="heures-collecte" placeholder="10:00, 17:00">
+        </div>
+        <div class="reglage">
+          <label for="objectif-jour">Nouveaux fournisseurs visés par jour</label>
+          <input type="number" id="objectif-jour" min="0" max="200">
+        </div>
+        <div class="reglage">
+          <label for="r-delai_relance_jours">Relancer après (jours)</label>
+          <input type="number" id="r-delai_relance_jours" data-auto-num="delai_relance_jours" min="1" max="60">
+        </div>
+        <div class="reglage">
+          <label for="r-relances_max">Relances maximum par dépôt</label>
+          <input type="number" id="r-relances_max" data-auto-num="relances_max" min="0" max="10">
+        </div>
+        <div class="reglage">
+          <label for="r-auto_recherches_max">Recherches ajoutées par passage</label>
+          <input type="number" id="r-auto_recherches_max" data-auto-num="auto_recherches_max" min="1" max="20">
+        </div>
+        <div class="reglage">
+          <label for="r-auto_bulletin_ville">Ville du bulletin (vide = tout le pays)</label>
+          <input type="text" id="r-auto_bulletin_ville" data-auto-txt="auto_bulletin_ville" placeholder="Antananarivo">
+        </div>
+      </div>
+      <button class="bouton principal" id="btn-auto-horaires">Enregistrer</button>
+      <p class="aide fine">
+        L'horloge est dans le bot, pas dans Windows : fenêtre fermée, rien ne se
+        passe. Pour un démarrage automatique à l'ouverture de session,
+        <code>outils\installer-tache-planifiee.ps1</code>.
+      </p>
+    </div>
+  </section>
+
   <!-- ══════════════════ SOURCES ══════════════════ -->
   <section class="vue" id="vue-sources">
     <div class="carte">
       <h2>Où chercher</h2>
       <p class="aide">
-        Collez l'adresse d'un <strong>groupe</strong> (il faut en être membre),
-        d'une <strong>page</strong>, ou tapez simplement un
-        <strong>mot-clé</strong> — « parpaing Antananarivo », « fasika Toamasina ».
-        Le bot reconnaît tout seul de quoi il s'agit ; un mot-clé devient une
-        recherche Facebook, et c'est elle qui trouve les dépôts hors des groupes
-        que vous connaissez déjà.
+        Collez une adresse, ou tapez un mot-clé. Le bot reconnaît tout seul de
+        quoi il s'agit.
       </p>
+      <div class="genres">
+        <div class="genre">
+          <strong>Fil d'actualité</strong>
+          <code>facebook.com</code>
+          <p>
+            Le fil du compte connecté. L'algorithme de Facebook y pousse ce que
+            le compte a l'habitude de regarder : sur un compte dédié à la veille
+            matériaux, c'est la source la plus riche — et la seule qui
+            s'améliore toute seule.
+          </p>
+        </div>
+        <div class="genre">
+          <strong>Groupe</strong>
+          <code>facebook.com/groups/…</code>
+          <p>Il faut en être membre. Ouvert en tri chronologique.</p>
+        </div>
+        <div class="genre">
+          <strong>Page</strong>
+          <code>facebook.com/DepotX</code>
+          <p>Le fil de publications d'une page, pistage retiré.</p>
+        </div>
+        <div class="genre">
+          <strong>Recherche</strong>
+          <code>parpaing Antananarivo</code>
+          <p>
+            Va chercher les dépôts <em>hors</em> des groupes que vous connaissez.
+          </p>
+        </div>
+      </div>
       <form class="ligne-form" id="form-source">
         <input id="source-nom" placeholder="Nom court (facultatif)">
-        <input id="source-url" placeholder="https://www.facebook.com/groups/… ou « parpaing Antananarivo »" required>
+        <input id="source-url" placeholder="Adresse Facebook, ou mot-clé…" required>
         <button class="bouton principal" type="submit">Ajouter</button>
       </form>
+      <div class="actions-collecte">
+        <button class="bouton" id="btn-ajouter-fil">+ Ajouter mon fil d'actualité</button>
+      </div>
       <div class="tableau-defilant">
         <table class="tableau" id="table-sources">
           <thead><tr>
@@ -397,5 +559,6 @@
 
 <div class="toast" id="toast" hidden></div>
 <script src="/static/app.js"></script>
+<script src="/static/modules.js"></script>
 </body>
 </html>

@@ -102,7 +102,7 @@ def accueil():
     peut rester invisible des heures.
     """
     page = (WEB / "index.html").read_text(encoding="utf-8")
-    for fichier in ("style.css", "app.js"):
+    for fichier in ("style.css", "app.js", "modules.js"):
         empreinte = int((WEB / fichier).stat().st_mtime)
         page = page.replace(f"/static/{fichier}", f"/static/{fichier}?v={empreinte}")
     return HTMLResponse(page)
