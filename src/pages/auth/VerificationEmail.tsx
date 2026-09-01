@@ -7,6 +7,7 @@ import { Seo } from "@/components/Seo";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { envoyerCode, verifierCode } from "@/lib/donnees/otp";
+import { retourInterne } from "@/lib/retour";
 import { SaisieCode, LONGUEUR_CODE } from "@/components/ui/saisie-code";
 import { LogoAkora } from "@/components/marque/LogoAkora";
 
@@ -33,6 +34,9 @@ export default function VerificationEmail() {
   const demandeFaite = React.useRef(false);
 
   const email = (emplacement.state as { email?: string } | null)?.email ?? utilisateur?.email ?? "";
+  // Où reconduire une fois l'adresse confirmée (inscription arrivée avec
+  // `?retour=…`, ex. une fiche réservée). Chemin interne seulement.
+  const retour = retourInterne((emplacement.state as { retour?: string } | null)?.retour);
   const verifie = profil?.email_verifie === true;
 
   const demander = React.useCallback(
@@ -76,7 +80,7 @@ export default function VerificationEmail() {
         toast.success("Adresse confirmée");
         // Rechargement franc : la session et le profil doivent repartir du
         // serveur, pas d'un cache qui dit encore « non vérifié ».
-        window.location.replace("/compte");
+        window.location.replace(retour ?? "/compte");
       } else {
         toast.error("Code incorrect ou expiré", {
           description: "Il vous reste des essais, vérifiez le mail.",

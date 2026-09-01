@@ -6,6 +6,7 @@
   "description": "AKORA - la marketplace des materiaux de construction a Madagascar",
   "scripts": {
     "dev": "vite",
+    "prebuild": "node scripts/generer-sitemap.mjs",
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint .",

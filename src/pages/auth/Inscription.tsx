@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -7,6 +7,7 @@ import { ChevronLeft, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { ENV } from "@/lib/env";
 import { schemaInscription, type ValeursInscription } from "@/lib/validation";
+import { retourInterne } from "@/lib/retour";
 import { useAntiAbus } from "@/hooks/useAntiAbus";
 import { useGrandEcran } from "@/hooks/useGrandEcran";
 import { envoyerCode } from "@/lib/donnees/otp";
@@ -38,11 +39,25 @@ import { LigneCase } from "@/components/ui/checkbox";
  */
 export default function Inscription() {
   const naviguer = useNavigate();
+  const [parametres] = useSearchParams();
   const antiAbus = useAntiAbus();
   const grandEcran = useGrandEcran();
   const [etape, setEtape] = React.useState<1 | 2>(1);
   const [envoiEnCours, setEnvoiEnCours] = React.useState(false);
   const [aVerifier, setAVerifier] = React.useState<{ userId: string; email: string } | null>(null);
+
+  /*
+   * `?profil=fournisseur` : arrivée depuis « Devenir fournisseur » ou une
+   * fiche réservée du bot de prospection — le bon choix est déjà coché, il
+   * reste à le confirmer. Ce n'est qu'une pré-sélection d'affichage : le rôle
+   * réel reste attribué par le trigger côté base, comme toujours.
+   *
+   * `?retour=…` : où reconduire une fois l'adresse confirmée. Uniquement un
+   * chemin interne (« /… ») — une URL absolue ou « //… » ferait de cette page
+   * un tremplin d'hameçonnage (open redirect), cf. retourInterne().
+   */
+  const profilDemande = parametres.get("profil") === "fournisseur" ? "fournisseur" : "acheteur";
+  const retour = retourInterne(parametres.get("retour"));
 
   const {
     register,
@@ -52,7 +67,7 @@ export default function Inscription() {
     formState: { errors },
   } = useForm<ValeursInscription>({
     resolver: zodResolver(schemaInscription),
-    defaultValues: { profil: "acheteur" },
+    defaultValues: { profil: profilDemande },
     mode: "onBlur",
   });
 
@@ -94,7 +109,7 @@ export default function Inscription() {
     const utilisateur = data.user;
     if (!utilisateur) {
       setEnvoiEnCours(false);
-      naviguer("/verification-email", { replace: true, state: { email: valeurs.email } });
+      naviguer("/verification-email", { replace: true, state: { email: valeurs.email, retour } });
       return;
     }
     try {
@@ -104,7 +119,7 @@ export default function Inscription() {
       // Le compte est créé : on ne le perd pas parce que le mail n'est pas
       // parti. La page de vérification en redemandera un.
       toast.error("Code non envoyé", { description: (erreur as Error).message });
-      naviguer("/verification-email", { replace: true, state: { email: valeurs.email } });
+      naviguer("/verification-email", { replace: true, state: { email: valeurs.email, retour } });
     } finally {
       setEnvoiEnCours(false);
     }
@@ -222,7 +237,7 @@ export default function Inscription() {
       ouvert
       email={aVerifier.email}
       userId={aVerifier.userId}
-      onVerifie={() => naviguer("/compte", { replace: true })}
+      onVerifie={() => naviguer(retour ?? "/compte", { replace: true })}
       onAbandon={() => {
         void supabase.auth.signOut().then(() => naviguer("/", { replace: true }));
       }}
@@ -260,7 +275,7 @@ export default function Inscription() {
               </p>
 
               <div className="mb-5 space-y-3">
-                <BoutonGoogle retour="/compte" intitule="S'inscrire avec Google" />
+                <BoutonGoogle retour={retour ?? "/compte"} intitule="S'inscrire avec Google" />
                 <SeparateurOu />
               </div>
 
@@ -313,7 +328,7 @@ export default function Inscription() {
           />
 
           <div className="flex-1 space-y-3 px-5 py-5">
-            <BoutonGoogle retour="/compte" intitule="S'inscrire avec Google" />
+            <BoutonGoogle retour={retour ?? "/compte"} intitule="S'inscrire avec Google" />
             <SeparateurOu />
             {choixProfil(true)}
             <p className="rounded-md bg-muted px-3.5 py-3 text-legende leading-relaxed text-muted-foreground">
