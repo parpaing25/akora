@@ -49,6 +49,23 @@ export async function listerFournisseurs(filtres: FiltresFournisseurs = {}): Pro
   return (data ?? []) as unknown as FournisseurPublic[];
 }
 
+/**
+ * Les fournisseurs DU PANIER, par identifiants. Le panier et le tunnel
+ * passaient par `listerFournisseurs({ page: 0 })` — les 20 premiers de
+ * l'annuaire, triés par badge puis par note. Dès qu'un fournisseur du panier
+ * n'était pas dans ce top 20 : coordonnées introuvables, livraison non
+ * chiffrée, total faux, paiement en ligne refusé — sans un mot d'explication.
+ */
+export async function listerFournisseursParIds(ids: readonly string[]): Promise<FournisseurPublic[]> {
+  if (ids.length === 0) return [];
+  const { data, error } = await supabase
+    .from("fournisseurs_publics")
+    .select(COLONNES_FOURNISSEUR)
+    .in("id", ids as string[]);
+  if (error) throw error;
+  return (data ?? []) as unknown as FournisseurPublic[];
+}
+
 export async function lireFournisseur(slug: string): Promise<FournisseurPublic | null> {
   const { data, error } = await supabase
     .from("fournisseurs_publics")

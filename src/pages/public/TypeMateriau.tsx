@@ -239,6 +239,12 @@ export default function TypeMateriau() {
                       ) : (
                         <span className="text-muted-foreground">—</span>
                       )}
+                      <Link
+                        to={`/prix/${f.slug}/madagascar`}
+                        className="lien-souligne mt-0.5 block text-[0.72rem]"
+                      >
+                        Prix du marché
+                      </Link>
                     </td>
                     <td className="px-4 py-3 text-right align-top">
                       {estimation ? (

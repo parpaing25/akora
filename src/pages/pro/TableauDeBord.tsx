@@ -9,6 +9,7 @@ import { DOCUMENTS_OBLIGATOIRES } from "@/lib/types-metier";
 import { Seo } from "@/components/Seo";
 import { Carte } from "@/components/ui/card";
 import { Bouton } from "@/components/ui/button";
+import { Squelette } from "@/components/ui/skeleton";
 import { AvertissementMetier } from "@/components/ui/etats";
 
 /**
@@ -33,6 +34,10 @@ export default function TableauDeBord() {
     queryFn: () => listerVehicules(fiche.id),
     staleTime: 60_000,
   });
+
+  /* Tant que produits ou documents chargent, les compteurs vaudraient 0 :
+     un chiffre faux. Les tuiles montrent alors un squelette, pas un zéro. */
+  const enChargement = produits.isPending || documents.isPending;
 
   const publies = (produits.data ?? []).filter((p) => p.statut === "actif").length;
   const enAttente = (produits.data ?? []).filter((p) => p.statut === "en_attente_materiau").length;
@@ -87,7 +92,11 @@ export default function TableauDeBord() {
           { libelle: "Commandes clôturées", valeur: fiche.nb_commandes_cloturees },
         ].map((tuile) => (
           <Carte key={tuile.libelle} className="p-3">
-            <p className="nombres text-[1.375rem] font-bold tracking-tight">{tuile.valeur}</p>
+            {enChargement ? (
+              <Squelette className="h-7 w-14" />
+            ) : (
+              <p className="nombres text-[1.375rem] font-bold tracking-tight">{tuile.valeur}</p>
+            )}
             <p className="mt-0.5 text-[0.78rem] text-muted-foreground">{tuile.libelle}</p>
           </Carte>
         ))}

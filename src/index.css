@@ -307,11 +307,19 @@
   /* ── CALQUE GLOBAL DE DENSITÉ MOBILE ──────────────────────────────────
      Une seule couche, ici. Sur Fonenako, re-compacter page par page a coûté
      des semaines pour un résultat incohérent : on ne recommence pas. */
+  /* La barre mobile s'affiche jusqu'à 767 px (md) depuis l'audit du 01/09 :
+     le décalage du bas doit suivre la même borne, sinon elle masque le pied
+     des pages entre 640 et 767 px. */
+  @media (max-width: 767px) {
+    body {
+      /* La barre de navigation fixe ne doit jamais masquer le bas de page. */
+      padding-bottom: calc(var(--barre-mobile) + env(safe-area-inset-bottom, 0px));
+    }
+  }
+
   @media (max-width: 639px) {
     body {
       font-size: 0.9375rem;
-      /* La barre de navigation fixe ne doit jamais masquer le bas de page. */
-      padding-bottom: calc(var(--barre-mobile) + env(safe-area-inset-bottom, 0px));
     }
     .carte {
       @apply rounded-md;

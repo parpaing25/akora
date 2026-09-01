@@ -66,6 +66,8 @@ const AdminAudit = lazy(() => import("@/pages/admin/Audit"));
 const Calculateurs = lazy(() => import("@/pages/public/Calculateurs"));
 const CalculateurDetail = lazy(() => import("@/pages/public/CalculateurDetail"));
 const PrixMarche = lazy(() => import("@/pages/public/PrixMarche"));
+const ObservatoirePrix = lazy(() => import("@/pages/public/ObservatoirePrix"));
+const Transporteurs = lazy(() => import("@/pages/public/Transporteurs"));
 const Guides = lazy(() => import("@/pages/contenu/Guides"));
 const PageVerification = lazy(() => import("@/pages/contenu/Verification"));
 const DevenirFournisseur = lazy(() => import("@/pages/contenu/DevenirFournisseur"));
@@ -85,6 +87,8 @@ const FournisseurFiche = lazy(() => import("@/pages/public/FournisseurFiche"));
 const LivraisonFournisseur = lazy(() => import("@/pages/public/LivraisonFournisseur"));
 const ProduitFiche = lazy(() => import("@/pages/public/ProduitFiche"));
 const Recherche = lazy(() => import("@/pages/public/Recherche"));
+// La fiche préparée par le bot de prospection, lisible par son seul jeton.
+const DepotReserve = lazy(() => import("@/pages/public/DepotReserve"));
 const Panier = lazy(() => import("@/pages/public/Panier"));
 const Commander = lazy(() => import("@/pages/public/Commander"));
 const CommandeSuivi = lazy(() => import("@/pages/public/CommandeSuivi"));
@@ -145,10 +149,17 @@ export default function App() {
           <Route path="demandes/nouvelle" element={<DemandeNouvelle />} />
           <Route path="calculateurs" element={<Calculateurs />} />
           <Route path="calculateurs/:type" element={<CalculateurDetail />} />
+          <Route path="prix" element={<ObservatoirePrix />} />
           <Route path="prix/:materiau/:ville" element={<PrixMarche />} />
+          <Route path="transporteurs" element={<Transporteurs />} />
           <Route path="guides/:slug" element={<Guides />} />
           <Route path="verification" element={<PageVerification />} />
           <Route path="devenir-fournisseur" element={<DevenirFournisseur />} />
+          {/*
+            Publique mais confidentielle : la page ne répond qu'au porteur du
+            jeton envoyé par le bot de prospection, et se sert en noindex.
+          */}
+          <Route path="depot-reserve/:jeton" element={<DepotReserve />} />
           <Route path="a-propos" element={<APropos />} />
           <Route path="contact" element={<Contact />} />
           <Route path="conditions-utilisation" element={<Conditions />} />

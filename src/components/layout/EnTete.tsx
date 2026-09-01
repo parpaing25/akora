@@ -1,9 +1,10 @@
 import * as React from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import { Search, ShoppingCart } from "lucide-react";
+import { MapPin, Search, ShoppingCart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { usePanier, nombreProduits } from "@/lib/panier";
+import { usePointLivraison } from "@/lib/point-livraison";
 import { Bouton } from "@/components/ui/button";
 import { Saisie } from "@/components/ui/input";
 import { LogoAkora } from "@/components/marque/LogoAkora";
@@ -13,13 +14,60 @@ const Notifications = React.lazy(() =>
   import("./Notifications").then((m) => ({ default: m.Notifications })),
 );
 const MenuCompte = React.lazy(() => import("./MenuCompte"));
+// Le tiroir du point de livraison traîne la carte et Radix : il n'est monté
+// qu'au premier clic, jamais au chargement de l'en-tête.
+const TiroirPointSeul = React.lazy(() =>
+  import("@/components/livraison/SelecteurPoint").then((m) => ({ default: m.TiroirPointSeul })),
+);
 
+/*
+ * `desLg` : visible seulement à partir de 1024 px. La nav apparaît dès 768 px
+ * (audit 01/09 : entre 640 et 1023 px il n'y avait AUCUNE navigation), mais à
+ * cette largeur on ne montre que l'essentiel.
+ */
 const LIENS = [
-  { to: "/materiaux", libelle: "Matériaux" },
-  { to: "/fournisseurs", libelle: "Fournisseurs" },
-  { to: "/calculateurs", libelle: "Calculateurs" },
-  { to: "/verification", libelle: "Vérifié ?" },
+  { to: "/materiaux", libelle: "Matériaux", desLg: false },
+  { to: "/fournisseurs", libelle: "Fournisseurs", desLg: false },
+  { to: "/transporteurs", libelle: "Transporteurs", desLg: false },
+  { to: "/prix", libelle: "Prix du marché", desLg: true },
+  { to: "/calculateurs", libelle: "Calculateurs", desLg: true },
+  { to: "/verification", libelle: "Vérifié ?", desLg: true },
 ];
+
+/**
+ * Le point de livraison, toujours à portée de main : tout prix affiché sur le
+ * site en dépend, et il fallait jusqu'ici retrouver une page qui l'expose.
+ * Bouton léger ; le tiroir (carte comprise) ne se charge qu'au premier clic.
+ */
+function PointEnTete() {
+  const { point } = usePointLivraison();
+  const [monte, setMonte] = React.useState(false);
+  const [ouvert, setOuvert] = React.useState(false);
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => {
+          setMonte(true);
+          setOuvert(true);
+        }}
+        className="hidden cible-44 items-center gap-1.5 rounded-md px-2 text-legende font-semibold text-foreground hover:bg-muted md:inline-flex"
+        aria-label={point ? `Point de livraison : ${point.libelle}. Modifier` : "Choisir où livrer"}
+      >
+        <MapPin className="size-4 shrink-0 text-primary" aria-hidden="true" />
+        <span className="hidden max-w-[9rem] truncate xl:inline">
+          {point ? point.libelle : "Où livrer ?"}
+        </span>
+      </button>
+      {monte ? (
+        <React.Suspense fallback={null}>
+          <TiroirPointSeul ouvert={ouvert} onOuvertChange={setOuvert} />
+        </React.Suspense>
+      ) : null}
+    </>
+  );
+}
 
 export function EnTete() {
   const { session } = useAuth();
@@ -45,14 +93,15 @@ export function EnTete() {
           <LogoAkora variante="logo" prioritaire className="h-9 w-auto" />
         </Link>
 
-        <nav aria-label="Sections" className="hidden lg:flex lg:items-center lg:gap-1">
+        <nav aria-label="Sections" className="hidden md:flex md:items-center md:gap-1">
           {LIENS.map((l) => (
             <NavLink
               key={l.to}
               to={l.to}
               className={({ isActive }) =>
                 cn(
-                  "inline-flex min-h-11 items-center rounded-md px-3 text-legende font-semibold",
+                  "min-h-11 items-center rounded-md px-3 text-legende font-semibold",
+                  l.desLg ? "hidden lg:inline-flex" : "inline-flex",
                   isActive ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted",
                 )
               }
@@ -83,6 +132,7 @@ export function EnTete() {
         </form>
 
         <div className="ml-auto flex items-center gap-1 sm:ml-0">
+          <PointEnTete />
           <Link
             to="/panier"
             className="relative hidden cible-44 items-center justify-center rounded-md text-foreground hover:bg-muted sm:inline-flex"

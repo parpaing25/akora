@@ -10,7 +10,7 @@ import {
   usePanier,
   type GroupeFournisseur,
 } from "@/lib/panier";
-import { listerFournisseurs } from "@/lib/donnees/vitrine";
+import { listerFournisseursParIds } from "@/lib/donnees/vitrine";
 import { useLivraison } from "@/hooks/useLivraison";
 import { formaterAriary } from "@/lib/format";
 import { LIBELLE_UNITE } from "@/lib/types-metier";
@@ -37,10 +37,11 @@ export default function Panier() {
 
   const groupes = React.useMemo(() => grouperParFournisseur(lignes), [lignes]);
 
-  // Coordonnées des dépôts : le panier ne les mémorise pas, on les relit.
+  // Coordonnées des dépôts : le panier ne les mémorise pas, on les relit —
+  // CEUX DU PANIER, pas une page d'annuaire qui pouvait ne pas les contenir.
   const fournisseurs = useQuery({
     queryKey: ["fournisseurs-panier", groupes.map((g) => g.fournisseurId).join(",")],
-    queryFn: () => listerFournisseurs({ page: 0 }),
+    queryFn: () => listerFournisseursParIds(groupes.map((g) => g.fournisseurId)),
     enabled: groupes.length > 0,
     staleTime: 5 * 60_000,
   });

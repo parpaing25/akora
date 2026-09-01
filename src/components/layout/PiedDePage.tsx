@@ -7,8 +7,10 @@ const COLONNES = [
     liens: [
       { to: "/materiaux", libelle: "Tous les matériaux" },
       { to: "/fournisseurs", libelle: "Annuaire des fournisseurs" },
+      { to: "/transporteurs", libelle: "Trouver un camion" },
+      { to: "/prix", libelle: "Prix du marché" },
+      { to: "/demandes/nouvelle", libelle: "Publier une demande d'achat" },
       { to: "/calculateurs", libelle: "Calculateurs de métré" },
-      { to: "/guides/reception-livraison", libelle: "Réceptionner une livraison" },
     ],
   },
   {
@@ -17,6 +19,9 @@ const COLONNES = [
       { to: "/devenir-fournisseur", libelle: "Devenir fournisseur" },
       { to: "/verification", libelle: "Que veut dire « vérifié » ?" },
       { to: "/guides/payer-mobile-money", libelle: "Paiement mobile money" },
+      { to: "/guides/reception-livraison", libelle: "Réceptionner une livraison" },
+      { to: "/guides/choisir-son-sable", libelle: "Bien choisir son sable" },
+      { to: "/guides/combien-de-parpaings", libelle: "Compter ses parpaings" },
     ],
   },
   {

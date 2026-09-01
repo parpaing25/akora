@@ -133,7 +133,10 @@ export default function Comparateur() {
       <h1 className="mt-1 text-page">{materiau.data?.nom ?? <Squelette className="h-8 w-72" />}</h1>
       <p className="mt-1 text-legende text-muted-foreground" aria-live="polite">
         <span className="nombres">{lignes.length}</span> offre{lignes.length > 1 ? "s" : ""} · prix rendu
-        chantier, livraison comprise
+        chantier, livraison comprise ·{" "}
+        <Link to={`/prix/${format}/madagascar`} className="lien-souligne">
+          prix du marché de ce format
+        </Link>
       </p>
 
       <div className="mt-3">
@@ -206,11 +209,16 @@ export default function Comparateur() {
                 : "Revenez bientôt : le catalogue se remplit dépôt par dépôt."
             }
             action={
-              verifiesUniquement ? (
-                <Bouton variante="secondaire" onClick={() => setVerifies(false)}>
-                  Voir toutes les offres
+              <div className="flex flex-wrap justify-center gap-2">
+                <Bouton asChild>
+                  <Link to="/demandes/nouvelle">Publier une demande</Link>
                 </Bouton>
-              ) : undefined
+                {verifiesUniquement ? (
+                  <Bouton variante="secondaire" onClick={() => setVerifies(false)}>
+                    Voir toutes les offres
+                  </Bouton>
+                ) : null}
+              </div>
             }
           />
         </div>

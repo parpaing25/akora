@@ -32,10 +32,18 @@ export default function Statistiques() {
         .eq("fournisseur_id", fiche.id);
       const ids = (produits ?? []).map((p) => p.id as string);
       if (ids.length === 0) return [] as { nom: string; vues: number }[];
+      /* PostgREST passe le filtre `.in()` dans l'URL : au-delà d'environ 150
+         identifiants, elle sature. On borne donc aux 150 premiers produits —
+         largement assez pour un top 10. */
+      const idsBornes = ids.slice(0, 150);
+      /* Et on borne la somme aux 30 derniers jours (colonne `jour`) : sans
+         cela, le total grossit sans fin et ne dit plus rien du présent. */
+      const depuis = new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10);
       const { data } = await supabase
         .from("vues_produit_jour")
         .select("produit_id, vues")
-        .in("produit_id", ids);
+        .in("produit_id", idsBornes)
+        .gte("jour", depuis);
       const total = new Map<string, number>();
       for (const ligne of data ?? []) {
         total.set(ligne.produit_id as string, (total.get(ligne.produit_id as string) ?? 0) + Number(ligne.vues));
@@ -81,7 +89,11 @@ export default function Statistiques() {
 
       <Carte className="mt-4 p-4">
         <h3 className="text-produit">Taux d'acceptation</h3>
-        <p className="nombres mt-1 text-[1.75rem] font-bold text-primary">{tauxAcceptation} %</p>
+        {commandes.isPending ? (
+          <Squelette className="mt-1 h-8 w-20" />
+        ) : (
+          <p className="nombres mt-1 text-[1.75rem] font-bold text-primary">{tauxAcceptation} %</p>
+        )}
         <p className="mt-1 text-legende text-muted-foreground">
           Part des commandes que vous n'avez ni refusées ni annulées. C'est l'un des critères du
           badge « Partenaire Akora », avec la note moyenne et l'absence de litige perdu.
@@ -89,6 +101,7 @@ export default function Statistiques() {
       </Carte>
 
       <h3 className="mt-5 text-produit">Produits les plus consultés</h3>
+      <p className="mt-0.5 text-[0.78rem] text-muted-foreground">Sur les 30 derniers jours.</p>
       {vues.isPending ? (
         <Squelette className="mt-2 h-32 w-full" />
       ) : (vues.data ?? []).length === 0 ? (

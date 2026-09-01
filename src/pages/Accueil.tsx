@@ -25,6 +25,11 @@ const CartePublication = React.lazy(() =>
   import("@/components/fil/CartePublication").then((m) => ({ default: m.CartePublication })),
 );
 
+// Le tiroir du point de livraison (carte comprise) ne se charge qu'au clic.
+const TiroirPointSeul = React.lazy(() =>
+  import("@/components/livraison/SelecteurPoint").then((m) => ({ default: m.TiroirPointSeul })),
+);
+
 /**
  * Accueil : un FIL, pas une vitrine.
  *
@@ -51,15 +56,38 @@ const LIENS_NAVIGATION = [
   { vers: "/", intitule: "Mon fil" },
   { vers: "/materiaux", intitule: "Matériaux" },
   { vers: "/fournisseurs", intitule: "Fournisseurs" },
+  { vers: "/transporteurs", intitule: "Transporteurs" },
+  { vers: "/prix", intitule: "Prix du marché" },
+  { vers: "/demandes/nouvelle", intitule: "Je cherche un matériau" },
   { vers: "/compte/favoris", intitule: "Favoris" },
   { vers: "/calculateurs", intitule: "Calculateurs" },
   { vers: "/compte/commandes", intitule: "Mes commandes" },
+];
+
+/**
+ * Raccourcis pour les écrans SANS colonnes latérales (< 1024 px) : sans eux,
+ * l'accueil mobile se réduisait au fil — ni Fournisseurs, ni Calculateurs,
+ * ni demande d'achat n'étaient accessibles (audit 01/09).
+ */
+const RACCOURCIS_MOBILES = [
+  { vers: "/fournisseurs", intitule: "Fournisseurs" },
+  { vers: "/transporteurs", intitule: "Transporteurs" },
+  { vers: "/prix", intitule: "Prix du marché" },
+  { vers: "/calculateurs", intitule: "Calculateurs" },
+  { vers: "/demandes/nouvelle", intitule: "Je cherche un matériau" },
 ];
 
 export default function Accueil() {
   const [parametres, setParametres] = useSearchParams();
   const { session } = useAuth();
   const { point } = usePointLivraison();
+  // Tiroir du point de livraison : monté au premier clic seulement.
+  const [tiroirMonte, setTiroirMonte] = React.useState(false);
+  const [tiroirOuvert, setTiroirOuvert] = React.useState(false);
+  const ouvrirTiroir = () => {
+    setTiroirMonte(true);
+    setTiroirOuvert(true);
+  };
 
   const filtreBrut = parametres.get("f");
   const filtre: FiltreFil = FILTRES.some(([v]) => v === filtreBrut)
@@ -166,14 +194,30 @@ export default function Accueil() {
                 <Search size={16} aria-hidden="true" />
                 <span className="truncate">Chercher un matériau, un fournisseur…</span>
               </Link>
-              <Link
-                to="/materiaux"
+              {/* Ce bouton OUVRE le choix du point — il ne navigue plus vers
+                  /materiaux en laissant croire qu'il fait autre chose. */}
+              <button
+                type="button"
+                onClick={ouvrirTiroir}
                 className="cible-44 flex shrink-0 items-center gap-2 rounded-full border border-primary/40 bg-primary-soft px-3.5 text-courant font-semibold"
               >
                 <MapPin size={15} className="text-primary" aria-hidden="true" />
                 {point ? point.libelle : "Choisir où livrer"}
-              </Link>
+              </button>
             </div>
+
+            <ul className="mt-3 flex gap-2 overflow-x-auto pb-0.5 lg:hidden" aria-label="Raccourcis">
+              {RACCOURCIS_MOBILES.map((r) => (
+                <li key={r.vers} className="shrink-0">
+                  <Link
+                    to={r.vers}
+                    className="flex min-h-9 items-center rounded-full border border-border bg-card px-3.5 text-legende font-medium hover:bg-muted"
+                  >
+                    {r.intitule}
+                  </Link>
+                </li>
+              ))}
+            </ul>
 
             <div className="flex gap-2 overflow-x-auto pb-0.5" role="group" aria-label="Filtrer le fil">
               {FILTRES.map(([valeur, intitule]) => (
@@ -255,12 +299,13 @@ export default function Accueil() {
             <p className="mb-3 mt-1 text-legende text-muted-foreground">
               Le fil et les prix rendus sont calculés depuis ce point.
             </p>
-            <Link
-              to="/materiaux"
-              className="cible-44 flex items-center justify-center rounded-md border border-foreground text-courant font-semibold"
+            <button
+              type="button"
+              onClick={ouvrirTiroir}
+              className="cible-44 flex w-full items-center justify-center rounded-md border border-foreground text-courant font-semibold"
             >
               {point ? "Changer de point" : "Choisir où livrer"}
-            </Link>
+            </button>
           </div>
 
           <div className="rounded-lg border border-primary/25 bg-primary-soft p-4">
@@ -277,6 +322,12 @@ export default function Accueil() {
           </div>
         </aside>
       </div>
+
+      {tiroirMonte ? (
+        <React.Suspense fallback={null}>
+          <TiroirPointSeul ouvert={tiroirOuvert} onOuvertChange={setTiroirOuvert} />
+        </React.Suspense>
+      ) : null}
     </>
   );
 }
@@ -329,6 +380,12 @@ function FilVide({ filtre }: { filtre: FiltreFil }) {
           className="cible-44 flex items-center rounded-md bg-primary px-4 text-courant font-bold text-primary-foreground"
         >
           Parcourir les matériaux
+        </Link>
+        <Link
+          to="/demandes/nouvelle"
+          className="cible-44 flex items-center rounded-md border border-foreground px-4 text-courant font-semibold"
+        >
+          Je cherche un matériau
         </Link>
         <Link
           to="/devenir-fournisseur"

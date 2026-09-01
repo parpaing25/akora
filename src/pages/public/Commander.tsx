@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAntiAbus } from "@/hooks/useAntiAbus";
 import { grouperParFournisseur, usePanier } from "@/lib/panier";
 import { usePointLivraison } from "@/lib/point-livraison";
-import { listerFournisseurs } from "@/lib/donnees/vitrine";
+import { listerFournisseursParIds } from "@/lib/donnees/vitrine";
 import { creerCommandes } from "@/lib/donnees/commandes";
 import { useLivraison } from "@/hooks/useLivraison";
 import { formaterAriary, normaliserTelephone, telephoneValide } from "@/lib/format";
@@ -53,9 +53,11 @@ export default function Commander() {
 
   const groupes = React.useMemo(() => grouperParFournisseur(lignes), [lignes]);
 
+  // Les fournisseurs DU PANIER, par identifiants : une page d'annuaire ne les
+  // contenait pas forcément, et la livraison devenait muettement inchiffrable.
   const fournisseurs = useQuery({
-    queryKey: ["fournisseurs-commande"],
-    queryFn: () => listerFournisseurs({ page: 0 }),
+    queryKey: ["fournisseurs-commande", groupes.map((g) => g.fournisseurId).join(",")],
+    queryFn: () => listerFournisseursParIds(groupes.map((g) => g.fournisseurId)),
     enabled: groupes.length > 0,
     staleTime: 5 * 60_000,
   });

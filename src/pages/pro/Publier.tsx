@@ -11,6 +11,7 @@ import { Seo } from "@/components/Seo";
 import { Champ } from "@/components/ui/champ";
 import { Bouton } from "@/components/ui/button";
 import { GroupeRadio, OptionRadio } from "@/components/ui/radio-group";
+import { Squelette } from "@/components/ui/skeleton";
 import { EtatVide } from "@/components/ui/etats";
 
 /**
@@ -132,7 +133,17 @@ export default function Publier() {
   };
 
   if (fiche.isLoading) {
-    return <p className="text-courant text-muted-foreground">Chargement…</p>;
+    /* Squelette à la forme de la page (§5) : titre, intro, puis les trois
+       grands blocs du formulaire — jamais un texte de chargement nu. */
+    return (
+      <div className="space-y-5">
+        <Squelette className="h-7 w-52" />
+        <Squelette className="h-4 w-4/5" />
+        <Squelette className="h-24 w-full" />
+        <Squelette className="h-32 w-full" />
+        <Squelette className="h-24 w-full" />
+      </div>
+    );
   }
 
   if (!fiche.data || fiche.data.statut !== "actif") {

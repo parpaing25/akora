@@ -1,17 +1,21 @@
 import { NavLink } from "react-router-dom";
-import { Home, Layers, ShoppingCart, ClipboardList, User } from "lucide-react";
+import { Home, Layers, Search, ShoppingCart, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePanier, nombreProduits } from "@/lib/panier";
 
 /**
  * Barre inférieure fixe, 5 entrées (AKORA-DESIGN §8).
  * Entrée active en latérite. Chaque cible fait au moins 44 × 44 px.
+ *
+ * « Recherche » a remplacé « Commandes » (audit 01/09) : le champ du header
+ * est masqué sous 640 px, il n'existait AUCUN accès à la recherche sur
+ * mobile. Les commandes restent à un geste, dans Compte.
  */
 const ENTREES = [
   { to: "/", libelle: "Fil", Icone: Home, exact: true },
   { to: "/materiaux", libelle: "Matériaux", Icone: Layers, exact: false },
+  { to: "/recherche", libelle: "Recherche", Icone: Search, exact: false },
   { to: "/panier", libelle: "Panier", Icone: ShoppingCart, exact: false },
-  { to: "/compte/commandes", libelle: "Commandes", Icone: ClipboardList, exact: false },
   { to: "/compte", libelle: "Compte", Icone: User, exact: true },
 ] as const;
 
@@ -24,7 +28,12 @@ export function BarreMobile() {
   return (
     <nav
       aria-label="Navigation principale"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card pb-[env(safe-area-inset-bottom)] sm:hidden"
+      /*
+       * `md:hidden`, pas `sm:hidden` : la nav du header n'apparaît qu'à
+       * partir de 768 px. Avec `sm:hidden`, la tranche 640-1023 px (tablettes)
+       * n'avait AUCUNE navigation — ni barre, ni menu (audit 01/09).
+       */
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card pb-[env(safe-area-inset-bottom)] md:hidden"
     >
       <ul className="grid grid-cols-5">
         {ENTREES.map(({ to, libelle, Icone, exact }) => (
