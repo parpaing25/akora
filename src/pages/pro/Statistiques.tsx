@@ -1,8 +1,9 @@
-import { useOutletContext } from "react-router-dom";
+import { Link, useOutletContext } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { LigneFournisseur } from "@/lib/donnees/fournisseurs";
 import { listerCommandesFournisseur } from "@/lib/donnees/commandes";
+import { lireObservatoire } from "@/lib/donnees/prix-marche";
 import { formaterAriary, formaterDate } from "@/lib/format";
 import { Seo } from "@/components/Seo";
 import { Carte } from "@/components/ui/card";
@@ -56,6 +57,46 @@ export default function Statistiques() {
     staleTime: 10 * 60_000,
   });
 
+  /*
+   * Vos prix face au marché : chaque produit actif comparé à la MÉDIANE de
+   * l'observatoire (offres actives du site + relevés anonymisés de la
+   * veille). C'est le signal qui explique pourquoi un produit part — ou pas.
+   * Un chiffre appuyé sur moins de trois dépôts est marqué « indicatif ».
+   */
+  const marche = useQuery({
+    queryKey: ["prix-vs-marche", fiche.id],
+    queryFn: async () => {
+      const [{ data: produits }, observatoire] = await Promise.all([
+        supabase
+          .from("produits")
+          .select("id, nom_affiche, prix_unitaire, prix_promo, materiau_ref_id")
+          .eq("fournisseur_id", fiche.id)
+          .eq("statut", "actif")
+          .not("materiau_ref_id", "is", null),
+        lireObservatoire(null, null),
+      ]);
+      const parRef = new Map(observatoire.map((l) => [l.materiau_ref_id, l]));
+      return (produits ?? [])
+        .map((p) => {
+          const ligne = parRef.get(p.materiau_ref_id as string);
+          if (!ligne || !ligne.prix_median) return null;
+          const prix = Number(p.prix_promo ?? p.prix_unitaire);
+          const ecart = Math.round(((prix - Number(ligne.prix_median)) / Number(ligne.prix_median)) * 100);
+          return {
+            nom: String(p.nom_affiche),
+            prix,
+            mediane: Number(ligne.prix_median),
+            ecart,
+            nbDepots: ligne.nb_depots,
+            fiable: ligne.fiable,
+          };
+        })
+        .filter((l): l is NonNullable<typeof l> => l !== null)
+        .sort((a, b) => b.ecart - a.ecart);
+    },
+    staleTime: 10 * 60_000,
+  });
+
   const liste = commandes.data ?? [];
   const cloturees = liste.filter((c) => c.statut === "cloturee");
   const chiffreAffaires = cloturees.reduce((s, c) => s + Number(c.montant_total), 0);
@@ -99,6 +140,54 @@ export default function Statistiques() {
           badge « Partenaire Akora », avec la note moyenne et l'absence de litige perdu.
         </p>
       </Carte>
+
+      <h3 className="mt-5 text-produit">Vos prix face au marché</h3>
+      <p className="mt-0.5 text-[0.78rem] text-muted-foreground">
+        Écart à la médiane relevée par{" "}
+        <Link to="/prix" className="lien-souligne">
+          l'observatoire Akora
+        </Link>{" "}
+        (offres actives + veille anonymisée, tout Madagascar).
+      </p>
+      {marche.isPending ? (
+        <Squelette className="mt-2 h-28 w-full" />
+      ) : (marche.data ?? []).length === 0 ? (
+        <div className="mt-2">
+          <EtatVide
+            titre="Pas encore de point de comparaison"
+            phrase="Dès que l'observatoire relève votre matériau ailleurs, l'écart s'affiche ici."
+          />
+        </div>
+      ) : (
+        <ul className="mt-2 divide-y divide-border rounded-lg border border-border bg-card">
+          {(marche.data ?? []).map((l) => (
+            <li key={l.nom} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-3 py-2 text-legende">
+              <span className="min-w-0 flex-1 truncate">{l.nom}</span>
+              <span className="nombres text-muted-foreground">
+                vous : {formaterAriary(l.prix)} · marché : {formaterAriary(l.mediane)}
+              </span>
+              <span
+                className={
+                  "nombres shrink-0 rounded-full px-2 py-0.5 text-[0.78rem] font-bold " +
+                  (l.ecart > 5
+                    ? "bg-destructive/10 text-destructive-strong"
+                    : l.ecart < -5
+                      ? "bg-success/10 text-success"
+                      : "bg-muted text-foreground")
+                }
+              >
+                {l.ecart > 0 ? "+" : ""}
+                {l.ecart} %
+              </span>
+              {!l.fiable ? (
+                <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[0.72rem] text-muted-foreground">
+                  indicatif · {l.nbDepots} dépôt{l.nbDepots > 1 ? "s" : ""}
+                </span>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      )}
 
       <h3 className="mt-5 text-produit">Produits les plus consultés</h3>
       <p className="mt-0.5 text-[0.78rem] text-muted-foreground">Sur les 30 derniers jours.</p>
