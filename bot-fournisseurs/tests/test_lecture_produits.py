@@ -182,6 +182,24 @@ def test_un_lot_se_ramene_a_l_unite():
     assert extraction.quantite_vendue("1 camion 8m3 dia 6m3 : 320 000 Ar") is None   # deux lots
 
 
+def test_un_type_incertain_ne_cree_pas_de_reference():
+    """03/09/2026 : « brique BTCs 30*15*10cm reste 1400 Ar » avait fait naître
+    une « Brique creuse 10 × 15 × 30 cm ». La cote était juste, le type faux :
+    « BTCs » n'était pas lu (pluriel), et « brique » seule vaut trois types."""
+    lues = extraction.offres("Prix unitaire brique BTCs 30*15*10cm reste 1400 Ar. 33 briques font 1m2", CFG)
+    assert lues[0]["prix"] == 1400
+    assert lues[0]["type_slug"] == "btc"                    # le pluriel se lit
+    assert lues[0]["cote_lue"] == {"genre": "bloc", "valeur": (10.0, 15.0, 30.0)}
+    assert lues[0]["type_sur"] is True
+
+    lues = extraction.offres("brique 30x15x10cm : 1400 Ar", CFG)
+    assert lues[0]["type_slug"] == "brique-creuse"          # première de sa famille…
+    assert lues[0]["type_sur"] is False                     # …mais rien ne le prouve
+    offres = collecteur.creer_les_references([dict(lues[0])], {"creer_references": True})
+    assert offres[0]["materiau_slug"] is None and "cote_lue" not in offres[0]
+    assert "type_sur" not in offres[0]
+
+
 def test_le_gravillon_n_a_pas_de_section():
     assert referentiel.reference_a_creer("gravillon", "2 x 3 cm, 8 m")["possible"] is False
     assert referentiel.reference_a_creer("madrier", "15cmx7cmx4m")["possible"] in (True, False)

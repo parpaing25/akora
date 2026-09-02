@@ -242,7 +242,10 @@ def normaliser(texte: str) -> str:
 def _mot_present(expression: str, dans: str) -> bool:
     """Cherche une expression en respectant les frontières de mot."""
     motif = re.escape(sans_accents(expression)).replace(r"\ ", r"[\s\-']+")
-    return re.search(rf"(?<![a-z0-9]){motif}(?![a-z0-9])", dans) is not None
+    # Le pluriel ne change pas le mot : « brique BTCs 30x15x10cm » (03/09/2026)
+    # n'était pas reconnu comme un BTC et retombait sur « brique » — donc sur
+    # la brique creuse, première de sa famille.
+    return re.search(rf"(?<![a-z0-9]){motif}s?(?![a-z0-9])", dans) is not None
 
 
 # Longueur en dessous de laquelle un début de mot ne prouve plus rien : « bac »
@@ -733,6 +736,12 @@ def apparier(libelle: str, nombres_prix: set[str] | None = None) -> dict | None:
     # est plafonnée et l'interface demandera confirmation. On ne jette rien —
     # c'est ainsi que les dépôts écrivent, et une offre écartée est une offre
     # perdue.
+    # Le TYPE est-il sûr ? Non quand la reconnaissance tient à un mot partagé
+    # (« brique » = creuse, pleine ou de terre comprimée) ou que deux types se
+    # disputent la ligne. Un type incertain ne crée jamais de référence : le
+    # 03/09/2026, « brique BTCs 30x15x10cm » a fait naître une « Brique creuse
+    # 10 × 15 × 30 cm » — la cote était juste, le type était faux.
+    type_sur = not partage and not (len(candidats) > 1 and candidats[1][1] >= poids)
     if partage or (len(candidats) > 1 and candidats[1][1] >= poids):
         certitude = min(certitude, PLAFOND_PARTAGE)
 
@@ -751,8 +760,9 @@ def apparier(libelle: str, nombres_prix: set[str] | None = None) -> dict | None:
             # dans `extraction`, sur la ligne BRUTE — ici elle est normalisée
             # et le montant avale le chiffre qui le précède.
             "cote_lue": None,
+            "type_sur": type_sur,
         }
-    return _fiche(materiau, type_fiche, certitude, ambigu=False)
+    return {**_fiche(materiau, type_fiche, certitude, ambigu=False), "type_sur": type_sur}
 
 
 def _fiche(materiau: dict, type_fiche: dict, certitude: int, ambigu: bool) -> dict:

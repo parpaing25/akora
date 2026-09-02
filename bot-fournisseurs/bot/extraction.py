@@ -709,6 +709,9 @@ def offres(texte: str, cfg: dict) -> list[dict]:
             # le diamètre.
             "cote_lue": (appariement.get("cote_lue") if herite
                          else _cote_lue(appariement, ligne)),
+            # Retirée aussi avant l'écriture : le type est-il sûr ? Sans ça,
+            # aucune référence ne naît de cette offre.
+            "type_sur": bool(appariement.get("type_sur")),
         })
 
     # Rattrapage : rien ligne par ligne, mais le texte entier parle bien d'un

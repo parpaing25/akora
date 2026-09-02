@@ -769,7 +769,10 @@ def creer_les_references(offres: list[dict], cfg: dict) -> list[dict]:
     resultat = []
     for offre in offres:
         cote = offre.pop("cote_lue", None)
-        if (cote and offre.get("prix") and not offre.get("materiau_slug")
+        type_sur = bool(offre.pop("type_sur", False))
+        # Le TYPE doit être sûr : « brique 30x15x10 » peut être creuse, pleine
+        # ou de terre comprimée — la cote est juste, le type ne l'est pas.
+        if (cote and type_sur and offre.get("prix") and not offre.get("materiau_slug")
                 and offre.get("type_slug") and cfg.get("creer_references", True)):
             try:
                 fiche = formats.creer_reference_auto(
@@ -781,6 +784,7 @@ def creer_les_references(offres: list[dict], cfg: dict) -> list[dict]:
                 fiche = None
             if fiche:
                 fiche.pop("cote_lue", None)
+                fiche.pop("type_sur", None)
                 offre.update(fiche)
         resultat.append(offre)
     return resultat
