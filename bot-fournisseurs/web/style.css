@@ -327,6 +327,19 @@ label.case input { width: auto; min-height: 0; }
               text-transform: uppercase; letter-spacing: .03em; }
 .tableau td.nombre, .tableau th.nombre { text-align: right; font-variant-numeric: tabular-nums; }
 .tableau tbody tr:hover { background: var(--sable); }
+
+/* Utilisé depuis l'onglet Nouvelles sources et l'annuaire, jamais défini
+   jusqu'ici : le texte tombait en taille normale au milieu d'un tableau. */
+.discret { color: var(--beton-doux); font-size: 12.5px; }
+
+/* Colonnes triables : l'en-tête est un bouton, il doit s'annoncer comme tel. */
+.tableau.triable th[data-tri] { cursor: pointer; user-select: none; white-space: nowrap; }
+.tableau.triable th[data-tri]:hover { color: var(--beton); }
+.tableau.triable th[data-tri]::after { content: ""; opacity: .35; margin-left: 6px; }
+.tableau.triable th[data-tri]:hover::after { content: "\2191"; }
+.tableau.triable th.trie { color: var(--laterite); }
+.tableau.triable th.trie::after { content: "\2191"; opacity: 1; }
+.tableau.triable th.trie.descendant::after { content: "\2193"; }
 .tableau input[type="text"] { min-height: 32px; padding: 4px 8px; }
 
 .grille-couverture td { text-align: center; padding: 6px; }
@@ -516,6 +529,13 @@ label.case input { width: auto; min-height: 0; }
   padding-left: 10px; border-left: 2px solid var(--muted);
 }
 .carte-auto .jamais b { color: var(--beton); font-weight: 600; }
+/* Le préalable se lit AVANT le reste : c'est une condition, pas un détail. */
+.carte-auto .prealable {
+  font-size: 12.5px; margin: 0; padding: 8px 10px;
+  border-radius: var(--rayon-petit);
+  background: var(--jaune-doux); color: var(--beton);
+}
+.carte-auto .prealable b { font-weight: 700; }
 
 .pastilles-auto { display: flex; gap: 8px; flex-wrap: wrap; }
 .pastille-auto {
@@ -700,3 +720,161 @@ label.case input { width: auto; min-height: 0; }
 .badge.site   { background: #e8f6ef; color: #1f6b4d; }
 .badge.fil    { background: var(--bleu-doux); color: var(--laterite-fort); }
 .filtres-candidats { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+
+/* ── Doublons probables ───────────────────────────────────────────────────
+   Replié par défaut : c'est un signalement, pas une alerte. Il ne doit pas
+   pousser la grille des fiches hors de l'écran à chaque ouverture d'onglet. */
+.bloc-doublons {
+  background: var(--jaune-doux); border: 1px solid hsl(38 80% 82%);
+  border-left: 4px solid var(--jaune);
+  border-radius: var(--rayon); padding: 12px 18px; margin-bottom: 18px;
+}
+.bloc-doublons > summary { cursor: pointer; font-size: 13.5px; }
+.bloc-doublons > summary strong { margin-right: 10px; }
+.doublons-aide { color: var(--beton-doux); font-size: 12.5px; }
+.doublon {
+  background: #fff; border: 1px solid var(--bordure);
+  border-radius: var(--rayon-petit); padding: 12px 14px; margin-top: 12px;
+}
+.doublon.doute { border-left: 3px solid var(--jaune); }
+.doublon.sur { border-left: 3px solid var(--bleu); }
+.doublon-entete { margin: 0 0 8px; display: flex; gap: 10px; flex-wrap: wrap; align-items: baseline; }
+.doublon-marque {
+  font-size: 11.5px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .04em; padding: 2px 8px; border-radius: 999px;
+  background: var(--muted); color: var(--beton-doux);
+}
+.doublon.sur .doublon-marque { background: var(--bleu-doux); color: var(--laterite-fort); }
+.doublon-entete small { color: var(--beton-doux); font-size: 12px; }
+.doublon-fiche {
+  display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap;
+  padding: 6px 0; border-top: 1px dashed var(--bordure); font-size: 13px;
+}
+.doublon-nom { font-weight: 600; }
+.doublon-detail { color: var(--beton-doux); font-size: 12.5px; }
+.doublon-actions { margin: 10px 0 0; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.doublon-garde-fou { color: var(--beton-doux); font-size: 12px; }
+
+/* ── Atelier des formats ──────────────────────────────────────────────────
+   Une ligne = un libellé relevé, pas un dépôt : c'est le renversement qui
+   rend la tâche faisable. Le libellé brut reste visible en permanence — c'est
+   la seule pièce d'origine, et rien ne doit se choisir sans l'avoir sous les
+   yeux. */
+.groupe-format { padding: 14px 18px; }
+.groupe-format > summary {
+  cursor: pointer; display: flex; align-items: center; gap: 10px;
+  font-size: 15px; list-style: none;
+}
+.groupe-format > summary::-webkit-details-marker { display: none; }
+.groupe-format > summary::before { content: "▸"; color: var(--beton-doux); }
+.groupe-format[open] > summary::before { content: "▾"; }
+.groupe-format + .groupe-format { margin-top: 10px; }
+
+.alerte-unite {
+  background: var(--jaune-doux); border-left: 3px solid var(--jaune);
+  padding: 8px 12px; border-radius: var(--rayon-petit); margin: 10px 0;
+}
+
+.paquets { margin-top: 10px; }
+.paquet {
+  display: grid; grid-template-columns: 1fr 340px; gap: 12px;
+  align-items: center; padding: 10px 0; border-bottom: 1px solid var(--muted);
+}
+.paquet.en-conflit { background: var(--danger-doux); }
+.paquet .brut { font-size: 12.5px; color: var(--beton); }
+.paquet .discret { font-size: 11.5px; color: var(--beton-doux); }
+.paquet-choix { display: flex; flex-direction: column; gap: 6px; }
+.paquet-choix select { min-height: 34px; padding: 4px 8px; font-size: 13px; }
+.paquet .confirme-unite {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11.5px; color: var(--danger);
+}
+.discret-bouton { font-size: 12px; padding: 4px 10px; align-self: flex-start; }
+@media (max-width: 760px) { .paquet { grid-template-columns: 1fr; } }
+
+/* ── Photos : ce qu'elles montrent ────────────────────────────────────────
+   Le nom et le prix sous l'image ne sont pas decoratifs : c'est ce qui permet
+   de voir, avant de transferer, que la photo dit la meme chose que
+   l'etiquette. Le 01/09/2026, « Sable fin : 45 000 Ar » est parti dans le fil
+   sous deux photos de gravillon et de moellon. */
+.miniatures.larges { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 12px; }
+.miniatures.larges .mini { position: relative; display: flex; flex-direction: column; gap: 4px; }
+.miniatures.larges .mini img { width: 100%; height: 118px; object-fit: cover; border-radius: var(--rayon-petit); }
+.mini-etiquette {
+  font-size: 11.5px; line-height: 1.35; color: var(--beton);
+  min-height: 30px; padding: 0 2px;
+}
+.mini-etiquette .discret { color: var(--beton-doux); font-style: italic; }
+.miniatures.larges .mini select { width: 100%; font-size: 11.5px; padding: 3px 6px; min-height: 28px; }
+.miniatures.larges .mini.ecartee { opacity: .45; }
+
+/* ── A appeler ────────────────────────────────────────────────────────────
+   Une carte par depot, et la liste NOMMEE de ce qu'on lui demande. Sans les
+   noms d'articles, l'appel se resume a « c'est combien ? » — et on raccroche
+   sans le tarif de la moitie du catalogue. */
+.carte-appel + .carte-appel { margin-top: 10px; }
+.carte-appel h3 { margin: 0; display: flex; align-items: center; gap: 8px; }
+.carte-appel .actions-carte { gap: 12px; align-items: center; }
+.liste-demandes {
+  margin: 6px 0 0; padding-left: 20px; columns: 2; column-gap: 24px;
+  font-size: 13px; line-height: 1.7;
+}
+@media (max-width: 720px) { .liste-demandes { columns: 1; } }
+
+/* ── La photo se choisit SOUS le produit ──────────────────────────────────
+   Le geste naturel : on edite une ligne de produit, on voit les photos du
+   depot dessous, on clique celle qui le montre. Celles de la MEME publication
+   d'abord — un depot photographie ce qu'il annonce dans le meme post. */
+.photos-offre {
+  grid-column: 1 / -1; display: flex; align-items: center; gap: 6px;
+  flex-wrap: wrap; margin-top: 2px;
+}
+.photos-offre > .discret { font-size: 11.5px; color: var(--beton-doux); }
+.vignette {
+  padding: 0; border: 2px solid transparent; border-radius: var(--rayon-petit);
+  background: none; cursor: pointer; line-height: 0; position: relative;
+}
+.vignette img {
+  width: 54px; height: 42px; object-fit: cover;
+  border-radius: calc(var(--rayon-petit) - 1px); display: block;
+  opacity: .72; transition: opacity .12s;
+}
+.vignette:hover img { opacity: 1; }
+.vignette.choisie { border-color: var(--laterite); }
+.vignette.choisie img { opacity: 1; }
+/* Prise par un autre produit : visible, pas interdite — c'est parfois la meme
+   image qui montre deux formats du meme bois. */
+.vignette.prise::after {
+  content: "•"; position: absolute; top: -2px; right: 2px;
+  color: var(--bleu); font-size: 16px; line-height: 1;
+  text-shadow: 0 0 3px #fff;
+}
+.autres-photos { display: inline-block; }
+.autres-photos > summary {
+  cursor: pointer; font-size: 11.5px; color: var(--bleu);
+  padding: 2px 8px; border: 1px dashed var(--bordure);
+  border-radius: 999px; list-style: none; white-space: nowrap;
+}
+.autres-photos > summary::-webkit-details-marker { display: none; }
+.autres-photos .bande {
+  display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px;
+  max-height: 168px; overflow-y: auto;
+}
+
+/* Une proposition n'est pas un choix : elle arrive pre-selectionnee, elle le
+   DIT, et rien ne part tant que personne n'a appuye sur « Appliquer ». */
+.propose { font-size: 11.5px; color: var(--bleu); margin-top: 2px; }
+.brut.avec-proposition { border-left: 3px solid var(--bleu); padding-left: 8px; }
+
+/* ── Le miroir : collecte face au site ────────────────────────────────────
+   Un ecart qu'on ne voit pas est un ecart qui grandit. */
+table.miroir { width: 100%; border-collapse: collapse; margin-top: 8px; }
+table.miroir th, table.miroir td { padding: 6px 10px; text-align: left; }
+table.miroir thead th { font-size: 11.5px; color: var(--beton-doux); font-weight: 600; }
+table.miroir tbody th { font-weight: 600; font-size: 13.5px; }
+table.miroir .nombre { font-variant-numeric: tabular-nums; font-size: 17px; font-weight: 600; }
+table.miroir .fleche { color: var(--beton-doux); }
+table.miroir .reste { font-size: 12px; color: var(--beton-doux); }
+table.miroir tr.ecart .reste { color: var(--laterite); }
+table.miroir tr.aligne .reste { color: var(--succes); }
+table.miroir tbody tr + tr { border-top: 1px solid var(--muted); }

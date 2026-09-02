@@ -40,6 +40,12 @@ def _prix(montant) -> str:
     return f"{int(montant):,}".replace(",", ESPACE_FINE) + f"{ESPACE_FINE}Ar"
 
 
+# Le meme formatage sert aux publications ecrites au nom d'un depot
+# (`inscription._texte_fil`) : un prix se lit pareil partout dans le fil, et
+# deux formateurs finiraient par diverger.
+prix_lisible = _prix
+
+
 UNITES = {
     "piece": "la pièce", "sac": "le sac", "m3": "le m³", "tonne": "la tonne",
     "m2": "le m²", "ml": "le mètre", "botte": "la botte",

@@ -44,6 +44,38 @@ def executer(requete: str) -> list[dict]:
     return lignes if isinstance(lignes, list) else []
 
 
+def executer_systeme(requete: str) -> None:
+    """Joue une requete en se DECLARANT appel systeme. Ne rend aucune ligne.
+
+    🔴 POURQUOI ELLE EXISTE. `public.proteger_colonnes_fournisseur()` est un
+    trigger BEFORE UPDATE qui remet `statut`, `owner_id` et
+    `niveau_verification` a leur ancienne valeur pour tout appelant qui n'est
+    ni administrateur ni « systeme ». Il ne leve AUCUNE erreur : la requete
+    repond « succes » et rien n'a bouge.
+
+    C'est ce qui a fait dormir quatre fiches en brouillon du 23/08 au
+    01/09/2026 alors que le bot annoncait « inscrit sur Akora en actif » a
+    chaque passage — et que `publier()` ne pouvait pas davantage marcher. Le
+    genre de panne qu'on ne trouve qu'en relisant la base apres coup, jamais
+    dans les journaux.
+
+    `est_appel_systeme()` exige DEUX choses : le drapeau `akora.systeme` pose,
+    et un role interne. Le bot passe par l'API Management, donc
+    `current_user` vaut `postgres` : la seconde est acquise, la premiere se
+    pose ici, et seulement le temps de la transaction (`set_config(..., true)`).
+
+    Le bloc DO ne rend rien : reserver cette voie aux mises a jour dont on
+    n'attend pas de lignes, et laisser `executer()` pour tout le reste — un
+    appel systeme est une exception, pas le chemin normal.
+    """
+    executer(
+        "do $akora$ begin "
+        "perform set_config('akora.systeme', 'on', true); "
+        + requete.strip() +
+        " end $akora$;"
+    )
+
+
 def txt(valeur) -> str:
     """Littéral SQL texte. Tout ce qui vient de Facebook passe par ici."""
     if valeur is None or valeur == "":
@@ -131,11 +163,47 @@ def annuaire() -> list[dict]:
     global _cache_annuaire
     if _cache_annuaire is None:
         lignes = executer(
-            "select id::text, raison_sociale, slug, "
-            "       regexp_replace(coalesce(telephone, ''), '[^0-9]', '', 'g') as tel, "
-            "       regexp_replace(coalesce(whatsapp, ''), '[^0-9]', '', 'g') as tel2 "
-            "  from public.fournisseurs;"
+            "select f.id::text, f.raison_sociale, f.slug, f.statut::text, "
+            "       f.owner_id::text as owner_id, "
+            "       regexp_replace(coalesce(f.telephone, ''), '[^0-9]', '', 'g') as tel, "
+            "       regexp_replace(coalesce(f.whatsapp, ''), '[^0-9]', '', 'g') as tel2, "
+            # Les produits que ce depot a DEJA. Sans eux, chaque inscription
+            # renvoyait tout son catalogue au site pour n'y rien changer, et
+            # surtout on ne pouvait pas dire a l'ecran ce qu'il restait a
+            # ajouter — donc on ne savait pas si un clic servait a quelque
+            # chose. Une seule requete pour tout le monde : une par depot se
+            # verrait a l'oeil nu sur l'ecran de tri.
+            "       coalesce((select array_agg(p.slug) from public.produits p "
+            "                  where p.fournisseur_id = f.id), '{}') as produits, "
+            # Le PRIX de chaque produit deja en ligne. C'est lui qui distingue
+            # « on l'a deja » de « on l'a, mais le depot a change son tarif » —
+            # la deuxieme est la seule raison de reecrire quoi que ce soit.
+            "       coalesce((select jsonb_object_agg(p.slug, p.prix_unitaire) "
+            "                   from public.produits p "
+            "                  where p.fournisseur_id = f.id), '{}'::jsonb) as prix, "
+            # Les produits EN LIGNE qui n'ont aucune image. Sans cette
+            # liste, un produit deja transfere ne recevait jamais la photo
+            # qu'on lui designait ensuite : le transfert n'ecrit que ce qui
+            # MANQUE, et lui ne manquait pas — il etait seulement muet.
+            "       coalesce((select array_agg(p.slug) from public.produits p "
+            "                  where p.fournisseur_id = f.id "
+            "                    and cardinality(p.photos) = 0), '{}') as sans_photo "
+            "  from public.fournisseurs f;"
         )
+        for ligne in lignes:
+            produits = ligne.get("produits")
+            if isinstance(produits, str):          # tableau Postgres en texte
+                produits = [m for m in produits.strip("{}").split(",") if m]
+            ligne["produits"] = list(produits or [])
+            prix = ligne.get("prix")
+            if isinstance(prix, str):
+                prix = json.loads(prix)
+            ligne["prix"] = {k: int(v) for k, v in (prix or {}).items()
+                             if v is not None}
+            muets = ligne.get("sans_photo")
+            if isinstance(muets, str):
+                muets = [m for m in muets.strip("{}").split(",") if m]
+            ligne["sans_photo"] = list(muets or [])
         _cache_annuaire = lignes
     return _cache_annuaire
 

@@ -60,11 +60,41 @@ const AUTOMATISATIONS = [
     jamais: "N'écrit rien chez le fournisseur : c'est une lecture. Sans elle, on relancerait un dépôt qui vient de créer son compte.",
   },
   {
+    // Ce n'est pas une automatisation : c'est le robinet général de tout ce
+    // qui écrit chez Akora. Il est ici parce que c'est l'onglet où l'on vient
+    // décider ce que le bot a le droit de toucher — et parce qu'allumer
+    // « Réserver les fiches validées » sans lui ne ferait rien du tout.
+    groupe: "privees",
+    cle: "pousser_les_fiches",
+    titre: "Autoriser l'envoi des fiches vers le site",
+    prealable:
+      "À laisser ÉTEINT tant que la migration migration/20260823120000_fiches_reservees.sql "
+      + "n'a pas été appliquée sur akora.fonenako.mg : sans elle, les tables "
+      + "prospects_fournisseurs, prospects_produits et prospects_vehicules n'existent pas.",
+    fait: "Ouvre l'écriture des fiches réservées. C'est cet interrupteur qui rend le bouton « Réserver » utilisable — à la main, en lot, et pour l'automatisation ci-dessous.",
+    jamais: "Ne crée aucune table : l'allumer avant la migration ne fait pas passer la fiche, il déplace seulement l'échec plus loin — après l'envoi des photos. Éteint, le refus est immédiat et rien ne part.",
+  },
+  {
     groupe: "privees",
     cle: "auto_reservation",
     titre: "Réserver les fiches validées",
     fait: "Écrit sur akora.fonenako.mg la fiche de chaque prospect validé : nom, quartier, produits, prix, camions, photos.",
     jamais: "Ne rend rien public. Une fiche réservée n'est ni indexée ni dans l'annuaire : elle ne s'ouvre qu'avec son jeton, celui qu'on envoie au dépôt.",
+  },
+  {
+    groupe: "publiques",
+    cle: "auto_inscription",
+    titre: "Créer les dépôts complets sur le site",
+    fait:
+      "Crée sur akora.fonenako.mg la fiche de tout dépôt qui a un nom, un "
+      + "contact et un emplacement — et transfère au passage ses produits "
+      + "COMPLETS. 84 % des publications collectées ne portent aucun prix : "
+      + "attendre un tarif pour créer la fiche d'un dépôt dont on a le "
+      + "numéro, c'est attendre pour toujours.",
+    jamais:
+      "N'envoie JAMAIS un produit sans référence du catalogue, sans prix ou "
+      + "sans photo désignée — cette règle-là n'est pas réglable. Et ne touche "
+      + "pas à un dépôt qui tient déjà sa propre fiche : ses prix sont à lui.",
   },
   {
     groupe: "publiques",
@@ -95,6 +125,7 @@ function carteAutomatisation(a) {
         <span class="piste"></span>
       </label>
     </div>
+    ${a.prealable ? `<p class="prealable"><b>Préalable :</b> ${echapper(a.prealable)}</p>` : ""}
     <p class="fait">${echapper(a.fait)}</p>
     <p class="jamais"><b>Ne fera jamais :</b> ${echapper(a.jamais)}</p>
   </div>`;
@@ -196,6 +227,154 @@ $("#btn-auto-horaires").onclick = async () => {
     toast("Réglages enregistrés.", "succes");
   } catch (e) { toast(e.message, "erreur"); }
 };
+
+/* ── ANNUAIRE ──────────────────────────────────────────────────────────────
+   Le recensement : inscrits sur Akora + prospects collectés, une seule liste.
+
+   Deux règles de fond, et elles se voient dans le code :
+     • TOUT ce qui vient de Facebook passe par `echapper()`. Un dépôt qui
+       s'appelle « <b>MORA</b> » ne doit pas mettre l'interface en gras — ni
+       pire ;
+     • le tableau se trie et se filtre EN LOCAL, sur les lignes déjà reçues.
+       Repartir au serveur à chaque clic de colonne relancerait un appel réseau
+       vers Akora à chaque fois. */
+
+const annuaire = {
+  lignes: [],
+  recherche: "",
+  tri: "nom",
+  descendant: false,
+  charge: false,
+};
+
+const LIBELLES_ORIGINE = {
+  site: "Inscrit",
+  prospect: "Facebook",
+  "les deux": "Les deux",
+};
+
+/** Le texte sur lequel la recherche plein texte travaille. */
+function texteAnnuaire(l) {
+  return [
+    l.nom, l.ville, l.quartier, l.statut, l.origine,
+    (l.telephones || []).join(" "),
+    (l.familles || []).join(" "),
+    l.client ? "client inscrit" : "",
+  ].join(" ").toLowerCase();
+}
+
+async function chargerAnnuaire() {
+  const corps = $("#table-annuaire tbody");
+  if (!annuaire.charge) {
+    corps.innerHTML = '<tr><td colspan="8" class="vide">Lecture du site…</td></tr>';
+  }
+  let donnees;
+  try {
+    donnees = await api("/api/annuaire");
+  } catch (e) {
+    // Le serveur en cours d'exécution peut être ANTÉRIEUR à cette vue : la
+    // route n'existe alors pas, et un 404 n'a rien à voir avec une panne
+    // d'Akora. On le dit, plutôt que de laisser un tableau vide.
+    corps.innerHTML = `<tr><td colspan="8" class="vide">
+      L'annuaire n'a pas pu être lu : ${echapper(e.message)}<br>
+      <small>Si le message parle de « Not Found », le bot tourne encore sur la
+      version d'avant cet onglet — fermez la fenêtre du bot et relancez-le.</small>
+    </td></tr>`;
+    $("#annuaire-compte").textContent = "";
+    return;
+  }
+  annuaire.lignes = donnees.lignes || [];
+  annuaire.charge = true;
+
+  const bandeau = $("#banniere-annuaire");
+  bandeau.hidden = !donnees.avertissement;
+  $("#annuaire-avertissement").textContent = donnees.avertissement || "";
+
+  const c = donnees.compte || {};
+  $("#annuaire-compte").textContent =
+    `${c.total ?? 0} fournisseur(s) recensé(s) · ${c.inscrits ?? 0} déjà client(s) · `
+    + `${c.prospects ?? 0} vu(s) sur Facebook · ${c.croises ?? 0} retrouvé(s) des deux côtés`;
+
+  rendreAnnuaire();
+}
+
+function rendreAnnuaire() {
+  const corps = $("#table-annuaire tbody");
+  const besoin = annuaire.recherche.trim().toLowerCase();
+  let lignes = annuaire.lignes;
+  if (besoin) {
+    // Tous les mots doivent être là, dans n'importe quel ordre : « tana bois »
+    // trouve un dépôt de bois à Antananarivo.
+    const mots = besoin.split(/\s+/);
+    lignes = lignes.filter((l) => {
+      const texte = texteAnnuaire(l);
+      return mots.every((m) => texte.includes(m));
+    });
+  }
+
+  const cle = annuaire.tri;
+  lignes = [...lignes].sort((a, b) => {
+    const va = valeurTri(a, cle);
+    const vb = valeurTri(b, cle);
+    const ordre = typeof va === "number"
+      ? va - vb
+      : String(va).localeCompare(String(vb), "fr", { sensitivity: "base" });
+    return annuaire.descendant ? -ordre : ordre;
+  });
+
+  $$("#table-annuaire th[data-tri]").forEach((entete) => {
+    entete.classList.toggle("trie", entete.dataset.tri === cle);
+    entete.classList.toggle("descendant", entete.dataset.tri === cle && annuaire.descendant);
+  });
+
+  $("#annuaire-vide").hidden = lignes.length > 0 || !annuaire.charge;
+  corps.innerHTML = lignes.map((l) => {
+    const tels = (l.telephones || []).map((t) => echapper(t)).join("<br>") || "—";
+    const familles = (l.familles || []).map((f) => echapper(f)).join(", ") || "—";
+    const statut = LIBELLES_STATUT[l.statut] || l.statut || "—";
+    return `<tr>
+      <td>${echapper(l.nom)}${l.slug
+        ? ` <small class="discret">/${echapper(l.slug)}</small>` : ""}</td>
+      <td><small>${tels}</small></td>
+      <td>${echapper(l.ville || l.quartier || "—")}</td>
+      <td><small>${familles}</small></td>
+      <td class="nombre">${l.nb_offres || 0}</td>
+      <td><span class="badge ${COULEURS_STATUT[l.statut] || "gris"}">${echapper(statut)}</span></td>
+      <td>${l.client
+        ? `<span class="badge vert" title="${echapper(l.raison_client || "")}">oui</span>`
+        : "<span class=\"discret\">—</span>"}</td>
+      <td><small>${echapper(LIBELLES_ORIGINE[l.origine] || l.origine)}</small></td>
+    </tr>`;
+  }).join("") || '<tr><td colspan="8" class="vide">Aucune ligne ne correspond.</td></tr>';
+}
+
+/** La valeur sur laquelle une colonne se trie — nombre pour les nombres. */
+function valeurTri(ligne, cle) {
+  if (cle === "nb_offres") return Number(ligne.nb_offres || 0);
+  if (cle === "client") return ligne.client ? 0 : 1;   // les clients d'abord
+  if (cle === "telephones") return (ligne.telephones || [])[0] || "\uffff";
+  if (cle === "familles") return (ligne.familles || []).join(", ") || "\uffff";
+  // Une ville vide part à la fin plutôt qu'en tête : trier par ville pour voir
+  // d'abord tous les inconnus n'apprend rien.
+  return String(ligne[cle] || "\uffff");
+}
+
+$$("#table-annuaire th[data-tri]").forEach((entete) => {
+  entete.addEventListener("click", () => {
+    const cle = entete.dataset.tri;
+    annuaire.descendant = annuaire.tri === cle ? !annuaire.descendant : false;
+    annuaire.tri = cle;
+    rendreAnnuaire();
+  });
+});
+
+const rechercheAnnuaire = $("#annuaire-recherche");
+if (rechercheAnnuaire) {
+  rechercheAnnuaire.addEventListener("input", () => {
+    annuaire.recherche = rechercheAnnuaire.value;
+    rendreAnnuaire();
+  });
+}
 
 /* ── DEMANDES D'ACHETEURS ─────────────────────────────────────────────────── */
 

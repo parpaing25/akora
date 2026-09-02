@@ -16,7 +16,8 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
 from pydantic import BaseModel
 
-from . import analyse_llm, akora, base, fil, inscription, marche, prospection
+from . import analyse_llm, akora, base, fil, formats, inscription, marche, prospection
+from . import tri
 from . import referentiel, reservation
 from . import sources_prospection
 from . import demandes as mod_demandes
@@ -83,6 +84,18 @@ def _lancer(type_tache: str, fonction) -> bool:
     return True
 
 
+def _refuser_si_poussee_eteinte() -> None:
+    """Coupe court quand `pousser_les_fiches` est éteint.
+
+    Le refus tombe AVANT `_lancer()`, donc avant qu'un fil de fond ne parte :
+    l'utilisateur voit la raison dans le bandeau d'erreur, tout de suite, au
+    lieu de la lire dans le journal une minute plus tard — et surtout au lieu
+    de la lire APRÈS que les photos soient parties sur o2switch.
+    """
+    if not reservation.poussee_autorisee(charger()):
+        raise HTTPException(409, reservation.POUSSEE_ETEINTE)
+
+
 def _occupe() -> bool:
     return tache["actif"] or collecteur.etat.get("actif", False)
 
@@ -133,6 +146,50 @@ class BulletinEntree(BaseModel):
 
 class PublicationEntree(BaseModel):
     id: str
+
+
+class DecisionFormat(BaseModel):
+    """Un format tranché par un humain, appliqué à une ou plusieurs offres.
+
+    `confirme_unite` n'est pas un detail d'interface : sans lui, une offre
+    relevee au m2 prendrait le prix d'une reference vendue a la piece.
+    """
+    ids: list[int]
+    materiau_slug: str
+    confirme_unite: bool = False
+
+
+class FormatsEntree(BaseModel):
+    decisions: list[DecisionFormat]
+
+
+class ImportEntree(BaseModel):
+    """Le lien d'UNE publication Facebook a faire entrer dans la base."""
+    url: str
+
+
+class ReferenceEntree(BaseModel):
+    """Une reference a creer au catalogue, d'apres les cotes d'une ligne."""
+    type_slug: str
+    ligne: str
+    ids: list[int] = []
+    longueur_m: float | None = None
+
+
+class HorsCatalogueEntree(BaseModel):
+    ids: list[int]
+    libelle: str = ""
+
+
+class FusionEntree(BaseModel):
+    """Une fusion de doublons, DÉCIDÉE PAR UN HUMAIN.
+
+    `garder` est la fiche qui survit ; `absorbes` celles qui s'y versent. Le
+    bot ne remplit jamais ce corps tout seul : il ne fait que proposer des
+    rapprochements (`GET /api/doublons`).
+    """
+    garder: str
+    absorbes: list[str] = []
 
 
 # -- Interface ---------------------------------------------------------------
@@ -415,20 +472,36 @@ def inscrire_selection(entree: ChoixEntree):
     """
     def travail():
         cfg = charger()
-        reussies, echecs = 0, 0
+        # Quatre comptes, pas deux : un depot qui tient DEJA sa fiche n'est ni
+        # une reussite ni un echec, et le confondre avec l'un des deux ferait
+        # chercher une panne la ou le bot a bien fait son travail.
+        creees, adoptees, ignorees, echecs = 0, 0, 0, 0
         for rang, pid in enumerate(entree.ids[:200], start=1):
             fiche = base.prospect(pid)
             tache["detail"] = f"{rang}/{len(entree.ids)} — {(fiche or {}).get('nom', '')}"
             try:
-                inscription.inscrire(pid, cfg.get("inscrire_en_actif", False))
-                reussies += 1
+                resultat = inscription.inscrire(pid, cfg.get("inscrire_en_actif", False))
+                action = resultat.get("action")
+                if action == "deja_au_depot":
+                    ignorees += 1
+                elif action == "adopte":
+                    adoptees += 1
+                else:
+                    creees += 1
             except Exception as e:
                 echecs += 1
                 base.logguer(f"« {(fiche or {}).get('nom')} » non inscrit : {e}", "erreur")
+        parties = [f"{creees} creee(s)"]
+        if adoptees:
+            parties.append(f"{adoptees} fiche(s) existante(s) completee(s)")
+        if ignorees:
+            parties.append(f"{ignorees} laissee(s) a leur depot")
+        if echecs:
+            parties.append(f"{echecs} echec(s)")
         base.logguer(
-            f"Inscription en lot : {reussies}/{len(entree.ids)} fiche(s) sur Akora"
-            + (f", {echecs} échec(s)." if echecs else "."),
-            "succes" if reussies else "avert",
+            f"Inscription en lot sur {len(entree.ids)} fiche(s) : "
+            + ", ".join(parties) + ".",
+            "succes" if (creees or adoptees) else "avert",
         )
 
     if not _lancer("inscription_lot", travail):
@@ -439,6 +512,8 @@ def inscrire_selection(entree: ChoixEntree):
 @app.post("/api/prospects/lot/reserver")
 def reserver_selection(entree: ChoixEntree):
     """Réserve la fiche des prospects cochés, l'un après l'autre."""
+    _refuser_si_poussee_eteinte()
+
     def travail():
         reussies = 0
         for rang, pid in enumerate(entree.ids[:200], start=1):
@@ -470,18 +545,57 @@ def apercu_inscription(pid: str):
 
 
 @app.post("/api/prospects/{pid}/inscrire")
-def inscrire_prospect(pid: str):
+def inscrire_prospect(pid: str, actualiser_prix: bool = False):
     """Crée le fournisseur ET ses produits sur akora.fonenako.mg.
 
     En BROUILLON par défaut : la fiche existe, elle n'apparaît nulle part.
     C'est « Publier » qui la rend visible, et c'est un geste à part.
     """
     try:
-        return inscription.inscrire(pid, charger().get("inscrire_en_actif", False))
+        return inscription.inscrire(
+            pid, charger().get("inscrire_en_actif", False), actualiser_prix)
     except inscription.ErreurInscription as e:
         raise HTTPException(400, str(e))
     except Exception as e:
         raise HTTPException(502, str(e))
+
+
+@app.post("/api/prospects/{pid}/produits")
+def transferer_les_produits(pid: str, actualiser_prix: bool = False):
+    """Envoie les produits COMPLETS de ce depot (reference + prix + photo).
+
+    Le second geste, celui qui se repete : la fiche du depot se remplit une
+    fois, ses produits arrivent au fil des appels et des photos designees.
+    """
+    try:
+        return inscription.transferer_produits(pid, actualiser_prix)
+    except inscription.ErreurInscription as e:
+        raise HTTPException(400, str(e))
+    except Exception as e:
+        raise HTTPException(502, str(e))
+
+
+@app.get("/api/tri/bilan")
+def bilan_du_tri():
+    """Ou en est le corpus : depots prets, offres qui attendent quoi."""
+    return tri.bilan()
+
+
+@app.get("/api/tri/miroir")
+def miroir_collecte_site():
+    """Les trois egalites : types, fournisseurs, prix — collecte face au site."""
+    return tri.miroir()
+
+
+@app.get("/api/tri/appels")
+def liste_d_appels(limite: int = 400):
+    """Les depots a appeler, et ce qu'on leur demandera nommement.
+
+    84 % des publications ne portent aucun prix (mesure du 01/09/2026) : le
+    tarif se donne au telephone, pas dans le post. Cette liste remplace
+    l'attente d'un prix qui ne tombera jamais tout seul.
+    """
+    return {"depots": tri.a_appeler(limite)}
 
 
 @app.post("/api/prospects/{pid}/publier")
@@ -551,6 +665,36 @@ def effacer_prospect(pid: str):
     return {"ok": True}
 
 
+# -- API : doublons probables ------------------------------------------------
+@app.get("/api/doublons")
+def lister_doublons():
+    """Les fiches qui sont PEUT-ÊTRE la même. Rien n'est fusionné ici.
+
+    Deux niveaux de certitude, jamais mélangés dans l'interface : « même
+    compte Facebook » (solide) et « même nom » (à regarder). Le second existe
+    parce que le premier ne couvre pas tout ; il ne doit surtout pas déclencher
+    de fusion automatique — « Fournisseur en Matériaux de construction » est
+    une enseigne générique portée par des pages réellement différentes.
+    """
+    from . import fusion
+    return fusion.doublons_probables()
+
+
+@app.post("/api/doublons/fusionner")
+def fusionner_doublons(entree: FusionEntree):
+    """Verse des fiches dans une autre. Geste HUMAIN, irréversible.
+
+    Irréversible : `absorber` déplace publications, offres, photos, véhicules
+    et événements, puis supprime la fiche vidée. C'est pourquoi le bot ne le
+    fait jamais de lui-même, même quand l'identifiant de compte est identique.
+    """
+    from . import fusion
+    try:
+        return fusion.fusionner_a_la_main(entree.garder, entree.absorbes, charger())
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
 # -- API : offres ------------------------------------------------------------
 @app.patch("/api/offres/{oid}")
 def corriger_offre(oid: int, entree: ChampsEntree):
@@ -617,7 +761,12 @@ def arbre_referentiel():
 
 
 @app.get("/api/referentiel/formats/{type_slug}")
-def formats(type_slug: str):
+# ⚠ Ne PAS renommer cette fonction en `formats` : le module `bot/formats.py`
+# porte ce nom, et une fonction de module l'eclipse silencieusement. Les
+# routes de l'atelier tombaient alors sur
+# « 'function' object has no attribute 'ErreurFormats' » — a l'appel, pas a
+# l'import, donc invisible tant que personne n'ouvre l'onglet.
+def formats_d_un_type(type_slug: str):
     return referentiel.formats_du_type(type_slug)
 
 
@@ -705,6 +854,60 @@ def statut_demande(did: str, entree: StatutEntree):
 def argumentaire(pid: str):
     """Les demandes que CE prospect pourrait servir — l'argument qui fait signer."""
     return mod_demandes.argumentaire(pid)
+
+
+# -- API : atelier des formats -----------------------------------------------
+# Le goulot mesure le 01/09/2026 : 210 offres CHIFFREES sans format, chez 34
+# depots, et pas une seule offre publiable chez les 32 prospects valides. Le
+# choix du format ne peut pas etre automatise -- l'heriter d'un en-tete avait
+# etiquete une tole 0,45 mm au prix d'une 0,14 -- mais rien n'aidait a le
+# faire en serie. Ces trois routes sont cet outil-la.
+@app.get("/api/formats/atelier")
+def atelier_formats():
+    """Les offres chiffrees sans format, groupees par type. N'ecrit rien."""
+    try:
+        return formats.atelier()
+    except formats.ErreurFormats as e:
+        raise HTTPException(409, str(e))
+
+
+@app.post("/api/formats/appliquer")
+def appliquer_formats(entree: FormatsEntree):
+    """Pose les formats choisis. Refuse une unite qui ne correspond pas."""
+    try:
+        return formats.appliquer([d.model_dump() for d in entree.decisions])
+    except formats.ErreurFormats as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/formats/creer-reference")
+def creer_une_reference(entree: ReferenceEntree):
+    """Ecrit au catalogue la reference que cette ligne reclame, puis l'applique.
+
+    Le geste qui fait converger les deux bases : ce que la collecte trouve et
+    que le site ignorait, le site l'apprend. La cote vient du tarif du depot,
+    le volume se calcule, le poids suit la masse volumique deja en place pour
+    ce type.
+    """
+    try:
+        return formats.creer_reference(
+            entree.type_slug, entree.ligne, entree.ids, entree.longueur_m)
+    except formats.ErreurFormats as e:
+        raise HTTPException(400, str(e))
+    except Exception as e:
+        raise HTTPException(502, str(e))
+
+
+@app.get("/api/formats/reference-possible")
+def reference_possible(type_slug: str, ligne: str, longueur_m: float | None = None):
+    """Ce qui serait cree — sans rien ecrire. Sert au bouton de l'atelier."""
+    return referentiel.reference_a_creer(type_slug, ligne, longueur_m)
+
+
+@app.post("/api/formats/hors-catalogue")
+def formats_hors_catalogue(entree: HorsCatalogueEntree):
+    """Ce que le terrain vend et qu'Akora ne reference pas encore."""
+    return formats.signaler_hors_catalogue(entree.ids, entree.libelle)
 
 
 # -- API : fil d'Akora -------------------------------------------------------
@@ -799,9 +1002,33 @@ def export(statut: str = ""):
     )
 
 
+# -- API : annuaire ----------------------------------------------------------
+# Le recensement demandé par la mission : qui vend des matériaux à Madagascar,
+# qu'il soit déjà chez nous ou repéré hier sur Facebook.
+@app.get("/api/annuaire")
+def annuaire():
+    """La liste croisée. Ne lève JAMAIS parce que le site est injoignable.
+
+    `annuaire_croise()` avale l'erreur réseau et la renvoie dans le champ
+    `avertissement` : l'interface affiche les prospects locaux avec un bandeau,
+    au lieu d'un tableau vide qui laisserait croire qu'il n'y a personne.
+    """
+    return prospection.annuaire_croise()
+
+
+@app.get("/api/annuaire.csv")
+def annuaire_csv():
+    return PlainTextResponse(
+        prospection.exporter_annuaire_csv(),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="annuaire-akora.csv"'},
+    )
+
+
 # -- API : réservation -------------------------------------------------------
 @app.post("/api/prospects/{pid}/reserver")
 def reserver(pid: str):
+    _refuser_si_poussee_eteinte()
     fiche = base.prospect(pid)
     if not fiche:
         raise HTTPException(404, "Prospect inconnu")
@@ -827,6 +1054,8 @@ def reserver_lot():
     Séquentiel exprès : l'envoi de photos vers o2switch part en 500 dès qu'on
     enchaîne sans pause, et une réservation à moitié faite est pire qu'aucune.
     """
+    _refuser_si_poussee_eteinte()
+
     def travail():
         prospects = base.lister_prospects(statut="valide", tri="score", limite=200)
         if not prospects:
@@ -878,6 +1107,35 @@ def lancer_collecte():
 def arreter_collecte():
     collecteur.stop.set()
     return {"ok": True}
+
+
+@app.post("/api/importer")
+def importer_publication(entree: ImportEntree):
+    """Avale UNE publication Facebook designee par son lien.
+
+    Le collecteur ne sait parcourir que des sources entieres. Ceci sert quand
+    on tombe soi-meme sur la bonne publication — un depot qu'aucune source ne
+    couvre, ou qu'on veut faire entrer sans attendre la tournee. La suite est
+    identique a une collecte : meme lecture, meme appariement, memes photos.
+    Rien n'est ecrit sur Akora ici.
+    """
+    if not session_enregistree():
+        raise HTTPException(400, "Connectez d'abord un compte Facebook.")
+    # Refuser TOUT DE SUITE ce qui n'est pas une adresse : lancer une tache de
+    # fond pour repondre « lancee » a un lien vide, puis se plaindre dans le
+    # journal, fait chercher le probleme au mauvais endroit.
+    if not (entree.url or "").strip().startswith("http"):
+        raise HTTPException(400, "Collez le lien complet de la publication.")
+    resultat: dict = {}
+
+    def travail():
+        resultat.update(collecteur.importer(entree.url))
+        if resultat.get("erreur"):
+            base.logguer(f"Import refuse : {resultat['erreur']}", "erreur")
+
+    if not _lancer("import", travail):
+        raise HTTPException(409, "Une tache est deja en cours.")
+    return {"lancee": True}
 
 
 @app.post("/api/facebook/connexion")

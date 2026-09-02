@@ -42,6 +42,31 @@ class ErreurReservation(Exception):
     pass
 
 
+# Le drapeau `pousser_les_fiches` était déclaré dans config.py, décrit dans son
+# commentaire (« tant que la migration n'est pas appliquée »)… et lu par
+# personne. Le garde-fou annoncé n'existait pas : `reserver()` partait quand
+# même, compressait et ENVOYAIT les photos sur o2switch, puis se cassait sur le
+# premier INSERT parce que `prospects_fournisseurs` n'existe pas encore côté
+# site. Des fichiers en ligne, aucune fiche, et un message d'erreur SQL pour
+# seule explication.
+#
+# Ce texte est le même partout — module et serveur — pour qu'il n'y ait qu'une
+# phrase à corriger le jour où la migration passe.
+POUSSEE_ETEINTE = (
+    "Envoi des fiches désactivé — onglet Automatisations, « Autoriser l'envoi "
+    "des fiches vers le site ». Tant que la migration "
+    "migration/20260823120000_fiches_reservees.sql "
+    "n'est pas appliquée sur akora.fonenako.mg, les tables "
+    "prospects_fournisseurs / prospects_produits / prospects_vehicules n'y "
+    "existent pas : l'envoi échouerait après avoir déjà publié les photos."
+)
+
+
+def poussee_autorisee(cfg: dict | None = None) -> bool:
+    """Le site est-il prêt à recevoir des fiches ? Lu avant TOUT effet de bord."""
+    return bool((cfg if cfg is not None else charger()).get("pousser_les_fiches"))
+
+
 # ── Photos ──────────────────────────────────────────────────────────────────
 def _compresser(chemin: Path) -> bytes:
     """1280 px sur le plus grand côté, JPEG q75 — le format des imports Akora."""
@@ -82,7 +107,15 @@ def _envoyer_photo(octets: bytes, nom_distant: str, cle: str) -> str:
                     return donnees["url"]
                 derniere = str(donnees)[:200]
             else:
-                derniere = f"HTTP {reponse.status_code} ({reponse.headers.get('Content-Type')})"
+                # Le CORPS de la réponse fait partie du message : « HTTP 400
+                # (application/json) » tout court a coûté une matinée le 23/08.
+                # La cause exacte — folder=prospects refusé par o2upload.php —
+                # était écrite dans le corps, que le journal ne montrait pas.
+                derniere = (
+                    f"HTTP {reponse.status_code} "
+                    f"({reponse.headers.get('Content-Type')}) — "
+                    + (reponse.text or "").strip()[:200]
+                )
         except requests.RequestException as e:
             derniere = str(e)[:200]
         if essai == 1:
@@ -125,6 +158,65 @@ def envoyer_photos(fiche: dict, rappel=None) -> list[str]:
             rappel(rang, len(photos))
         time.sleep(float(cfg.get("pause_entre_envois_photos", 3.0)))
     return urls
+
+
+def envoyer_ces_photos(fiche: dict, photos: list[dict]) -> dict[int, str]:
+    """Envoie CES photos-la et rend {id de photo: adresse publique}.
+
+    🔴 POURQUOI CETTE FONCTION EXISTE. `envoyer_photos` envoie tout ce qu'un
+       prospect a garde, et n'est appelee que par la reservation. Une photo
+       DESIGNEE pour un produit, elle, n'etait envoyee nulle part : elle vivait
+       sur ce PC, servie par le bot a `/photo/...`. Au transfert, le site
+       recevait donc un produit sans image — alors que l'ecran affichait
+       « pret » et « 5/6 attribuee(s) ».
+
+       Constate le 01/09/2026 sur « Hazo Rn3 » : 6 photos attribuees, 2
+       produits prets, **zero** `url_o2`. Le compte-rendu disait vrai de son
+       cote (la photo etait bien choisie), le site n'en voyait aucune.
+
+    Ne renvoie que ce qui est REELLEMENT en ligne : une photo dont l'envoi
+    echoue n'apparait pas dans le resultat, et l'appelant sait alors qu'il ne
+    peut pas publier le produit qu'elle devait montrer.
+    """
+    if not photos:
+        return {}
+    cfg = charger()
+    try:
+        cle = cle_upload()
+    except Exception as e:                                   # noqa: BLE001
+        base.logguer(f"Envoi des photos impossible : {e}", "erreur")
+        return {p["id"]: p["url_o2"] for p in photos if p.get("url_o2")}
+
+    adresses: dict[int, str] = {}
+    court = fiche["id"][:8]
+    for photo in photos:
+        if photo.get("url_o2"):
+            adresses[photo["id"]] = photo["url_o2"]
+            continue
+        publication = next(
+            (p for p in fiche.get("publications", [])
+             if p["id"] == photo.get("publication_id")), None)
+        if publication is None or not publication.get("dossier"):
+            base.logguer(
+                f"Photo {photo['id']} : publication d'origine introuvable, "
+                "envoi impossible.", "avert")
+            continue
+        source = DOSSIER_PROSPECTS.parent / publication["dossier"] / photo["fichier"]
+        if not source.exists():
+            base.logguer(f"Photo introuvable sur le disque : {source.name}", "avert")
+            continue
+        try:
+            url = _envoyer_photo(
+                _compresser(source), f"{court}_p{photo['id']}.jpg", cle)
+        except Exception as e:                               # noqa: BLE001
+            base.logguer(f"Photo {photo['id']} non envoyee : {e}", "erreur")
+            continue
+        # Enregistre apres CHAQUE photo : une coupure ne fait pas tout
+        # recommencer, et un second passage ne reenvoie rien.
+        base.modifier_photo(photo["id"], url_o2=url)
+        adresses[photo["id"]] = url
+        time.sleep(float(cfg.get("pause_entre_envois_photos", 3.0)))
+    return adresses
 
 
 # ── Écriture de la fiche ───────────────────────────────────────────────────
@@ -249,6 +341,11 @@ def _sql_vehicules(prospect_distant: str, vehicules: list[dict]) -> str:
 
 def reserver(prospect_id: str, rappel=None) -> dict:
     """Réserve la place d'un prospect sur le site. Renvoie {url, produits, photos}."""
+    # Premier test du corps, avant la lecture de la fiche : refuser tôt coûte
+    # une ligne, refuser tard coûte huit photos publiées pour rien.
+    if not poussee_autorisee():
+        raise ErreurReservation(POUSSEE_ETEINTE)
+
     fiche = base.prospect(prospect_id)
     if not fiche:
         raise ErreurReservation("Prospect introuvable.")

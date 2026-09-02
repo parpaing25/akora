@@ -47,6 +47,146 @@ SYNONYMES_INSUFFISANTS = {"dalle", "plancher", "panneau", "boite", "chambre",
 # est ajoutée côté site, le partage se recalcule tout seul.
 PLAFOND_PARTAGE = 55
 
+# ── Comment les dépôts écrivent VRAIMENT ───────────────────────────────────
+# Chaque ligne de cette table vient d'un libellé lu dans data/bot.db, pas d'une
+# liste d'orthographes imaginées à la table. Le numéro entre parenthèses est
+# l'offre où l'écriture a été relevée — c'est la seule justification qui vaille,
+# et c'est aussi ce qui permet de retirer une règle devenue inutile.
+#
+# La réécriture s'applique des DEUX côtés — au texte lu et aux noms du
+# catalogue — parce que `normaliser()` sert aux deux. C'est voulu : « alu-zinc »
+# du catalogue et « ALUZINC » d'une publication doivent tomber sur le même mot,
+# sinon la comparaison ne peut pas avoir lieu.
+ECRITURES: list[tuple[str, str]] = [
+    # « ONDUILLE », « ONDUILÉ », « ONDULÉS » — quatre graphies pour une tôle
+    # ondulée, dans quatre publications du même vendeur (#38, #65, #66, #98).
+    (r"\bondu[iy]?l+[ée]*e?s?\b", "ondulee"),
+    # « GALVABAC » collé, écrit ainsi par MORA TÔLE (#15) et repris tel quel
+    # ailleurs (#98). Sans la coupure, ni « galva » ni « bac » n'existent dans
+    # la ligne : le mot entier ne ressemble à rien du catalogue.
+    (r"\bgalva\s*-?\s*bac\b", "galva bac"),
+    (r"\bbac\s*-?\s*galva(nise[e]?)?\b", "bac galva"),
+    # Le catalogue écrit « alu-zinc », les vendeurs « ALUZINC » ou « ALU ZINC »
+    # (#65, #72, #98). Un seul mot des deux côtés.
+    (r"\balu\s*-?\s*zinc\b", "aluzinc"),
+    # Graphies du gravillon et du moellon relevées telles quelles (#83, #46).
+    (r"\bcay?[il]+asse\b", "caillasse"),
+    (r"\bmo[eë]l+ons?\b", "moellon"),
+    # « briky » (#6), « brik » — le mot malgache pour brique/parpaing.
+    (r"\bb[ir]{2}[ck]?[iy]+\b", "biriky"),
+    (r"\bbriky\b", "biriky"),
+    # « fasica » pour « fasika » : le c et le k s'échangent tout le temps.
+    (r"\bfasic[ka]?\b", "fasika"),
+]
+
+
+def _reecrire(ligne: str) -> str:
+    for motif, remplacement in ECRITURES:
+        ligne = re.sub(motif, remplacement, ligne)
+    return ligne
+
+
+# Des appellations vues dans les publications et absentes du catalogue Akora.
+# Elles ne sont PAS ajoutées au catalogue : le site est la source de vérité des
+# références, et le bot n'a pas à lui inventer des synonymes. Elles vivent ici,
+# du côté de la lecture, avec l'offre où elles ont été relevées.
+SYNONYMES_CORPUS: dict[str, list[str]] = {
+    # « caillasse » est listée à côté de « moellon » et de « gravillon » dans
+    # les mêmes énumérations (#22, #46, #83) : c'est bien la pierre concassée.
+    "gravillon": ["caillasse", "vatokely", "vato kely", "vato madinika"],
+    # « biriky masaka » = brique CUITE (#124). Sans elle, « biriky » seul part
+    # sur le parpaing, premier de sa famille — un contresens sur la matière.
+    "brique-creuse": ["biriky masaka", "biriky nasaka", "brique volom-bary"],
+    # « fanitso » est déjà au catalogue ; « prelaque » et « galvabac » non.
+    "tole": ["prelaque", "prelaquee", "galvabac", "tolle"],
+    "moellon": ["vato lehibe", "vato be"],
+}
+
+# Ce qui RESSEMBLE à un matériau et n'en est pas. Sans cette liste, un
+# rond-point devient du fer à béton (#3), un perforateur devient du béton prêt
+# à l'emploi (#103) et une bobine de fil à souder devient de l'armature (#102).
+# Une offre mal classée n'est pas neutre : elle pollue l'observatoire des prix,
+# et c'est de là que sort le bulletin public.
+PIEGES: dict[str, list[str]] = {
+    "fer-a-beton": [
+        r"rond\s*-?\s*point",       # « Ambohimangakely Rond-Point » (#3)
+        r"acier\s+inox",             # « Acier inoxydable » (#108)
+        r"\bmig\b",                  # « Rouleau MIG Acier » — fil de soudure (#102)
+        r"rideau\s+metallique",
+    ],
+    "beton-pret-emploi": [
+        r"beton\s+cire",             # « résine époxy, béton ciré » (#29)
+        r"perforateur",              # « 1 Pérforateur béton » (#103)
+        r"vibreur",                  # « Vibreur à béton » (#111)
+        r"aiguille\s+vibrante",
+    ],
+    # « Dalle » et « plancher » ouvrent le hourdis ; « dalle de sol », elle,
+    # est un carrelage, hors périmètre d'Akora.
+    "hourdis": [r"dalle\s+de\s+sol", r"dalle\s+podotactile"],
+    # Celui-ci n'est pas cosmétique. « > 32" sans bordure : 410.000 ar » est une
+    # annonce de TÉLÉVISION (#107, #109) ; classée en bordure de trottoir, elle
+    # entrait dans l'observatoire des prix à 410 000 Ar le mètre linéaire — et
+    # l'observatoire est ce qui alimente le bulletin PUBLIC signé Akora.
+    "bordure": [r"sans\s+bordure", r"ecran", r"\bpouces?\b", r"\btv\b", r"smart"],
+}
+
+# Les diamètres que le catalogue connaît vraiment. Toute écriture de fer doit
+# retomber sur l'un d'eux, sinon on ne propose rien : un « fer 9 » n'existe pas,
+# et l'arrondir au 8 le plus proche ferait vendre du 8 pour du 9.
+DIAMETRES_FER = ("6", "8", "10", "12", "14", "16")
+
+# Le slug du type dans le catalogue Akora. Écrit une fois, relu partout.
+TYPE_FER = "fer-a-beton"
+
+# Le repli « la ligne ressemble au nom d'un format » ne vaut que sur une ligne
+# assez longue pour qu'une ressemblance veuille dire quelque chose.
+LONGUEUR_REPLI = 9
+RESSEMBLANCE_REPLI = 0.82
+
+# Comment un vendeur écrit un fer à béton. Deux niveaux, parce que le second
+# est ambigu dans ce corpus :
+#   • les marqueurs SÛRS nomment le métal (« fer 8 », « rond 8 », « vy 10 ») ;
+#   • les CODES courts (« BA 8 », « HA 10 », « T12 ») sont la notation du
+#     ferrailleur — mais « ha » est aussi l'hectare, et ce corpus est plein
+#     d'annonces de terrain (#20, #31, #67). Ils ne sont donc lus que si la
+#     ligne ne parle pas de terrain.
+_FER_SUR = re.compile(
+    r"(?<![a-z0-9])(?:fer|rond|vy|acier|armature|ferraille)"
+    r"(?:\s*(?:a|de|en)?\s*beton)?(?:\s*tors?(?:ade)?)?"
+    r"[\s:.-]*(?:o|diametre|dia|no?)?[\s:.-]*"
+    r"(\d{1,2})(?:\s*mm)?(?![0-9])"
+)
+_FER_CODE = re.compile(
+    # « o » est le Ø du clavier : `normaliser()` le ramène à un o, et « Ø8 »
+    # devient « o8 » — la seule trace qu'il reste du symbole de diamètre.
+    r"(?<![a-z0-9])(?:ba|ha|t|fe|o)[\s.-]?(\d{1,2})(?:\s*mm)?(?![0-9])"
+)
+_PARLE_DE_TERRAIN = re.compile(
+    r"(?<![a-z0-9])(?:tany|terrain|are|ares|hectare|hectares|ha\b\s*de)"
+)
+
+
+def diametre_de_fer(ligne_normalisee: str, codes_courts: bool = True) -> str | None:
+    """« BA 8 », « fer 8 », « rond 8 », « Ø8 » -> « 8 ». None si rien de sûr.
+
+    Le calibre est la seule chose qui distingue les six fers du catalogue :
+    sans lui, l'offre reste au type et personne ne peut la mettre en ligne.
+
+    `codes_courts=False` ne garde que les écritures qui NOMMENT le métal. Cette
+    distinction sert à trancher : un calibre annoncé avec son métal fait
+    autorité, un code court est un indice de plus.
+    """
+    for trouve in _FER_SUR.finditer(ligne_normalisee):
+        if trouve.group(1) in DIAMETRES_FER:
+            return trouve.group(1)
+    if not codes_courts or _PARLE_DE_TERRAIN.search(ligne_normalisee):
+        return None
+    for trouve in _FER_CODE.finditer(ligne_normalisee):
+        if trouve.group(1) in DIAMETRES_FER:
+            return trouve.group(1)
+    return None
+
+
 # Unités reconnues dans le texte -> enum `unite` d'Akora.
 UNITES = {
     "piece": ["piece", "pieces", "pce", "pcs", "unite", "u", "iray", "pc"],
@@ -81,17 +221,47 @@ def sans_accents(texte: str) -> str:
 
 
 def normaliser(texte: str) -> str:
-    """Minuscules, sans accents, ponctuation ramenée à des espaces."""
+    """Minuscules, sans accents, ponctuation ramenée à des espaces, graphies unifiées.
+
+    La réécriture vient EN DERNIER, une fois les accents tombés et la
+    ponctuation ramenée à des espaces : `ECRITURES` peut alors s'écrire en
+    lettres nues, sans avoir à prévoir « ONDULÉ », « ondulè » et « Ondule ».
+    """
     reduit = sans_accents(texte)
     reduit = reduit.replace("²", "2").replace("³", "3").replace("ø", "o")
     reduit = re.sub(r"[^a-z0-9x/,.'-]+", " ", reduit)
-    return re.sub(r"\s+", " ", reduit).strip()
+    reduit = re.sub(r"\s+", " ", reduit).strip()
+    return _reecrire(reduit)
 
 
 def _mot_present(expression: str, dans: str) -> bool:
     """Cherche une expression en respectant les frontières de mot."""
     motif = re.escape(sans_accents(expression)).replace(r"\ ", r"[\s\-']+")
     return re.search(rf"(?<![a-z0-9]){motif}(?![a-z0-9])", dans) is not None
+
+
+# Longueur en dessous de laquelle un début de mot ne prouve plus rien : « bac »
+# est le début de « bacterie », « alu » celui de « aluminium ».
+DEBUT_MINIMAL = 5
+
+
+def _mot_present_ou_abrege(expression: str, dans: str) -> bool:
+    """Comme `_mot_present`, mais accepte l'abrégé courant du chantier.
+
+    Personne n'écrit « tôle galvanisée » : on écrit « tôle galva ». Le
+    catalogue, lui, écrit le mot entier. Sans cette tolérance, le seul mot qui
+    sépare un bac galvanisé d'un bac alu-zinc n'est jamais trouvé, et les deux
+    formats restent à égalité — donc indécidables — sur toutes les lignes.
+    """
+    if _mot_present(expression, dans):
+        return True
+    cible = sans_accents(expression)
+    if len(cible) <= DEBUT_MINIMAL:
+        return False
+    return any(
+        len(mot) >= DEBUT_MINIMAL and len(mot) < len(cible) and cible.startswith(mot)
+        for mot in re.split(r"[^a-z0-9]+", dans)
+    )
 
 
 # ── Chargement du catalogue ────────────────────────────────────────────────
@@ -219,11 +389,15 @@ def _indexer(brut: dict) -> dict:
         synonymes = fiche.get("synonymes") or []
         if isinstance(synonymes, str):
             synonymes = json.loads(synonymes)
-        for synonyme in synonymes:
+        # Les synonymes du catalogue, puis ceux relevés dans les publications.
+        # Les seconds sont marqués comme tels : le jour où le site adopte l'un
+        # d'eux, il apparaîtra en double et la ligne pourra être retirée d'ici.
+        for synonyme in list(synonymes) + SYNONYMES_CORPUS.get(slug, []):
             expression = normaliser(synonyme)
             if expression:
                 appellations.append((expression, slug, 2 if " " in expression else 1))
         fiche["synonymes"] = synonymes
+        fiche["synonymes_corpus"] = SYNONYMES_CORPUS.get(slug, [])
 
     # Les expressions longues d'abord : « parpaing creux » doit gagner contre
     # « parpaing », et « vato madinika » contre « vato ».
@@ -273,6 +447,31 @@ def _candidats_types(ligne_normalisee: str) -> list[tuple[str, int, str, bool]]:
         if expression not in catalogue["partagees"]:
             marque["partage"] = False
 
+    # Personne n'a encore reconnu la ligne : on retente en tolérant la faute
+    # de frappe. En DERNIER recours, jamais en parallèle — sinon un mot mal lu
+    # viendrait concurrencer un mot bien lu, et « biriky » perdrait contre le
+    # « briky » approximatif d'un autre type.
+    if not marques:
+        for expression, slug, poids in catalogue["appellations"]:
+            if len(expression) < LONGUEUR_FLOUE or expression in SYNONYMES_INSUFFISANTS:
+                continue
+            if _ressemble_a_un_mot(expression, ligne_normalisee):
+                marque = marques.setdefault(
+                    slug, {"poids": 0, "expression": expression, "partage": True}
+                )
+                # Poids 1 quoi qu'il arrive : une reconnaissance approximative
+                # ne doit jamais peser autant qu'un nom écrit correctement.
+                marque["poids"] += 1
+                if expression not in catalogue["partagees"]:
+                    marque["partage"] = False
+
+    # Un mot du catalogue peut se trouver dans une expression qui ne parle pas
+    # du tout du matériau. Le piège ne baisse pas le poids : il RETIRE le
+    # candidat, parce qu'un rond-point n'est pas « un peu » du fer à béton.
+    for slug, motifs in PIEGES.items():
+        if slug in marques and any(re.search(m, ligne_normalisee) for m in motifs):
+            del marques[slug]
+
     # À égalité de poids, le type le mieux placé dans le catalogue gagne :
     # c'est le plus courant de sa famille, et c'est celui qu'on vend quand on
     # écrit « biriky » sans préciser.
@@ -283,6 +482,44 @@ def _candidats_types(ligne_normalisee: str) -> list[tuple[str, int, str, bool]]:
     )
 
 
+# Une faute de frappe ne se devine que sur un mot assez long : en dessous de
+# six lettres, « bac » et « sac », « vato » et « vita » sont à une lettre l'un
+# de l'autre, et la tolérance inventerait des offres.
+LONGUEUR_FLOUE = 6
+RESSEMBLANCE_MINIMALE = 0.88
+
+
+def _ressemble_a_un_mot(expression: str, ligne_normalisee: str) -> bool:
+    """Un mot de la ligne est-il ce mot-là, à une faute près ?
+
+    Mot à mot, jamais ligne entière : comparer « fasika » à une phrase de
+    trente mots donne un score minuscule, et comparer une phrase à un nom de
+    matériau donne les faux amis du repli général (« planéité » ≈ « latérite »).
+    """
+    for mot in re.split(r"[^a-z0-9]+", ligne_normalisee):
+        if len(mot) < LONGUEUR_FLOUE:
+            continue
+        if abs(len(mot) - len(expression)) > 2:
+            continue
+        if SequenceMatcher(None, mot, expression).ratio() >= RESSEMBLANCE_MINIMALE:
+            return True
+    return False
+
+
+def _format_par_repere(type_slug: str, valeur: str) -> dict | None:
+    """Le format d'un type qui porte ce repère chiffré, s'il est le seul.
+
+    Sert au fer à béton : le diamètre lu dans « BA 8 » doit retomber sur une
+    référence du catalogue, jamais sur un slug fabriqué à la main — le jour où
+    le site ajoute un Ø20, il apparaîtra ici sans qu'on touche à ce fichier.
+    """
+    correspondants = [
+        m for m in charger()["par_type"].get(type_slug, [])
+        if valeur in m["reperes_cles"]
+    ]
+    return correspondants[0] if len(correspondants) == 1 else None
+
+
 def _nombres_de_format(ligne_normalisee: str, exclure: set[str]) -> list[str]:
     """Les nombres qui peuvent être un format, jamais un prix.
 
@@ -290,6 +527,22 @@ def _nombres_de_format(ligne_normalisee: str, exclure: set[str]) -> list[str]:
     compte en centimètres ou en millimètres. Le seuil à 1 000 sépare les deux
     sans jamais avoir besoin de savoir lequel est lequel.
     """
+    # Les cotes d'un BÂTIMENT, retirées avant tout le reste. « Raha tranon'akoho
+    # 14m sur 6m » (#5) et « 12m sur 8 » (#40) sont deux acheteurs qui décrivent
+    # leur chantier ; le 6 et le 4 tombaient sur la longueur d'une tôle, et deux
+    # questions devenaient deux offres de bac. Le « x » n'est PAS dans la liste :
+    # « 40x20x15 » est une vraie dimension de bloc, et l'étape 1 en dépend.
+    ligne_normalisee = re.sub(
+        r"\d+(?:[.,]\d+)?\s*m?\s*(?:sur|par)\s*\d+(?:[.,]\d+)?\s*m?\b",
+        " ", ligne_normalisee,
+    )
+    # Un montant écrit en millions n'est pas un format. « efa niditra
+    # +40millions d'ariary » (#40) donnait un 40, et 40 est l'épaisseur du bac
+    # galvanisé : une maison de 40 millions devenait une offre de tôle.
+    ligne_normalisee = re.sub(
+        r"\d+(?:[.,]\d+)?\s*(?:millions?|milliona|tapitrisa|milliards?)", " ",
+        ligne_normalisee,
+    )
     trouves = []
     for brut in re.findall(r"\d+(?:[.,]\d+)?", ligne_normalisee):
         entier = brut.split(",")[0].split(".")[0]
@@ -362,16 +615,21 @@ def _choisir_format(type_slug: str, ligne_normalisee: str,
             return None, 0
 
     # 4. Aucun chiffre ne tranche : les mots distinctifs (« fin », « rivière »).
-    meilleur, points = None, 0
-    for materiau in candidats:
-        trouves = sum(
+    comptes = [
+        (materiau, sum(
             1 for mot in materiau["mots_distinctifs"]
-            if len(mot) >= 3 and _mot_present(mot, ligne_normalisee)
-        )
-        if trouves > points:
-            meilleur, points = materiau, trouves
-    if meilleur:
-        return meilleur, min(85, 55 + points * 15)
+            if len(mot) >= 3 and _mot_present_ou_abrege(mot, ligne_normalisee)
+        ))
+        for materiau in candidats
+    ]
+    meilleur_score = max((n for _, n in comptes), default=0)
+    en_tete = [m for m, n in comptes if n == meilleur_score and n > 0]
+    # Un seul format en tête : c'est lui. Plusieurs : la ligne les cite tous
+    # (« GALVA BAC/ONDULÉS » en cite deux), et choisir le premier de la liste
+    # reviendrait à tirer au sort. On ne tranche pas — l'interface demandera.
+    # C'est déjà la règle de l'étape 3 ; elle manquait ici.
+    if len(en_tete) == 1:
+        return en_tete[0], min(85, 55 + meilleur_score * 15)
 
     return None, 0
 
@@ -389,24 +647,57 @@ def apparier(libelle: str, nombres_prix: set[str] | None = None) -> dict | None:
     nombres_prix = nombres_prix or set()
 
     candidats = _candidats_types(ligne)
+
+    # Le calibre d'un fer se lit avant tout le reste : « BA 8 » et « T12 » ne
+    # contiennent aucun mot du catalogue, et « fer 12 » perdrait son 12 si le
+    # montant l'avait déjà consommé.
+    diametre = diametre_de_fer(ligne)
+
+    # « rond à béton 10 » : le mot « béton » vaut 6 points parce qu'il ouvre le
+    # nom d'un type, « rond » n'en vaut qu'un parce qu'il n'est qu'un synonyme
+    # — et l'offre partait en béton prêt à l'emploi. Un calibre annoncé AVEC
+    # son métal renverse ce classement : personne n'écrit un diamètre à côté
+    # d'un béton dosé.
+    if diametre and diametre_de_fer(ligne, codes_courts=False):
+        candidats = sorted(candidats, key=lambda candidat: candidat[0] != TYPE_FER)
+
     if not candidats:
+        if diametre:
+            fer = _format_par_repere(TYPE_FER, diametre)
+            if fer:
+                return _fiche(fer, charger()["types"].get(TYPE_FER, {}), 88, ambigu=False)
         # Dernier recours : le nom complet d'un format, écrit presque à
         # l'identique. Rattrape « contreplaqué 15 mm » quand le type n'a pas été
         # vu parce que le mot est écrit « ctp ».
+        #
+        # Le seuil était à 0,72, et il mentait : sur le corpus collecté ce repli
+        # n'a JAMAIS rattrapé une vraie offre, il a seulement transformé
+        # « Planéité » (0,75) et « terte » (0,77) en latérite. Comparer une
+        # ligne entière à un nom de matériau n'a de sens que si la ligne EST ce
+        # nom — d'où la longueur minimale et le seuil relevé.
         catalogue = charger()
+        if len(ligne) < LONGUEUR_REPLI:
+            return None
         meilleur, ressemblance = None, 0.0
         for materiau in catalogue["materiaux"].values():
             proche = SequenceMatcher(None, ligne, materiau["nom_normalise"]).ratio()
             if proche > ressemblance:
                 meilleur, ressemblance = materiau, proche
-        if meilleur and ressemblance >= 0.72:
-            type_fiche = charger()["types"].get(meilleur.get("type_slug"), {})
+        if meilleur and ressemblance >= RESSEMBLANCE_REPLI:
+            type_fiche = catalogue["types"].get(meilleur.get("type_slug"), {})
             return _fiche(meilleur, type_fiche, int(ressemblance * 80), ambigu=False)
         return None
 
     type_slug, poids, _, partage = candidats[0]
     type_fiche = charger()["types"].get(type_slug, {})
     materiau, certitude = _choisir_format(type_slug, ligne, nombres_prix)
+
+    # « Fer à béton : 22 000 la barre de 8 » — le type est trouvé, le format
+    # non, parce que le 8 n'était pas là où l'étape 3 le cherchait.
+    if materiau is None and type_slug == TYPE_FER and diametre:
+        materiau = _format_par_repere(TYPE_FER, diametre)
+        if materiau is not None:
+            certitude = 88
 
     # La reconnaissance ne tient qu'à un mot partagé (« biriky » = parpaing ou
     # brique), ou deux types se disputent la ligne à poids égal : la certitude
@@ -463,6 +754,229 @@ def metier_dans(texte: str) -> str | None:
             if _mot_present(variante, ligne):
                 return metier
     return None
+
+
+# « 15cmx7cmx4m », « 10,11cmx1, 5cm », « 5*5 », « 17cm*7cm », « 14/6 »
+# ⚠ PAS de \\b apres l'unite : « 15cmx7cmx4m » n'a aucune frontiere de
+#   mot entre « cm » et « x », et le motif n'y lisait qu'UNE cote sur trois.
+#   Le tarif le mieux ecrit du corpus repartait donc sans reference.
+MESURE = re.compile(r"(\d+(?:[.,]\s?\d+)?)\s*(cm|mm|m)?", re.I)
+# « 14/6 », la notation malgache d'une section. DEUX dans la meme ligne et
+# la ligne parle de deux articles pour un seul prix : « Madrier 5 m 14/6 dia
+# 15/6 : 50 000 Ar » — le prix est celui du 15/6, le rapprochement tombait
+# sur le 14/6, faute d'un 6x15 au catalogue. On ne tranche pas ce genre de
+# ligne : on la laisse a l'humain.
+SECTION_COURTE = re.compile(r"\d+\s*/\s*\d+")
+# Un montant ecrit comme un Malgache l'ecrit : « 35 000ar », « 35.000 Ar ».
+MONTANT_ECRIT = re.compile(r"\d[\d\s.,\u202f\u00a0]*\s*(?:ar|ariary|fmg)\b", re.I)
+
+
+def _sans_les_montants(ligne: str) -> str:
+    """La ligne debarrassee de ses prix.
+
+    🔴 SANS CE NETTOYAGE, LE PRIX DEVIENT UNE DIMENSION. « ✓ Mm >>> 3 500ar »
+       se lit « 3 » et « 500 », et un bois rond se rapproche alors d'une
+       section de 3 cm qui n'a jamais ete ecrite. Mesure du 01/09/2026 : c'est
+       ce qui gonflait le compte des lignes « sans reference » — le tarif
+       relu comme une cote.
+    """
+    return MONTANT_ECRIT.sub(" ", ligne or "")
+
+
+def dimensions_du_format(fiche: dict) -> dict:
+    """(epaisseur, largeur en cm ; longueur en m) d'une reference.
+
+    Depuis `attributs` quand ils sont la, sinon depuis le slug : la convention
+    du catalogue est uniforme, `<type>-<AAxBB>-<L>m` avec AA et BB en
+    millimetres. Une reference dont on ne sait pas lire les cotes ne se
+    rapproche pas — elle ne se devine pas non plus.
+    """
+    attributs = fiche.get("attributs") or {}
+    dims: dict[str, float] = {}
+    for cle, sortie in (("epaisseur_cm", "e"), ("largeur_cm", "l"),
+                        ("longueur_m", "L")):
+        valeur = attributs.get(cle)
+        if valeur is not None:
+            try:
+                dims[sortie] = float(valeur)
+            except (TypeError, ValueError):
+                pass
+    if "e" not in dims or "l" not in dims:
+        trouve = re.search(r"-(\d+)x(\d+)-", fiche.get("slug", ""))
+        if trouve:
+            dims["e"] = int(trouve.group(1)) / 10
+            dims["l"] = int(trouve.group(2)) / 10
+    if "L" not in dims:
+        trouve = re.search(r"-(\d+)m$", fiche.get("slug", ""))
+        if trouve:
+            dims["L"] = float(trouve.group(1))
+    return dims
+
+
+def densite_du_type(type_slug: str) -> float | None:
+    """La masse volumique que le catalogue applique DEJA a ce type.
+
+    Deduite des references existantes, jamais choisie : si le madrier est a
+    650 kg/m3 et la planche a 653, une nouvelle section de bois se pesera
+    pareil. Rendue seulement quand les references du type s'accordent — un
+    ecart large veut dire que le type melange des matieres (le bois rond
+    contient du bambou a 400 et de l'eucalyptus a 731), et alors on ne pese
+    rien du tout.
+    """
+    densites = []
+    for fiche in charger()["par_type"].get(type_slug, []):
+        volume = fiche.get("volume") or fiche.get("volume_m3_unite_defaut")
+        poids = fiche.get("poids") or fiche.get("poids_kg_unite_defaut")
+        try:
+            volume, poids = float(volume), float(poids)
+        except (TypeError, ValueError):
+            continue
+        if volume > 0 and poids > 0:
+            densites.append(poids / volume)
+    if len(densites) < 2:
+        return None
+    moyenne = sum(densites) / len(densites)
+    if (max(densites) - min(densites)) / moyenne > 0.10:
+        return None
+    return round(moyenne)
+
+
+def reference_a_creer(type_slug: str, ligne: str,
+                      longueur_repli: float | None = None) -> dict:
+    """Ce qu'il faudrait ecrire au catalogue pour que cette ligne existe.
+
+    Rend `{"possible": bool, "motif": str, ...}` — jamais une exception : la
+    reponse « non, et voici pourquoi » vaut autant que la reference elle-meme.
+
+    🔒 CE QUI DOIT ETRE VRAI POUR QU'UNE REFERENCE NAISSE
+      * la ligne ECRIT une section complete (deux cotes et une longueur) ;
+      * le type se decrit par une section — c'est le cas du bois scie, ce
+        n'est pas celui d'une tole (epaisseur x longueur), d'un parpaing
+        (epaisseur seule) ni d'un sable (vendu au m3) ;
+      * les references deja en place s'accordent sur une masse volumique, donc
+        le poids se CALCULE au lieu de s'inventer.
+
+    Sans ces trois, on rend le motif et on n'ecrit rien. Un catalogue qui
+    accueille n'importe quelle cote cesse d'etre comparable, et comparer est
+    la seule raison d'etre d'Akora.
+    """
+    from . import cotes as mod_cotes
+
+    fiche_type = charger()["types"].get(type_slug)
+    if not fiche_type:
+        return {"possible": False, "motif": "type inconnu du catalogue"}
+
+    section = mod_cotes.section(ligne)
+    if not section:
+        return {"possible": False,
+                "motif": "aucune cote lisible dans la ligne"}
+    if not section.get("longueur_m") and longueur_repli:
+        section["longueur_m"] = longueur_repli
+    if not section.get("longueur_m"):
+        return {"possible": False, "motif": "longueur absente"}
+    if not section.get("sure"):
+        return {"possible": False,
+                "motif": "cotes ambigues : " + ", ".join(
+                    str(c) for c in section["cotes_en_trop"])}
+
+    densite = densite_du_type(type_slug)
+    if densite is None:
+        return {"possible": False,
+                "motif": "ce type n'a pas de masse volumique constante — "
+                         "le poids ne se calculerait pas, il s'inventerait"}
+
+    volume = mod_cotes.volume_m3(section)
+    if not volume:
+        return {"possible": False, "motif": "volume incalculable"}
+
+    identifiant = mod_cotes.slug(type_slug, section)
+    if identifiant in charger()["materiaux"]:
+        return {"possible": False, "motif": "cette reference existe deja",
+                "slug": identifiant}
+
+    noms = mod_cotes.libelles(fiche_type["nom"], section)
+    return {
+        "possible": True,
+        "motif": "",
+        "slug": identifiant,
+        "type_slug": type_slug,
+        "unite": "piece",
+        "volume": volume,
+        "poids": round(volume * densite, 3),
+        "densite": densite,
+        "ordre_format": section["epaisseur_cm"],
+        "attributs": {
+            "longueur_m": section["longueur_m"],
+            "epaisseur_cm": section["epaisseur_cm"],
+            "largeur_cm": section["largeur_cm"],
+        },
+        **noms,
+    }
+
+
+def propose_par_dimensions(type_slug: str, ligne: str) -> dict | None:
+    """La reference dont TOUTES les cotes sont ecrites dans la ligne.
+
+    🔴 CE QUE CETTE FONCTION FAIT, ET CE QU'ELLE NE FERA JAMAIS.
+
+       Une ligne de tarif porte son format sans porter son materiau :
+
+           #MADRIER 4m : (KININIA MENA BE)     <- le materiau, sans cote
+           ✓ 15cmx7cmx4m= 35 000ar             <- la cote, sans materiau
+
+       `apparier()` cherche un MOT de materiau et ne trouve rien dans la
+       seconde ligne : elle repart sans reference, et son prix avec. Le type,
+       lui, vient de l'en-tete — c'est acquis et ce n'est pas une supposition.
+
+       Reste a choisir le format. On ne le devine pas : on exige que la ligne
+       ECRIVE les cotes exactes d'une reference, et **d'une seule**. « 15, 7,
+       4m » contre « Madrier 7 x 15 . 4 m » : les trois y sont. « -014 »
+       contre des toles de 0,25 / 0,30 / 0,40 / 0,45 : aucune, donc rien —
+       et c'est precisement le rapprochement invente qui avait etiquete une
+       tole 0,45 mm au prix d'une 0,14 le 24/08/2026.
+
+       Deux references possibles = aucune proposition. Une ligne qui nomme
+       deux sections (« 14/6 dia 15/6 : 50 000 Ar ») rend donc `None` des que
+       les deux existent au catalogue.
+
+    Le resultat reste une PROPOSITION : l'atelier la pre-selectionne et la
+    signale comme telle, un humain confirme. Rien ne s'ecrit d'ici.
+    """
+    propre = normaliser(_sans_les_montants(ligne))
+    if len(SECTION_COURTE.findall(propre)) > 1:
+        return None
+    mesures = []
+    for trouve in MESURE.finditer(propre):
+        brut = trouve.group(1).replace(" ", "").replace(",", ".")
+        try:
+            valeur = float(brut)
+        except ValueError:
+            continue
+        if 0 < valeur <= 600:
+            mesures.append((valeur, (trouve.group(2) or "").lower()))
+    if not mesures:
+        return None
+
+    en_cm = {v for v, u in mesures if u in ("cm", "")}
+    en_cm |= {v / 10 for v, u in mesures if u == "mm"}
+    en_m = {v for v, u in mesures if u == "m"}
+
+    retenus = []
+    for fiche in charger()["par_type"].get(type_slug, []):
+        dims = dimensions_du_format(fiche)
+        if "e" not in dims or "l" not in dims:
+            continue
+        if dims["e"] not in en_cm or dims["l"] not in en_cm:
+            continue
+        if "L" in dims and en_m and dims["L"] not in en_m:
+            continue
+        retenus.append(fiche)
+    if len(retenus) != 1:
+        return None
+    fiche = retenus[0]
+    return {"slug": fiche["slug"], "nom": fiche["nom"],
+            "libelle": fiche.get("libelle_court") or fiche["nom"],
+            "unite": fiche.get("unite")}
 
 
 def formats_du_type(type_slug: str) -> list[dict]:

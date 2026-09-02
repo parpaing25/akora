@@ -57,10 +57,26 @@ DEFAUTS = {
     "pause_entre_scrolls": [2.0, 4.0],
     "pause_entre_sources": [15, 35],
     "navigateur_visible": True,
+    # 🔴 EN DESSOUS DE CE SEUIL (Mo de mémoire ENGAGEABLE), ON NE LANCE PAS
+    #   CHROMIUM. Le 23/08/2026 la machine est descendue à 189 Mo et Windows a
+    #   tué les trois bots ; le même jour, le pilote Playwright mourait au
+    #   décollage (« no attribute '_playwright' ») et Facebook rendait des
+    #   net::ERR_INSUFFICIENT_RESOURCES. Sauter la tournée en le disant vaut
+    #   mieux que mourir au milieu. Même motif que bot-diako.
+    "memoire_mini_mo": 900,
     "travailleurs": 6,
     "photos_max_par_publication": 12,
     "largeur_photo_min": 400,
     "jours_max": 60,          # un dépôt qui a publié il y a 2 mois vend encore
+    # ⚠ RÈGLE MÉTIER — on ne collecte QUE l'année en cours.
+    # Toute publication dont l'année DÉTERMINÉE est antérieure est
+    # écartée, journalisée comme telle et comptée (voir collecteur.py).
+    # Quand l'année est INDÉTERMINABLE, la publication passe : 89 % des
+    # publications collectées n'ont aucune date lisible, et refuser
+    # l'inconnu supprimerait la collecte au lieu de la nettoyer.
+    # Ici l'enjeu est double : un tarif relevé sur une publication de
+    # 2019 devient un prix de marché sur akora.fonenako.mg.
+    "annee_minimum": 2026,
 
     # ── Le prix est souvent AILLEURS que dans le texte ────────────────────
     # Mesuré sur la première vraie collecte : 7 offres sur 46 portaient un
@@ -75,12 +91,31 @@ DEFAUTS = {
     # ── Ce qui fait un prospect exploitable. Le téléphone n'est pas
     # négociable : sans lui, personne à contacter, donc rien à prospecter.
     "criteres_obligatoires": ["telephone", "materiau"],
+    # ── Ce qui part tout seul vers akora.fonenako.mg.
+    #
+    # Un DEPOT entre des qu'il a un nom, un contact et un emplacement : c'est
+    # ce qu'il faut pour l'appeler et pour chiffrer une livraison, rien de
+    # plus. Ses PRODUITS, eux, ne partent jamais avant d'etre complets
+    # (reference du catalogue + prix + photo designee) — et cette regle-la
+    # n'est pas reglable, elle est dans `tri.py`.
+    #
+    # Separer les deux etait devenu necessaire : 440 publications sur 526
+    # (84 %, mesure du 01/09/2026) ne portent aucun prix. Attendre un tarif
+    # pour creer la fiche d'un depot dont on a le numero, c'est attendre pour
+    # toujours.
+    "auto_inscription": True,
+    "auto_inscription_max": 25,   # par tournee, pour ne pas noyer le journal
     "garder_les_incomplets": True,
     "prix_obligatoire": False,   # un dépôt sans prix affiché reste un prospect
 
     # ── Devises croisées dans les publications malgaches.
     "taux_fmg_ar": 5,            # 1 Ar = 5 Fmg
     "prix_plancher_ar": 200,     # sous ce montant, ce n'est pas un prix matériau
+    # …sauf à la PIÈCE : une brique se vend 80 Ar l'unité (offres #23, #45,
+    # #124), et le plancher unique à 200 Ar jetait les trois tarifs de brique
+    # du corpus. Le seuil haut reste celui du fret (`transport.py`) et de tout
+    # ce qui se vend au mètre cube.
+    "prix_plancher_unitaire_ar": 50,
     "prix_plafond_ar": 50_000_000,
 
     # ── Relecture par un modèle. Sans elle le bot marche, mais il se trompe
@@ -145,11 +180,26 @@ DEFAUTS = {
 
 
 def charger() -> dict:
-    """Lit data/config.json, en le créant au besoin, et comble les clés manquantes."""
+    """Lit data/config.json, en le créant au besoin, et comble les clés manquantes.
+
+    Une clé NEUVE est aussi réécrite dans le fichier. Sans ça, un réglage
+    ajouté au code existe en mémoire mais reste absent de `data/config.json` :
+    invisible dans l'éditeur de texte, donc impossible à changer à la main.
+    Un réglage qu'on ne peut pas lire n'est pas un réglage, c'est une
+    constante cachée — et `annee_minimum`, ajouté le 24/08/2026, est
+    exactement le genre de valeur qu'on veut pouvoir relire et corriger sans
+    toucher au code.
+    """
     DOSSIER_DONNEES.mkdir(parents=True, exist_ok=True)
     config = dict(DEFAUTS)
     if FICHIER_CONFIG.exists():
-        config.update(json.loads(FICHIER_CONFIG.read_text(encoding="utf-8")))
+        sur_disque = json.loads(FICHIER_CONFIG.read_text(encoding="utf-8"))
+        config.update(sur_disque)
+        if set(DEFAUTS) - set(sur_disque):
+            try:
+                enregistrer(config)
+            except OSError:
+                pass        # fichier verrouillé ou disque plein : on continue
     else:
         FICHIER_CONFIG.write_text(
             json.dumps(config, ensure_ascii=False, indent=2), encoding="utf-8"

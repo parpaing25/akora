@@ -104,6 +104,14 @@ CREATE TABLE IF NOT EXISTS publications (
     source_nom  TEXT,
     auteur      TEXT,
     publie_le   TEXT,
+    -- La date RÉSOLUE de la publication, `''` quand on n'a pas su la lire.
+    -- `publie_le` juste au-dessus garde le texte brut de Facebook
+    -- (« 1 sem. ») : illisible pour trier, et faux dès le lendemain.
+    -- `date_source` dit QUELLE piste du DOM a répondu (`data-utime`,
+    -- `aria-label`, `role-link`…) — au premier vrai passage, c'est elle
+    -- qui dira laquelle tient encore chez Facebook.
+    publie_date TEXT,
+    date_source TEXT,
     collecte_le TEXT NOT NULL,
     texte       TEXT NOT NULL,
     dossier     TEXT,
@@ -129,7 +137,15 @@ CREATE TABLE IF NOT EXISTS offres (
     ambigu         INTEGER NOT NULL DEFAULT 0,
     hors_catalogue INTEGER NOT NULL DEFAULT 0,
     garder         INTEGER NOT NULL DEFAULT 1,
+    -- QUAND on a relevé ce prix. Honnête : c'est bien aujourd'hui
+    -- qu'on l'a vu passer.
     vu_le          TEXT NOT NULL,
+    -- QUAND il a été PUBLIÉ. Vide tant qu'on ne sait pas lire la
+    -- date du post — et c'est tout l'intérêt : un tarif relevé
+    -- aujourd'hui sur une publication de 2019 n'est pas un prix
+    -- d'aujourd'hui. L'observatoire (`marche.py`) date ses relevés
+    -- sur cette colonne quand elle est remplie.
+    publie_le      TEXT,
     FOREIGN KEY (prospect_id) REFERENCES prospects(id) ON DELETE CASCADE
 );
 
@@ -302,6 +318,16 @@ COLONNES_AJOUTEES = {
         ("publiees", "INTEGER NOT NULL DEFAULT 0"),
         ("vu_dabord", "TEXT"),
     ],
+    # 🔴 Une photo appartenait a une PUBLICATION, jamais a un produit. Un post
+    #   qui annonce cinq materiaux porte les photos des cinq, et rien ne disait
+    #   laquelle montrait quoi : le 01/09/2026, la publication « Sable fin :
+    #   45 000 Ar le m3 » est partie dans le fil sous deux photos de gravillon
+    #   et de moellon. `offre_id` est le lien qui manquait — pose a la main,
+    #   parce qu'aucune machine ne reconnait un madrier d'un chevron sur une
+    #   photo de tas de bois.
+    "photos": [
+        ("offre_id", "INTEGER"),
+    ],
     "prospects": [
         ("nature", "TEXT NOT NULL DEFAULT 'depot'"),
         ("rayon_km", "REAL"),
@@ -313,6 +339,23 @@ COLONNES_AJOUTEES = {
         # de créditer la source quand la fiche part en ligne : une fiche
         # réservée est la seule preuve solide qu'un groupe vaut la peine.
         ("origine_cle", "TEXT"),
+    ],
+    # Règle « année en cours », 24/08/2026 : la date résolue de la
+    # publication, et la piste du DOM qui l'a donnée.
+    "publications": [
+        ("publie_date", "TEXT"),
+        ("date_source", "TEXT"),
+    ],
+    # Date de PUBLICATION du post d'où vient le prix — à ne pas
+    # confondre avec `vu_le`, qui est la date du relevé.
+    "offres": [
+        ("publie_le", "TEXT"),
+    ],
+    # Une demande d'acheteur vieillit vite : « il me faut 3 camions de sable »
+    # ne vaut rien six mois plus tard. `publie_le` gardait « 1 sem. », qui
+    # ment dès le lendemain.
+    "demandes": [
+        ("publie_date", "TEXT"),
     ],
 }
 
@@ -898,12 +941,35 @@ def compteurs() -> dict:
             "SELECT COUNT(*) n FROM offres WHERE garder = 1 AND materiau_slug IS NOT NULL"
         ).fetchone()["n"]
         publications = cx.execute("SELECT COUNT(*) n FROM publications").fetchone()["n"]
+        # Les depots qui attendent un coup de telephone : au moins une offre
+        # gardee sans prix. Compte en UNE requete — la vue « A appeler »
+        # recalcule tout le tri, ce qui serait ruineux toutes les deux
+        # secondes dans la boucle d'etat.
+        a_appeler = cx.execute(
+            "SELECT COUNT(DISTINCT o.prospect_id) n FROM offres o "
+            "  JOIN prospects p ON p.id = o.prospect_id "
+            " WHERE o.garder = 1 AND o.prix IS NULL "
+            "   AND COALESCE(o.hors_catalogue, 0) = 0 "
+            "   AND p.statut NOT IN ('rejete', 'doublon', 'refuse', 'revendique')"
+        ).fetchone()["n"]
+        # Les offres chiffrées qui n'attendent qu'un format : c'est le seul
+        # compteur qui dit combien de produits sont à un clic d'être publiables.
+        sans_format = cx.execute(
+            "SELECT COUNT(*) n FROM offres o JOIN prospects p ON p.id = o.prospect_id "
+            " WHERE o.garder = 1 AND o.prix IS NOT NULL "
+            "   AND (o.materiau_slug IS NULL OR o.materiau_slug = '') "
+            "   AND COALESCE(o.hors_catalogue, 0) = 0 "
+            "   AND o.type_slug IS NOT NULL AND o.type_slug <> '' "
+            "   AND p.statut NOT IN ('rejete', 'doublon', 'refuse')"
+        ).fetchone()["n"]
     return {
         **{statut: par_statut.get(statut, 0) for statut in STATUTS},
         "total": sum(par_statut.values()),
         "offres": offres,
         "offres_appariees": appariees,
         "publications": publications,
+        "formats_a_trancher": sans_format,
+        "depots_a_appeler": a_appeler,
     }
 
 
@@ -928,6 +994,23 @@ def ajouter_publication(champs: dict) -> str | None:
     except sqlite3.IntegrityError:
         return None          # empreinte déjà vue
     return donnees["id"]
+
+
+def prospect_de_publication(empreinte_pub: str) -> dict | None:
+    """Le prospect chez qui une publication a atterri, retrouve par empreinte.
+
+    Sert a l'import manuel : quand la publication collee est deja connue, la
+    seule reponse utile est la fiche qu'elle alimente — pas « deja dans la
+    base ».
+    """
+    with _verrou, connexion() as cx:
+        ligne = cx.execute(
+            "SELECT p.id, p.nom, p.statut, p.ville, p.quartier, p.telephone, "
+            "       p.fournisseur_id "
+            "  FROM prospects p JOIN publications pu ON pu.prospect_id = p.id "
+            " WHERE pu.empreinte = ? LIMIT 1", (empreinte_pub,)
+        ).fetchone()
+    return _sortir(ligne)
 
 
 def rattacher_publication(pubid: str, prospect_id: str, nb_offres: int = 0) -> None:
@@ -962,15 +1045,22 @@ def ajouter_offre(prospect_id: str, publication_id: str | None, offre: dict) -> 
         if jumelle:
             if offre.get("prix") and offre["prix"] != jumelle["prix"]:
                 cx.execute(
-                    "UPDATE offres SET prix = ?, vu_le = ?, publication_id = ? WHERE id = ?",
-                    (offre["prix"], maintenant(), publication_id, jumelle["id"]),
+                    "UPDATE offres SET prix = ?, vu_le = ?, publie_le = ?, "
+                    "publication_id = ? WHERE id = ?",
+                    (offre["prix"], maintenant(), offre.get("publie_le") or None,
+                     publication_id, jumelle["id"]),
                 )
             return None
         donnees = {
             "prospect_id": prospect_id,
             "publication_id": publication_id,
+            # `vu_le` = quand NOUS l'avons vu. `publie_le` = quand ÇA a été
+            # publié, et vide quand on ne sait pas. Les confondre revenait à
+            # dater d'aujourd'hui un tarif qui pouvait venir de 2019 — sur un
+            # site où le prix EST le produit, c'est un chiffre faux publié.
             "vu_le": maintenant(),
-            **offre,
+            "publie_le": offre.get("publie_le") or None,
+            **{c: v for c, v in offre.items() if c != "publie_le"},
         }
         colonnes = ", ".join(donnees)
         trous = ", ".join("?" for _ in donnees)
@@ -978,6 +1068,17 @@ def ajouter_offre(prospect_id: str, publication_id: str | None, offre: dict) -> 
             f"INSERT INTO offres ({colonnes}) VALUES ({trous})", tuple(donnees.values())
         )
     return curseur.lastrowid
+
+
+def offre(oid: int) -> dict | None:
+    """Une offre par son identifiant. Sert de source de vérité côté serveur.
+
+    L'atelier des formats renvoie l'unité lue au navigateur ; la relire ici
+    avant d'écrire évite qu'un onglet resté ouvert pendant une re-extraction
+    confirme une unité qui a changé entre-temps.
+    """
+    with _verrou, connexion() as cx:
+        return _sortir(cx.execute("SELECT * FROM offres WHERE id = ?", (oid,)).fetchone())
 
 
 def modifier_offre(oid: int, **champs) -> None:
@@ -1008,17 +1109,94 @@ def offres_du_prospect(pid: str, gardees_seulement: bool = True) -> list[dict]:
         ).fetchall()]
 
 
+def familles_par_prospect() -> dict[str, list[str]]:
+    """{identifiant de prospect: [slugs de familles vendues]}.
+
+    Une requête pour tout le monde, pas une par fiche : l'annuaire affiche
+    quelques centaines de lignes, et une requête par ligne se voit à l'œil nu.
+    Les slugs sortent d'ici, les NOMS se lisent dans le catalogue — la base
+    locale ne stocke pas les libellés du référentiel, et bien lui en prend :
+    le site est seul maître de ses intitulés.
+    """
+    with _verrou, connexion() as cx:
+        lignes = cx.execute(
+            "SELECT prospect_id, famille_slug, COUNT(*) AS n FROM offres "
+            " WHERE garder = 1 AND famille_slug IS NOT NULL AND famille_slug <> '' "
+            " GROUP BY prospect_id, famille_slug ORDER BY n DESC"
+        ).fetchall()
+    par_prospect: dict[str, list[str]] = {}
+    for ligne in lignes:
+        par_prospect.setdefault(ligne["prospect_id"], []).append(ligne["famille_slug"])
+    return par_prospect
+
+
 def toutes_les_offres_appariees() -> list[dict]:
     """Les offres exploitables pour l'observatoire des prix."""
     with _verrou, connexion() as cx:
         return [dict(l) for l in cx.execute(
             "SELECT o.materiau_slug, o.materiau_nom, o.type_slug, o.type_nom, "
-            "       o.famille_slug, o.unite, o.prix, o.vu_le, "
+            "       o.famille_slug, o.unite, o.prix, o.vu_le, o.publie_le, "
             "       p.ville, p.quartier, p.id AS prospect_id, p.nom AS prospect_nom "
             "  FROM offres o JOIN prospects p ON p.id = o.prospect_id "
             " WHERE o.garder = 1 AND o.prix IS NOT NULL AND o.materiau_slug IS NOT NULL "
             "   AND p.statut NOT IN ('rejete', 'doublon')"
         ).fetchall()]
+
+
+def offres_sans_format() -> list[dict]:
+    """Les offres CHIFFRÉES auxquelles il ne manque plus que le format.
+
+    Ce sont elles, et elles seules, qui bloquent l'inscription : le site
+    n'accepte un produit que contre une référence du catalogue, et
+    `extraction._type_seul` retire le format à toute ligne de tarif qui hérite
+    son matériau d'un en-tête — parce que l'hériter avait déjà étiqueté une
+    tôle 0,45 mm au prix d'une 0,14.
+
+    Mesuré le 01/09/2026 : **190 offres** dans ce cas chez 33 dépôts, et pas
+    une seule offre publiable chez les 32 prospects validés. Le prix était là,
+    le type aussi ; il ne manquait qu'un choix humain, et rien ne le demandait.
+    """
+    with _verrou, connexion() as cx:
+        return [dict(l) for l in cx.execute(
+            "SELECT o.id, o.prospect_id, o.libelle_brut, o.prix, o.unite, "
+            "       o.quantite_min, o.type_slug, o.type_nom, o.famille_slug, "
+            "       p.nom AS prospect_nom, p.statut AS prospect_statut "
+            "  FROM offres o JOIN prospects p ON p.id = o.prospect_id "
+            " WHERE o.garder = 1 AND o.prix IS NOT NULL "
+            "   AND (o.materiau_slug IS NULL OR o.materiau_slug = '') "
+            "   AND COALESCE(o.hors_catalogue, 0) = 0 "
+            "   AND o.type_slug IS NOT NULL AND o.type_slug <> '' "
+            "   AND p.statut NOT IN ('rejete', 'doublon', 'refuse') "
+            " ORDER BY o.type_slug, p.nom, o.prix"
+        ).fetchall()]
+
+
+def offres_gardees_vivantes() -> list[dict]:
+    """Toutes les offres retenues des prospects encore en course.
+
+    Sert aux revues de qualite : l'appariement se corrige dans le code, mais
+    les lignes DEJA ecrites, elles, restent — et ce sont elles qui deviennent
+    des produits et alimentent l'observatoire des prix.
+    """
+    with _verrou, connexion() as cx:
+        return [dict(l) for l in cx.execute(
+            "SELECT o.*, p.nom AS prospect_nom, p.statut AS prospect_statut "
+            "  FROM offres o JOIN prospects p ON p.id = o.prospect_id "
+            " WHERE o.garder = 1 AND p.statut NOT IN ('rejete', 'doublon') "
+            " ORDER BY o.id"
+        ).fetchall()]
+
+
+def compter_offres_sans_format() -> int:
+    with _verrou, connexion() as cx:
+        return cx.execute(
+            "SELECT COUNT(*) n FROM offres o JOIN prospects p ON p.id = o.prospect_id "
+            " WHERE o.garder = 1 AND o.prix IS NOT NULL "
+            "   AND (o.materiau_slug IS NULL OR o.materiau_slug = '') "
+            "   AND COALESCE(o.hors_catalogue, 0) = 0 "
+            "   AND o.type_slug IS NOT NULL AND o.type_slug <> '' "
+            "   AND p.statut NOT IN ('rejete', 'doublon', 'refuse')"
+        ).fetchone()["n"]
 
 
 # ── Photos ─────────────────────────────────────────────────────────────────
@@ -1033,7 +1211,7 @@ def ajouter_photo(prospect_id: str, publication_id: str | None, fichier: str,
 
 
 def modifier_photo(photo_id: int, **champs) -> None:
-    autorises = {"garder", "couverture", "url_o2", "ordre"}
+    autorises = {"garder", "couverture", "url_o2", "ordre", "offre_id"}
     champs = {c: v for c, v in champs.items() if c in autorises}
     if not champs:
         return
@@ -1048,6 +1226,25 @@ def definir_couverture(prospect_id: str, photo_id: int) -> None:
     with _verrou, connexion() as cx:
         cx.execute("UPDATE photos SET couverture = 0 WHERE prospect_id = ?", (prospect_id,))
         cx.execute("UPDATE photos SET couverture = 1, garder = 1 WHERE id = ?", (photo_id,))
+
+
+def photos_par_produit(prospect_id: str) -> list[dict]:
+    """Les photos gardees, avec le produit que chacune montre — ou rien.
+
+    Sert a l'ecran de tri : c'est la seule vue qui met en face l'image et ce
+    qu'elle est censee illustrer. Le libelle et le prix viennent de l'offre,
+    pas d'une saisie a part : ce sont eux qui partiront sur le site.
+    """
+    with _verrou, connexion() as cx:
+        return [dict(l) for l in cx.execute(
+            "SELECT ph.id, ph.fichier, ph.url_o2, ph.garder, ph.couverture, "
+            "       ph.ordre, ph.offre_id, ph.publication_id, "
+            "       o.materiau_slug, o.materiau_nom, o.prix, o.unite, "
+            "       o.libelle_brut "
+            "  FROM photos ph LEFT JOIN offres o ON o.id = ph.offre_id "
+            " WHERE ph.prospect_id = ? AND ph.garder = 1 "
+            " ORDER BY ph.ordre, ph.id", (prospect_id,)
+        ).fetchall()]
 
 
 def photos_a_publier(prospect_id: str) -> list[dict]:

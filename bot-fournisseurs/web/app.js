@@ -121,6 +121,9 @@ function ouvrirVue(nom) {
   if (nom === "fournisseurs") chargerProspects();
   if (nom === "demandes") chargerDemandes();
   if (nom === "prospection") chargerFile();
+  if (nom === "appels") chargerAppels();
+  if (nom === "formats") chargerFormats();
+  if (nom === "annuaire") chargerAnnuaire();
   if (nom === "marche") chargerMarche();
   if (nom === "automatisations") chargerAutomatisations();
   if (nom === "sources") chargerSources();
@@ -142,6 +145,22 @@ async function rafraichirEtat() {
   ["a_trier", "valide", "reserve", "contacte", "revendique", "incomplet"]
     .forEach((cle) => { const n = $("#n-" + cle); if (n) n.textContent = c[cle] ?? 0; });
   $("#n-offres").textContent = c.offres_appariees ?? 0;
+
+  // Les offres chiffrees qui n'attendent qu'un format : c'est le compteur qui
+  // dit combien de produits sont a un clic d'etre publiables.
+  const aAppeler = c.depots_a_appeler ?? 0;
+  const pastilleAppels = $("#pastille-appels");
+  if (pastilleAppels) {
+    pastilleAppels.textContent = aAppeler;
+    pastilleAppels.classList.toggle("zero", aAppeler === 0);
+  }
+
+  const aTrancher = c.formats_a_trancher ?? 0;
+  const pastilleFormats = $("#pastille-formats");
+  if (pastilleFormats) {
+    pastilleFormats.textContent = aTrancher;
+    pastilleFormats.classList.toggle("zero", aTrancher === 0);
+  }
 
   const aTrier = (c.a_trier ?? 0) + (c.incomplet ?? 0);
   const pastille = $("#pastille-trier");
@@ -181,6 +200,10 @@ async function rafraichirEtat() {
   $("#btn-arreter").disabled = !collecte.actif;
   $("#btn-reserver-lot").disabled = occupe;
   $("#btn-synchro").disabled = occupe;
+  // APRÈS la ligne ci-dessus, et pas avant : elle remettrait le bouton en
+  // service. Relu à chaque tour parce que l'interrupteur vit dans un AUTRE
+  // onglet — allumé là-bas, le bandeau doit disparaître ici tout seul.
+  rendreBannierePoussee();
   if (occupe) {
     const libelles = {
       collecte: collecte.source
@@ -355,6 +378,35 @@ $$(".lien-statut").forEach((bouton) => {
   });
 });
 
+/** Prévient AVANT le clic que « Réserver » va refuser.
+ *
+ *  Découvrir un garde-fou au moment où on appuie sur le bouton, c'est croire
+ *  que le bot est cassé. Le dire d'avance, c'est une consigne. */
+function rendreBannierePoussee() {
+  const bandeau = $("#banniere-poussee");
+  if (!bandeau) return;
+  const autorise = pousseeAutorisee();
+  bandeau.hidden = autorise;
+  const occupe = !!(etat.dernierEtat && etat.dernierEtat.tache
+                    && etat.dernierEtat.tache.actif);
+  // Les boutons qui partiraient pour rien sont désactivés plutôt que masqués :
+  // un bouton absent laisse croire que la fonction n'existe pas.
+  ["#btn-reserver-lot", "#sel-reserver", "#p-reserver"].forEach((selecteur) => {
+    const bouton = $(selecteur);
+    if (!bouton) return;
+    if (!autorise) bouton.disabled = true;
+    else if (selecteur !== "#p-reserver") bouton.disabled = occupe;
+    bouton.title = autorise ? "" : "Envoi des fiches éteint — onglet Automatisations.";
+  });
+}
+
+/** L'écriture vers akora.fonenako.mg est-elle ouverte ? */
+function pousseeAutorisee() {
+  return !!(etat.config || {}).pousser_les_fiches;
+}
+
+surClic("#btn-poussee-auto", () => ouvrirVue("automatisations"));
+
 // ── Vue Fournisseurs ───────────────────────────────────────────────────────
 async function chargerProspects() {
   const parametres = new URLSearchParams(etat.filtres);
@@ -378,6 +430,96 @@ async function chargerProspects() {
   // constituer une selection en plusieurs passes. Mais la barre doit dire
   // combien, pas combien sont visibles.
   rendreBarreSelection();
+  chargerDoublons();
+}
+
+/* ── Doublons probables ────────────────────────────────────────────────────
+   Le bot SIGNALE, il ne fusionne pas. Mesuré le 24/08/2026 : le
+   dédoublonnage par téléphone et par empreinte tient (180 publications, 180
+   empreintes, aucun doublon d'offre) ; ce qui restait, ce sont des fiches
+   HOMONYMES — dont plusieurs venaient en fait du même compte Facebook vu
+   depuis deux groupes.
+
+   Deux niveaux, et l'interface ne les mélange pas :
+     · « même compte Facebook » — l'identifiant numérique est identique ;
+     · « même nom » — à REGARDER, jamais à fusionner les yeux fermés :
+       « Fournisseur en Matériaux de construction » est une enseigne générique
+       que des pages réellement différentes portent. */
+async function chargerDoublons() {
+  const bloc = $("#bloc-doublons");
+  if (!bloc) return;
+  let groupes = [];
+  try {
+    groupes = await api("/api/doublons");
+  } catch {
+    bloc.hidden = true;      // le serveur redémarre : on ne dit rien de faux
+    return;
+  }
+  bloc.hidden = groupes.length === 0;
+  if (!groupes.length) return;
+  const surs = groupes.filter((g) => g.certitude === "compte").length;
+  $("#doublons-titre").textContent =
+    `${groupes.length} doublon(s) probable(s)` +
+    (surs ? ` — dont ${surs} sur le même compte Facebook` : "");
+  $("#doublons-liste").innerHTML = groupes.map(groupeDoublon).join("");
+  $$("[data-fusionner]", $("#doublons-liste")).forEach((bouton) => {
+    bouton.addEventListener("click", () => fusionnerDoublon(bouton.dataset.fusionner));
+  });
+}
+
+function groupeDoublon(g) {
+  const sur = g.certitude === "compte";
+  const lignes = g.fiches.map((f) => `
+    <label class="doublon-fiche">
+      <input type="radio" name="garder-${echapper(g.cle)}" value="${f.id}"
+             ${f.id === g.garder ? "checked" : ""}>
+      <span class="doublon-nom">${echapper(f.nom || "sans nom")}</span>
+      <span class="doublon-detail">${echapper(f.telephone || "pas de numéro")}</span>
+      <span class="doublon-detail">${f.nb_offres} offre(s) · ${f.nb_publications} publication(s)</span>
+      <span class="doublon-detail">${echapper(LIBELLES_STATUT[f.statut] || f.statut)}</span>
+      <a class="doublon-detail lien-discret" href="https://${echapper(f.page_url)}"
+         target="_blank" rel="noopener">${echapper(f.page_url || "")}</a>
+    </label>`).join("");
+  return `
+  <div class="doublon ${sur ? "sur" : "doute"}" data-cle="${echapper(g.cle)}">
+    <p class="doublon-entete">
+      <span class="doublon-marque">${sur ? "Même compte Facebook" : "Même nom seulement"}</span>
+      <strong>${echapper(g.nom || "sans nom")}</strong>
+      <small>${echapper(g.raison)}</small>
+    </p>
+    ${lignes}
+    <p class="doublon-actions">
+      <button class="bouton fin" data-fusionner="${echapper(g.cle)}">
+        Fusionner dans la fiche cochée
+      </button>
+      ${sur ? "" : `<small class="doublon-garde-fou">Deux dépôts peuvent
+        porter le même nom : vérifiez le numéro et la page avant de
+        fusionner.</small>`}
+    </p>
+  </div>`;
+}
+
+async function fusionnerDoublon(cle) {
+  const bloc = $(`.doublon[data-cle="${CSS.escape(cle)}"]`);
+  if (!bloc) return;
+  const choisi = $(`input[type="radio"]:checked`, bloc);
+  if (!choisi) { toast("Cochez la fiche à garder.", "erreur"); return; }
+  const tous = $$("input[type=\"radio\"]", bloc).map((i) => i.value);
+  const absorbes = tous.filter((id) => id !== choisi.value);
+  if (!absorbes.length) return;
+  if (!confirm(
+    `Fusionner ${absorbes.length} fiche(s) dans celle qui est cochée ?\n\n` +
+    "Leurs publications, offres, photos et véhicules seront déplacés, puis " +
+    "les fiches vidées seront supprimées. C'est irréversible.")) return;
+  try {
+    const r = await api("/api/doublons/fusionner", {
+      method: "POST", corps: { garder: choisi.value, absorbes },
+    });
+    toast(`${r.absorbees} fiche(s) fusionnée(s).`, "succes");
+    chargerProspects();
+  } catch (e) {
+    toast(e.message, "erreur");
+  }
 }
 
 function carteProspect(p) {
@@ -409,6 +551,7 @@ function carteProspect(p) {
       <div class="fiche-meta">${echapper(p.telephone || "pas de téléphone")}</div>
       <div class="fiche-bas">
         <span class="badge ${COULEURS_STATUT[p.statut] || "gris"}">${LIBELLES_STATUT[p.statut] || p.statut}</span>
+        ${p.fournisseur_id ? '<span class="badge vert" title="Ce dépôt a déjà sa fiche sur akora.fonenako.mg">sur Akora</span>' : ""}
         ${manques.map((m) => `<span class="badge pointille">${echapper(m)}</span>`).join("")}
       </div>
     </div>
@@ -573,7 +716,8 @@ function rendrePanneau() {
   ].join("");
 
   brancherPanneau();
-  $("#p-reserver").disabled = gardees.filter((o) => o.materiau_slug).length === 0;
+  $("#p-reserver").disabled = gardees.filter((o) => o.materiau_slug).length === 0
+    || !pousseeAutorisee();
 }
 
 function blocScore(p) {
@@ -636,19 +780,106 @@ function champ(cle, libelle, valeur, options) {
     <input type="text" data-champ="${cle}" value="${echapper(valeur || "")}"></div>`;
 }
 
+/** Ce qui manque a une offre pour partir sur le site.
+ *
+ * Meme regle que `bot/tri.py` cote serveur, et il ne faut pas qu'elles
+ * divergent : une reference du catalogue, un PRIX, une PHOTO designee. Les
+ * trois, sinon le produit ne part pas. C'est ce qui evite de croire une fiche
+ * prete parce qu'elle a des prix partout et pas une image. */
+function manquesDeLOffre(offre, prospect) {
+  if (offre.hors_catalogue) {
+    return [{ texte: "hors catalogue", couleur: "gris" }];
+  }
+  const manques = [];
+  if (!offre.materiau_slug) manques.push({ texte: "format à préciser", couleur: "jaune" });
+  if (!offre.prix) manques.push({ texte: "prix à demander", couleur: "rouge" });
+  const aUnePhoto = (prospect.photos || []).some(
+    (f) => f.garder && String(f.offre_id) === String(offre.id));
+  if (!aUnePhoto) manques.push({ texte: "photo à désigner", couleur: "bleu" });
+  if (!manques.length) manques.push({ texte: "prêt", couleur: "vert" });
+  return manques;
+}
+
+/** Les photos a choisir, SOUS le produit. On clique celle qui le montre.
+ *
+ * L'ordre n'est pas neutre : les photos de la MEME publication d'abord.
+ * C'est la que se trouve la bonne — un depot photographie ce qu'il annonce
+ * dans le meme post. Les autres suivent, derriere un depli, pour ne pas
+ * poser 1 700 vignettes dans la page (48 produits x 35 photos chez un seul
+ * depot).
+ *
+ * Une photo deja prise par un AUTRE produit reste cliquable mais se voit :
+ * elle porte le nom de celui qui la tient. Rien n'interdit de la reprendre —
+ * c'est parfois la meme image qui montre deux formats du meme bois — mais on
+ * ne le fait plus sans le savoir. */
+function bandePhotos(offre, prospect) {
+  const toutes = (prospect.photos || []).filter((f) => f.garder);
+  if (!toutes.length) return "";
+
+  const memePost = toutes.filter((f) => f.publication_id === offre.publication_id);
+  const autres = toutes.filter((f) => f.publication_id !== offre.publication_id);
+  const nomDe = (photoId) => {
+    const autre = prospect.offres.find(
+      (x) => String(x.id) !== String(offre.id)
+        && toutes.some((f) => String(f.id) === String(photoId)
+                             && String(f.offre_id) === String(x.id)));
+    return autre ? (autre.materiau_nom || "un autre produit") : "";
+  };
+
+  const vignette = (f) => {
+    const mienne = String(f.offre_id) === String(offre.id);
+    const prise = !mienne && f.offre_id ? nomDe(f.id) : "";
+    return `
+    <button class="vignette ${mienne ? "choisie" : ""} ${prise ? "prise" : ""}"
+            data-photo-pour="${offre.id}" data-photo-id="${f.id}"
+            title="${mienne ? "Retirer cette photo du produit"
+                            : prise ? "Déjà sur « " + echapper(prise) + " »"
+                                    : "Cette photo montre ce produit"}">
+      <img src="/photo/${f.publication_id}/${encodeURIComponent(f.fichier)}"
+           alt="" loading="lazy">
+    </button>`;
+  };
+
+  return `
+  <div class="photos-offre">
+    <span class="discret">Photo :</span>
+    ${memePost.map(vignette).join("")}
+    ${autres.length ? `
+      <details class="autres-photos">
+        <summary title="Les photos des autres publications de ce dépôt">
+          + ${autres.length}</summary>
+        <div class="bande">${autres.map(vignette).join("")}</div>
+      </details>` : ""}
+  </div>`;
+}
+
 function blocOffres(p) {
   const lignes = p.offres.map((o) => {
+    /* 🔴 LE LIBELLE MONTRE LE NOM QUI PARTIRA SUR LE SITE.
+     *
+     * Il affichait « <type> — <libellé court> », soit « Brique pleine —
+     * 6×11×22 », alors que la référence s'appelle « Brique repressée
+     * 6x11x22 » et que c'est CE nom-là que le bot écrit dans `nom_affiche`.
+     * On lisait donc « Brique pleine » ici et « Brique repressée » sur Akora,
+     * et on pouvait croire que le site avait renommé l'article. Il n'y touche
+     * pas : le bot est maître. C'était l'étiquette qui mentait, pas la
+     * donnée. */
     const options = etat.arbre.flatMap((f) =>
       f.types.flatMap((t) => t.formats.map((m) => ({
         slug: m.slug,
-        libelle: `${t.nom} — ${m.libelle_court || m.nom}`,
+        libelle: m.nom || `${t.nom} — ${m.libelle_court}`,
+        groupe: t.nom,
         famille: f.nom,
       }))));
     return `
     <div class="offre" data-offre="${o.id}">
       <select data-offre-champ="materiau_slug">
         <option value="">— à préciser —</option>
-        ${options.map((m) => `<option value="${m.slug}" ${m.slug === o.materiau_slug ? "selected" : ""}>${echapper(m.libelle)}</option>`).join("")}
+        ${[...new Set(options.map((m) => m.groupe))].map((groupe) => `
+          <optgroup label="${echapper(groupe)}">
+            ${options.filter((m) => m.groupe === groupe).map((m) =>
+              `<option value="${m.slug}" ${m.slug === o.materiau_slug ? "selected" : ""}>${echapper(m.libelle)}</option>`).join("")}
+          </optgroup>`).join("")}
       </select>
       <input type="text" data-offre-champ="prix" value="${o.prix ?? ""}" placeholder="prix (Ar)" inputmode="numeric">
       <select data-offre-champ="unite">
@@ -657,10 +888,10 @@ function blocOffres(p) {
       </select>
       <button class="jeter" data-jeter="${o.id}" title="Retirer cette offre">×</button>
       <div class="brut">
-        ${o.ambigu ? '<span class="badge jaune">format à préciser</span> ' : ""}
-        ${!o.materiau_slug && !o.ambigu ? '<span class="badge rouge">hors catalogue</span> ' : ""}
+        ${manquesDeLOffre(o, p).map((m) => `<span class="badge ${m.couleur}">${m.texte}</span> `).join("")}
         lu : « ${echapper(o.libelle_brut)} »
       </div>
+      ${bandePhotos(o, p)}
     </div>`;
   }).join("");
 
@@ -676,18 +907,50 @@ function blocOffres(p) {
   </div>`;
 }
 
+/** Les photos, et CE QU'ELLES MONTRENT.
+ *
+ * 🔴 Une photo appartenait a une publication, jamais a un produit. Un post qui
+ *    annonce cinq materiaux porte les photos des cinq — le 01/09/2026, la
+ *    publication « Sable fin : 45 000 Ar le m3 » est partie dans le fil sous
+ *    deux photos de gravillon et de moellon. Aucune machine ne distingue un
+ *    madrier d'un chevron sur un tas de bois : c'est un tri humain, et il n'y
+ *    avait nulle part ou le faire.
+ *
+ * Le nom et le prix s'affichent SOUS chaque image : c'est ce qui permet de
+ * verifier d'un coup d'oeil, avant de transferer, que la photo dit la meme
+ * chose que l'etiquette. */
 function blocPhotos(p) {
   if (!p.photos.length) return "";
+  const choix = (p.offres || []).filter((o) => o.garder);
+
+  const attribuees = p.photos.filter((f) => f.garder && f.offre_id).length;
+  const gardees = p.photos.filter((f) => f.garder).length;
+
   return `
   <div class="bloc">
-    <h3>Photos <span class="badge gris">${p.photos.length}</span></h3>
-    <p class="bloc-aide">Cliquez une photo pour en faire la couverture ; le ✓ l'écarte.</p>
-    <div class="miniatures">
-      ${p.photos.map((f) => `
+    <h3>Photos <span class="badge gris">${p.photos.length}</span>
+      <span class="badge ${attribuees === gardees && gardees ? "vert" : "jaune"}">
+        ${attribuees}/${gardees} attribuée(s)</span></h3>
+    <p class="bloc-aide">
+      Cliquez une photo pour en faire la couverture ; le ✓ l'écarte. <strong>Le
+      choix « quelle photo montre quel produit » se fait plus haut</strong>, sous
+      chaque produit relevé — c'est là qu'on voit l'article et son image côte à
+      côte. Une photo sans produit reste sur la fiche du dépôt, pas sur un article.
+    </p>
+    <div class="miniatures larges">
+      ${p.photos.map((f) => {
+        const o = choix.find((x) => String(x.id) === String(f.offre_id));
+        const etiquette = o
+          ? `<strong>${echapper(o.materiau_nom || "produit")}</strong>`
+            + (o.prix ? ` · ${prixAr(o.prix)} ${UNITES[o.unite] || ""}` : " · sans prix")
+          : '<span class="discret">aucun produit</span>';
+        return `
         <div class="mini ${f.couverture ? "couverture" : ""} ${f.garder ? "" : "ecartee"}" data-photo="${f.id}">
           <img src="/photo/${f.publication_id}/${encodeURIComponent(f.fichier)}" alt="" loading="lazy">
           <button data-basculer="${f.id}" title="Garder ou écarter">${f.garder ? "✓" : "○"}</button>
-        </div>`).join("")}
+          <div class="mini-etiquette">${etiquette}</div>
+        </div>`;
+      }).join("")}
     </div>
   </div>`;
 }
@@ -814,9 +1077,81 @@ function brancherPanneau() {
     });
   });
 
+  // Choisir la photo d'un produit, depuis la ligne du produit. Recliquer la
+  // meme la retire : c'est le geste inverse, au meme endroit.
+  $$("[data-photo-pour]").forEach((bouton) => {
+    bouton.addEventListener("click", async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const photoId = bouton.dataset.photoId;
+      const photo = (p.photos || []).find((f) => String(f.id) === String(photoId));
+      const dejaSienne = photo
+        && String(photo.offre_id) === String(bouton.dataset.photoPour);
+      try {
+        await api("/api/photos/" + photoId, {
+          method: "PATCH",
+          corps: { champs: { offre_id: dejaSienne ? null : Number(bouton.dataset.photoPour) } },
+        });
+        await ouvrirPanneau(p.id);
+      } catch (err) {
+        toast(err.message, "erreur");
+      }
+    });
+  });
+
   // Les camions vivent dans modules.js — ils sont arrivés après les six vues
   // d'origine, et rien ne gagnait à les entasser ici.
   if (typeof brancherVehicules === "function") brancherVehicules(p.id);
+
+  /* Le SECOND geste. La fiche du depot se remplit une fois — nom, contact,
+     emplacement ; ses produits arrivent au fil des appels et des photos
+     designees, et ce bouton les pousse a chaque fois. */
+  surClic("#p-produits", async () => {
+    let apercu;
+    try {
+      apercu = await api(`/api/prospects/${p.id}/inscription`);
+    } catch (e) { return toast(e.message, "erreur"); }
+
+    if (!apercu.produits.length) {
+      return toast(
+        "Aucun produit complet. Un produit ne part qu'avec sa référence, "
+        + "son prix ET une photo désignée.", "erreur");
+    }
+    const lignes = [
+      `Envoyer les produits de « ${apercu.nom} » sur akora.fonenako.mg ?`,
+      "",
+      `${apercu.produits.length} produit(s) complet(s) :`,
+      ...apercu.produits.slice(0, 10).map(
+        (x) => `• ${x.nom} — ${prixAr(x.prix)} ${UNITES[x.unite] || ""}`),
+    ];
+    if (apercu.produits_deja.length) {
+      lignes.push("", `${apercu.produits_deja.length} déjà en ligne — non réécrit(s).`);
+    }
+    if ((apercu.prix_changes || []).length) {
+      lignes.push("", "Prix DIFFÉRENTS de ceux en ligne :");
+      apercu.prix_changes.forEach((x) => lignes.push(
+        `• ${x.nom} : en ligne ${prixAr(x.en_ligne)} → relevé ${prixAr(x.releve)}`));
+    }
+    if (!confirm(lignes.join("\n"))) return;
+
+    let actualiser = false;
+    if ((apercu.prix_changes || []).length) {
+      actualiser = confirm(
+        "Remplacer les prix en ligne par ceux qui viennent d'être relevés ?"
+        + "\n\nAnnuler garde les prix actuels du site.");
+    }
+    try {
+      const r = await api(
+        `/api/prospects/${p.id}/produits?actualiser_prix=${actualiser}`,
+        { method: "POST" });
+      toast(`${r.produits} produit(s) envoyé(s)`
+        + (r.prix_actualises ? `, ${r.prix_actualises} prix mis à jour` : "")
+        + ".", "succes");
+      await ouvrirPanneau(p.id);
+    } catch (e) {
+      toast(e.message, "erreur");
+    }
+  });
 
   // Publier, c'est rendre visible le nom d'un dépôt et des prix relevés sur
   // Facebook. Une confirmation, et elle dit exactement ça.
@@ -940,12 +1275,34 @@ surClic("#p-inscrire", async () => {
   if (apercu.manque.length) {
     return toast("Il manque " + apercu.manque.join(", ") + ".", "erreur");
   }
+
+  // Ce que le site porte DEJA. Deux cas s'arretent ici, et c'est le but :
+  // un depot qui tient sa propre fiche ne se touche pas, et un depot deja
+  // complet ne merite pas un clic.
+  if (apercu.sur_le_site && !apercu.fiche_a_nous) {
+    return toast(
+      `« ${apercu.nom} » est deja sur Akora et tient SA fiche `
+      + `(${apercu.raison_rapprochement}). Rien ne sera ecrit.`, "erreur");
+  }
+  if (apercu.rien_a_faire) {
+    return toast(
+      `« ${apercu.nom} » est deja sur Akora avec ses `
+      + `${apercu.produits_deja.length} produit(s), aux memes prix : rien a faire.`);
+  }
+
   const lignes = [
     apercu.deja_inscrit
       ? `Mettre à jour « ${apercu.nom} » sur akora.fonenako.mg ?`
       : `Inscrire « ${apercu.nom} » sur akora.fonenako.mg ?`,
     "",
-    `${apercu.produits.length} produit(s) partiront :`,
+    apercu.sur_le_site
+      ? `Fiche deja sur le site (${apercu.raison_rapprochement}), `
+        + `${apercu.produits_deja.length} produit(s) en place — on ne recree rien.`
+      : "Nouvelle fiche.",
+    "",
+    apercu.sur_le_site
+      ? `${apercu.produits_a_ajouter.length} produit(s) seront AJOUTES :`
+      : `${apercu.produits.length} produit(s) partiront :`,
     ...apercu.produits.slice(0, 8).map(
       (x) => `• ${x.nom} — ${prixAr(x.prix)} ${UNITES[x.unite] || ""}`),
   ];
@@ -959,13 +1316,42 @@ surClic("#p-inscrire", async () => {
     lignes.push(`Format encore à préciser : ${apercu.ambigus.length} offre(s)`);
   }
   if (apercu.vehicules) lignes.push(`${apercu.vehicules} véhicule(s) de livraison`);
-  lignes.push("", "La fiche est créée EN BROUILLON : elle n'apparaîtra dans",
-              "l'annuaire qu'après un clic sur « Publier ».");
+
+  // Un prix qui a bouge depuis la derniere fois. Ce n'est PAS automatique :
+  // ce que le bot vient de lire n'est pas forcement plus recent que ce qui
+  // est en ligne — la publication importee le 01/09/2026 datait du 31 mai.
+  if ((apercu.prix_changes || []).length) {
+    lignes.push("", "Prix DIFFERENTS de ceux en ligne :");
+    apercu.prix_changes.forEach((x) => lignes.push(
+      `• ${x.nom} : en ligne ${prixAr(x.en_ligne)} → relevé ${prixAr(x.releve)}`));
+    lignes.push("(vous choisirez juste après s'il faut les remplacer)");
+  }
+  lignes.push("", etat.config.inscrire_en_actif
+    ? "La fiche sera VISIBLE tout de suite dans l'annuaire, et son stock"
+      + " sera publie dans le fil au nom du depot."
+    : "La fiche est créée EN BROUILLON : elle n'apparaîtra dans"
+      + " l'annuaire qu'après un clic sur « Publier ».");
 
   if (!confirm(lignes.join("\n"))) return;
   try {
-    const r = await api(`/api/prospects/${p.id}/inscrire`, { method: "POST" });
-    toast(`Inscrit sur Akora en ${r.statut} — ${r.produits} produit(s).`, "succes");
+    let actualiser = false;
+    if ((apercu.prix_changes || []).length) {
+      actualiser = confirm(
+        `Remplacer ${apercu.prix_changes.length} prix en ligne par ceux qui `
+        + "viennent d'être relevés ?\n\n"
+        + "Annuler garde les prix actuels du site : une publication ancienne "
+        + "peut très bien être moins à jour que ce qui est affiché.");
+    }
+    const r = await api(
+      `/api/prospects/${p.id}/inscrire?actualiser_prix=${actualiser}`,
+      { method: "POST" });
+    toast(r.action === "deja_au_depot"
+      ? `« ${apercu.nom} » tient sa propre fiche : rien n'a ete ecrit.`
+      : `${r.action === "adopte" ? "Fiche reprise" : "Fiche creee"} en ${r.statut}`
+        + ` — ${r.produits} produit(s) ajoute(s)`
+        + (r.prix_actualises ? `, ${r.prix_actualises} prix mis a jour` : "")
+        + (r.produits_deja ? `, ${r.produits_deja} deja present(s).` : "."),
+      "succes");
     await ouvrirPanneau(p.id);
     chargerProspects();
   } catch (e) { toast(e.message, "erreur"); }
@@ -1225,6 +1611,7 @@ const REGLAGES_VISIBLES = [
   ["posts_max_par_source", "Publications max par source", "number"],
   ["scrolls_max_par_source", "Défilements max par source", "number"],
   ["jours_max", "Ignorer les publications de plus de (jours)", "number"],
+  ["annee_minimum", "Ne rien collecter d’avant l’année", "number"],
   ["travailleurs", "Fils de traitement (hors navigateur)", "number"],
   ["photos_max_par_publication", "Photos max par publication", "number"],
   ["delai_relance_jours", "Relancer après (jours)", "number"],
@@ -1534,3 +1921,389 @@ $("#btn-requetes").addEventListener("click", async () => {
     toast(e.message, "erreur");
   }
 });
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Atelier des formats
+   ═══════════════════════════════════════════════════════════════════════════
+   Le goulot mesure le 01/09/2026 : 210 offres CHIFFREES sans format, chez 34
+   depots — et pas une seule offre publiable chez les 32 prospects valides. Le
+   <select> qui repare cela existait deja, mais un par offre, au fond du
+   panneau d'un prospect : 34 panneaux a ouvrir.
+
+   Ici on ne trie plus par depot, on trie PAR TYPE : les 92 toles se tranchent
+   ensemble, et les libelles identiques d'un meme type se tranchent d'un coup.
+   Le bot ne propose aucun format, n'en classe aucun : il rassemble, il compte,
+   il applique.
+   ═══════════════════════════════════════════════════════════════════════════ */
+let atelier = { groupes: [], offres: 0, depots: 0 };
+
+async function chargerFormats() {
+  try {
+    atelier = await api("/api/formats/atelier");
+  } catch (e) {
+    toast(e.message, "erreur");
+    return;
+  }
+  $("#etat-formats").textContent =
+    `${atelier.offres} offre(s) chiffrée(s) sans format · ${atelier.depots} dépôt(s) · ${atelier.types} type(s)`;
+  $("#formats-vide").hidden = atelier.offres > 0;
+  $("#liste-formats").innerHTML = atelier.groupes.map(carteType).join("");
+  brancherAtelier();
+}
+
+function carteType(g, gi) {
+  const alerte = g.unites_incompatibles
+    ? `<p class="aide alerte-unite">
+         ⚠ Ces dépôts affichent en <strong>${g.unites_lues.join(", ")}</strong>,
+         la référence Akora se vend <strong>${g.unites_reference.join(", ")}</strong>.
+         Choisir un format ne suffit pas : le prix change de sens.
+       </p>`
+    : "";
+  const sansRef = g.sans_reference
+    ? `<p class="aide alerte-unite">
+         ⚠ Le catalogue Akora ne connaît aucun format pour ce type. Rien à
+         choisir : signalez ces offres comme hors catalogue, elles remonteront
+         dans les références à ajouter au site.
+       </p>`
+    : "";
+  return `
+  <details class="carte groupe-format" data-groupe="${gi}">
+    <summary>
+      <strong>${echapper(g.type_nom)}</strong>
+      <span class="badge gris">${g.nb_offres} offre(s)</span>
+      <span class="badge gris">${g.nb_depots} dépôt(s)</span>
+      <span class="discret">${g.formats.length} format(s) au catalogue</span>
+      ${g.paquets.filter((x) => x.propose).length
+        ? `<span class="badge bleu">${g.paquets.filter((x) => x.propose).length} proposé(s)</span>`
+        : ""}
+    </summary>
+    ${alerte}${sansRef}
+    <div class="paquets">
+      ${g.paquets.map((p, pi) => lignePaquet(g, p, gi, pi)).join("")}
+    </div>
+    <div class="ligne-form">
+      <button class="bouton principal" data-appliquer="${gi}">
+        Appliquer ce type
+      </button>
+      <span class="discret" data-resultat="${gi}"></span>
+    </div>
+  </details>`;
+}
+
+function lignePaquet(g, p, gi, pi) {
+  const uniteLue = [...new Set(p.offres.map((o) => o.unite).filter(Boolean))];
+  const fourchette = p.prix_min === p.prix_max
+    ? prixAr(p.prix_min)
+    : `${prixAr(p.prix_min)} – ${prixAr(p.prix_max)}`;
+  const depots = [...new Set(p.offres.map((o) => o.prospect_nom))]
+    .slice(0, 3).join(", ");
+  return `
+  <div class="paquet" data-groupe="${gi}" data-paquet="${pi}">
+    <div class="paquet-lu">
+      <div class="brut ${p.propose ? "avec-proposition" : ""}">« ${echapper(p.exemple)} »</div>
+      <div class="discret">
+        ${p.nb} offre(s) · ${p.nb_depots} dépôt(s) · ${fourchette}
+        ${uniteLue.length ? ` · lu : ${uniteLue.join(", ")}` : " · unité non lue"}
+        ${depots ? ` · ${echapper(depots)}` : ""}
+      </div>
+    </div>
+    <div class="paquet-choix">
+      <select data-format>
+        <option value="">— laisser en attente —</option>
+        ${g.formats.map((f) => `<option value="${echapper(f.slug)}" data-unite="${echapper(f.unite || "")}" ${p.propose && p.propose.slug === f.slug ? "selected" : ""}>${echapper(f.libelle)}${f.unite ? ` (${f.unite})` : ""}</option>`).join("")}
+      </select>
+      ${p.propose ? `<div class="propose">
+        ↳ proposé d'après les cotes écrites dans la ligne — <strong>à confirmer</strong>
+      </div>` : ""}
+      <label class="confirme-unite" hidden>
+        <input type="checkbox" data-confirme>
+        <span></span>
+      </label>
+      <button class="bouton discret-bouton" data-creer="${gi}" data-paquet-creer="${pi}"
+              title="Créer cette référence au catalogue Akora">+ référence</button>
+      <button class="bouton discret-bouton" data-absent>Hors catalogue</button>
+    </div>
+  </div>`;
+}
+
+function brancherAtelier() {
+  // Le choix d'un format revele l'unite de la reference : si elle ne
+  // correspond pas a celle que le depot affiche, le prix ne veut plus dire la
+  // meme chose, et rien ne part sans une confirmation explicite.
+  $$("#liste-formats [data-format]").forEach((select) => {
+    select.addEventListener("change", () => {
+      const bloc = select.closest(".paquet");
+      const lues = infosPaquet(bloc).unites;
+      const uniteRef = select.selectedOptions[0]?.dataset.unite || "";
+      const label = bloc.querySelector(".confirme-unite");
+      const conflit = uniteRef && lues.length && !lues.includes(uniteRef);
+      label.hidden = !conflit;
+      if (conflit) {
+        label.querySelector("span").textContent =
+          `le prix est bien ${UNITES[uniteRef] || uniteRef} (relevé ${lues.map((u) => UNITES[u] || u).join(", ")})`;
+      } else {
+        label.querySelector("input").checked = false;
+      }
+      bloc.classList.toggle("en-conflit", Boolean(conflit));
+    });
+  });
+
+  $$("#liste-formats [data-absent]").forEach((bouton) => {
+    bouton.addEventListener("click", async () => {
+      const bloc = bouton.closest(".paquet");
+      const { ids, exemple } = infosPaquet(bloc);
+      try {
+        await api("/api/formats/hors-catalogue", {
+          method: "POST",
+          corps: { ids, libelle: exemple },
+        });
+        toast(`${ids.length} offre(s) signalée(s) — la référence manque au catalogue.`);
+        chargerFormats();
+      } catch (e) {
+        toast(e.message, "erreur");
+      }
+    });
+  });
+
+  /* Creer au catalogue la reference qu'une ligne reclame.
+     Le site ignorait cette section ; la collecte l'a trouvee ; on la lui
+     apprend. Le bot reste maitre : la cote vient du tarif du depot, le nom
+     suit la convention du catalogue, et la reference cree porte le meme
+     identifiant quel que soit le depot qui l'a ecrite en premier. */
+  $$("#liste-formats [data-creer]").forEach((bouton) => {
+    bouton.addEventListener("click", async () => {
+      const g = atelier.groupes[Number(bouton.dataset.creer)];
+      const p = g.paquets[Number(bouton.dataset.paquetCreer)];
+      const ligne = (p.exemple.split("›").pop() || p.exemple).trim();
+      let projet;
+      try {
+        projet = await api("/api/formats/reference-possible?type_slug="
+          + encodeURIComponent(g.type_slug) + "&ligne=" + encodeURIComponent(ligne));
+      } catch (e) { return toast(e.message, "erreur"); }
+
+      if (!projet.possible) {
+        return toast("Impossible : " + projet.motif, "erreur");
+      }
+      const accord = confirm([
+        "Créer cette référence dans le catalogue Akora ?",
+        "",
+        `  ${projet.nom}`,
+        `  ${projet.volume} m³ · ${projet.poids} kg (${projet.densite} kg/m³)`,
+        `  identifiant : ${projet.slug}`,
+        "",
+        "Les cotes viennent du tarif du dépôt, le volume est calculé, et le",
+        "poids suit la masse volumique déjà en place pour ce type.",
+        "",
+        `Elle sera appliquée aux ${p.nb} offre(s) de cette ligne.`,
+      ].join("\n"));
+      if (!accord) return;
+      try {
+        const r = await api("/api/formats/creer-reference", {
+          method: "POST",
+          corps: { type_slug: g.type_slug, ligne, ids: infosPaquet(
+            bouton.closest(".paquet")).ids },
+        });
+        toast(`« ${r.nom} » créée — ${r.appliquees || 0} offre(s) rattachée(s).`,
+          "succes");
+        chargerFormats();
+      } catch (e) {
+        toast(e.message, "erreur");
+      }
+    });
+  });
+
+  $$("#liste-formats [data-appliquer]").forEach((bouton) => {
+    bouton.addEventListener("click", () => appliquerType(Number(bouton.dataset.appliquer)));
+  });
+}
+
+function infosPaquet(bloc) {
+  const g = atelier.groupes[Number(bloc.dataset.groupe)];
+  const p = g.paquets[Number(bloc.dataset.paquet)];
+  return {
+    ids: p.offres.map((o) => o.id),
+    exemple: p.exemple,
+    unites: [...new Set(p.offres.map((o) => o.unite).filter(Boolean))],
+  };
+}
+
+async function appliquerType(gi) {
+  const carte = $(`.groupe-format[data-groupe="${gi}"]`);
+  const decisions = [];
+  let enAttente = 0;
+
+  $$(".paquet", carte).forEach((bloc) => {
+    const select = bloc.querySelector("[data-format]");
+    if (!select.value) return;
+    const confirme = bloc.querySelector("[data-confirme]");
+    const label = bloc.querySelector(".confirme-unite");
+    if (!label.hidden && !confirme.checked) {
+      enAttente += 1;
+      bloc.classList.add("en-conflit");
+      return;
+    }
+    decisions.push({
+      ids: infosPaquet(bloc).ids,
+      materiau_slug: select.value,
+      confirme_unite: !label.hidden && confirme.checked,
+    });
+  });
+
+  const resultat = $(`[data-resultat="${gi}"]`);
+  if (!decisions.length) {
+    resultat.textContent = enAttente
+      ? `${enAttente} ligne(s) attendent que vous confirmiez l'unité.`
+      : "Aucun format choisi dans ce type.";
+    return;
+  }
+  try {
+    const r = await api("/api/formats/appliquer", { method: "POST", corps: { decisions } });
+    const reste = (r.unites_en_conflit || []).length;
+    toast(`${r.appliquees} offre(s) ont reçu leur format.`
+      + (reste ? ` ${reste} écartée(s) sur l'unité.` : ""));
+    chargerFormats();
+  } catch (e) {
+    toast(e.message, "erreur");
+  }
+}
+
+$("#btn-formats-recharger").addEventListener("click", chargerFormats);
+
+/* Import d'une publication precise — voir Collecteur.importer(). Le travail
+   ouvre un navigateur : il part en tache de fond, et c'est le journal qui
+   rend compte, comme pour une collecte. */
+surClic("#btn-importer", async () => {
+  const champ = $("#url-import");
+  const url = (champ.value || "").trim();
+  if (!url.startsWith("http")) {
+    return toast("Collez le lien complet de la publication.", "erreur");
+  }
+  try {
+    await api("/api/importer", { method: "POST", corps: { url } });
+    champ.value = "";
+    toast("Lecture de la publication lancée — suivez le journal.");
+  } catch (e) {
+    toast(e.message, "erreur");
+  }
+});
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   A appeler — la ou 84 % du corpus se debloque
+   ═══════════════════════════════════════════════════════════════════════════
+   Mesure du 01/09/2026 : 440 publications sur 526 ne portent AUCUN prix. Le
+   tarif ne se met pas dans le post, il se donne au telephone. Le bot
+   attendait donc un prix qui n'allait jamais tomber tout seul, et un depot
+   dont on avait le nom, le quartier et le numero ne pouvait pas entrer sur le
+   site.
+
+   Cette vue renverse la chose : elle dit QUI appeler, et QUOI lui demander,
+   article par article. Le prix se saisit ensuite dans sa fiche. */
+let appels = { depots: [] };
+
+async function chargerAppels() {
+  try {
+    appels = await api("/api/tri/appels");
+  } catch (e) {
+    return toast(e.message, "erreur");
+  }
+  const total = appels.depots.reduce((n, d) => n + d.nb_sans_prix, 0);
+  $("#etat-appels").textContent =
+    `${appels.depots.length} dépôt(s) à appeler · ${total} prix à demander`;
+  $("#appels-vide").hidden = appels.depots.length > 0;
+  $("#liste-appels").innerHTML = appels.depots.map(carteAppel).join("");
+  brancherAppels();
+}
+
+function carteAppel(d, i) {
+  const tel = d.telephone
+    ? `<a href="tel:${echapper(d.telephone.replace(/\s/g, ""))}">${echapper(d.telephone)}</a>`
+    : '<span class="discret">pas de numéro</span>';
+  const lieu = [d.quartier, d.ville].filter(Boolean).join(" · ") || "lieu inconnu";
+  const demandes = d.a_demander.map((o) =>
+    `<li>${echapper(o.nom)}${o.type ? ` <span class="discret">(${echapper(o.type)})</span>` : ""}</li>`
+  ).join("");
+  const reste = d.nb_sans_prix - d.a_demander.length;
+
+  return `
+  <div class="carte carte-appel" data-appel="${i}">
+    <div class="entete-carte">
+      <h3>${echapper(d.nom)}
+        ${d.sur_le_site ? '<span class="badge vert">sur le site</span>'
+                        : '<span class="badge pointille">pas encore</span>'}</h3>
+      <div class="actions-carte">
+        <span class="discret">${echapper(lieu)}</span>
+        ${tel}
+        ${d.page_url ? `<a href="${echapper(d.page_url)}" target="_blank" rel="noopener">page</a>` : ""}
+        <button class="bouton fin" data-ouvrir-appel="${echapper(d.id)}">Ouvrir la fiche</button>
+      </div>
+    </div>
+    <p class="bloc-aide">
+      <strong>${d.nb_sans_prix} prix à demander.</strong>
+      ${d.nb_sans_photo ? `${d.nb_sans_photo} photo(s) à désigner. ` : ""}
+      ${d.nb_sans_reference ? `${d.nb_sans_reference} format(s) à préciser. ` : ""}
+      ${d.nb_pretes ? `${d.nb_pretes} produit(s) déjà complet(s).` : ""}
+    </p>
+    <ul class="liste-demandes">${demandes}</ul>
+    ${reste > 0 ? `<p class="aide">… et ${reste} autre(s).</p>` : ""}
+  </div>`;
+}
+
+function brancherAppels() {
+  $$("[data-ouvrir-appel]").forEach((bouton) => {
+    bouton.addEventListener("click", async () => {
+      ouvrirVue("fournisseurs");
+      await ouvrirPanneau(bouton.dataset.ouvrirAppel);
+    });
+  });
+}
+
+$("#btn-appels-recharger").addEventListener("click", chargerAppels);
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Le miroir : collecte face au site
+   ═══════════════════════════════════════════════════════════════════════════
+   Trois egalites demandees, et elles ne sont pas decoratives : c'est le seul
+   endroit qui dise si le travail de collecte ARRIVE quelque part. Un ecart
+   qu'on ne voit pas est un ecart qui grandit. */
+async function chargerMiroir() {
+  let m;
+  try {
+    m = await api("/api/tri/miroir");
+  } catch (e) {
+    return;   // le tableau de bord ne doit jamais tomber pour ca
+  }
+  const ligne = (titre, gauche, droite, reste, aide) => `
+    <tr class="${reste ? "ecart" : "aligne"}">
+      <th>${titre}</th>
+      <td class="nombre">${gauche}</td>
+      <td class="fleche">→</td>
+      <td class="nombre">${droite}</td>
+      <td class="reste">${reste ? echapper(reste) : "à jour"}</td>
+    </tr>`;
+
+  const t = m.types, f = m.fournisseurs, x = m.prix;
+  const jamais = (t.jamais_rencontres || []).length;
+  $("#table-miroir").innerHTML = `
+    <thead><tr><th></th><th class="nombre">collecte</th><th></th>
+      <th class="nombre">site</th><th>ce qui reste</th></tr></thead>
+    <tbody>
+      ${ligne("Types de matériaux", t.collecte, t.site,
+              (t.hors_catalogue || []).length
+                ? `${t.hors_catalogue.length} type(s) hors catalogue`
+                : (jamais ? `${jamais} type(s) jamais rencontré(s) sur le terrain` : ""))}
+      ${ligne("Références (formats)", m.references.collecte, m.references.site, "")}
+      ${ligne("Fournisseurs", f.collecte, f.site,
+              f.a_transferer ? `${f.a_transferer} dépôt(s) à transférer` : "")}
+      ${ligne("Prix relevés", x.collecte, x.site,
+              x.bloques ? `${x.bloques} prix bloqué(s) : il leur manque un format ou une photo` : "")}
+    </tbody>`;
+  $("#miroir-quand").textContent = m.erreur
+    ? "site injoignable — " + m.erreur
+    : `sur ${x.offres_gardees} offre(s) retenue(s)`;
+}
+
+$("#btn-miroir").addEventListener("click", chargerMiroir);
+chargerMiroir();

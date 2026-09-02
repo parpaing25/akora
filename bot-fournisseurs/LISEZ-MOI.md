@@ -269,8 +269,15 @@ npm run db:push
 ```
 
 Tant qu'elle n'est pas passée, tout le reste du bot fonctionne — collecte,
-appariement, score, messages, observatoire des prix. Seul le bouton *Réserver*
-échouera, avec le message d'erreur de Supabase.
+appariement, score, messages, observatoire des prix.
+
+Le bouton *Réserver*, lui, **refuse avant d'agir**. C'est le rôle de
+l'interrupteur *Autoriser l'envoi des fiches vers le site*, onglet
+**Automatisations** (réglage `pousser_les_fiches`, éteint par défaut) : tant
+qu'il est éteint, aucune photo n'est compressée ni publiée sur o2switch, et
+l'onglet *Fournisseurs* affiche un bandeau qui le dit AVANT le clic. Allumez-le
+une fois la migration passée — l'allumer avant ne fait que déplacer l'échec
+après l'envoi des photos.
 
 Il manque encore, côté site, la page `/depot-reserve/:jeton` qui appelle
 `fiche_reservee()` puis `revendiquer_fiche()`. Le bot fabrique déjà l'adresse
@@ -410,7 +417,8 @@ data/               hors dépôt : session FB, photos, base, cache catalogue
   `JS_EXTRAIRE_FIL` / `JS_DEPLIER` de `collecteur.py` sont le premier endroit à
   corriger si la collecte revient vide alors que le point vert de session est
   allumé ;
-- ⚠️ **aucune fiche n'a été écrite en base** : la migration n'est pas appliquée.
-  Faites le tout premier passage sur **un seul** prospect et vérifiez le rendu
-  avant d'utiliser « Réserver les fiches validées » ;
+- ⚠️ **aucune fiche n'a été écrite en base** : la migration n'est pas appliquée,
+  et `pousser_les_fiches` est éteint tant qu'elle ne l'est pas. Faites le tout
+  premier passage sur **un seul** prospect et vérifiez le rendu avant d'utiliser
+  « Réserver les fiches validées » ;
 - ⚠️ **la page `/depot-reserve/:jeton` n'existe pas encore** côté site.

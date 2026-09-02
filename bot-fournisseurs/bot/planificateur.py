@@ -145,6 +145,8 @@ class Planificateur:
             self._combler_les_trous(config)
         if config.get("auto_reservation"):
             self._reserver_les_valides(config)
+        if config.get("auto_inscription"):
+            self._inscrire_les_complets(config)
         if config.get("auto_bulletin"):
             self._preparer_bulletin(config)
         if config.get("auto_sources"):
@@ -242,6 +244,17 @@ class Planificateur:
         """
         from . import reservation
 
+        # Une ligne de journal au lieu de vingt-cinq : sans ce test, chaque
+        # prospect de la fournée aurait produit la même erreur, et le vrai
+        # message (la migration à appliquer) se serait noyé dans sa propre
+        # répétition.
+        if not reservation.poussee_autorisee(config):
+            base.logguer(
+                "Réservation automatique en attente — " + reservation.POUSSEE_ETEINTE,
+                "avert",
+            )
+            return
+
         a_faire = base.lister_prospects(statut="valide", tri="score", limite=25)
         if not a_faire:
             return
@@ -256,6 +269,64 @@ class Planificateur:
             f"Réservation automatique : {reussies}/{len(a_faire)} fiche(s).",
             "succes" if reussies else "avert",
         )
+
+    def _inscrire_les_complets(self, config: dict) -> None:
+        """Cree sur Akora la fiche de tout depot qui a de quoi exister.
+
+        Un nom, un contact, un emplacement : c'est tout. Pas de produit exige
+        — 84 % des publications collectees ne portent aucun prix (mesure du
+        01/09/2026), et un depot dont on a le numero n'a aucune raison
+        d'attendre un tarif pour figurer dans l'annuaire.
+
+        Les PRODUITS suivent dans la meme passe, mais seulement ceux qui sont
+        complets : reference du catalogue, prix, ET photo designee. Un produit
+        sans prix ne se compare pas ; sans photo, il ne s'achete pas.
+
+        Un depot qui tient DEJA sa propre fiche est laisse tranquille : c'est
+        `inscription.etat_sur_le_site` qui le reconnait, et il ne se fait ni
+        recreer ni reecrire.
+        """
+        from . import inscription, tri
+
+        plafond = int(config.get("auto_inscription_max", 25) or 25)
+        candidats = base.lister_prospects(statut="tous", tri="score", limite=600)
+        crees, completes, produits, ignores = 0, 0, 0, 0
+
+        for resume in candidats:
+            if crees + completes >= plafond:
+                break
+            if resume.get("statut") in ("rejete", "doublon", "refuse", "revendique"):
+                continue
+            fiche = base.prospect(resume["id"])
+            if not fiche or tri.fiche_depot_complete(fiche):
+                continue
+            try:
+                resultat = inscription.inscrire(
+                    resume["id"], config.get("inscrire_en_actif", False))
+            except inscription.ErreurInscription:
+                # Le motif est deja journalise par l'appel ; une ligne par
+                # depot noierait le reste.
+                continue
+            except Exception as e:                       # noqa: BLE001
+                base.logguer(
+                    f"« {fiche.get('nom')} » non inscrit : {e}", "erreur")
+                continue
+            action = resultat.get("action")
+            if action == "deja_au_depot":
+                ignores += 1
+            elif action == "cree":
+                crees += 1
+            else:
+                completes += 1
+            produits += int(resultat.get("produits") or 0)
+
+        if crees or completes or produits:
+            base.logguer(
+                f"Inscription automatique : {crees} depot(s) cree(s), "
+                f"{completes} fiche(s) completee(s), {produits} produit(s) "
+                f"transfere(s)"
+                + (f", {ignores} laisse(s) a leur depot." if ignores else "."),
+                "succes")
 
     def _preparer_bulletin(self, config: dict) -> None:
         """Prépare — et ne publie que si on le lui a EXPLICITEMENT demandé.

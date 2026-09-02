@@ -21,6 +21,9 @@
     <button class="onglet" data-vue="fournisseurs">Fournisseurs <span id="pastille-trier" class="compteur zero">0</span></button>
     <button class="onglet" data-vue="demandes">Demandes <span id="pastille-demandes" class="compteur zero">0</span></button>
     <button class="onglet" data-vue="prospection">Prospection <span id="pastille-file" class="compteur zero">0</span></button>
+    <button class="onglet" data-vue="appels">À appeler <span id="pastille-appels" class="compteur zero">0</span></button>
+    <button class="onglet" data-vue="formats">Formats <span id="pastille-formats" class="compteur zero">0</span></button>
+    <button class="onglet" data-vue="annuaire">Annuaire</button>
     <button class="onglet" data-vue="marche">Marché</button>
     <button class="onglet" data-vue="automatisations">Automatisations</button>
     <button class="onglet" data-vue="sources">Sources</button>
@@ -41,6 +44,22 @@
 
   <!-- ══════════════════ TABLEAU DE BORD ══════════════════ -->
   <section class="vue active" id="vue-bord">
+
+    <div class="carte" id="carte-miroir">
+      <div class="entete-carte">
+        <h2>La collecte et le site</h2>
+        <div class="actions-carte">
+          <span class="discret" id="miroir-quand"></span>
+          <button class="bouton fin" id="btn-miroir">Recalculer</button>
+        </div>
+      </div>
+      <p class="aide">
+        Ce que le bot porte, face à ce que le site montre. Les deux ne seront
+        jamais égaux au même instant — un dépôt collecté ce matin n'est pas
+        encore transféré — mais <strong>l'écart doit se voir et se nommer</strong>.
+      </p>
+      <table class="miroir" id="table-miroir"></table>
+    </div>
 
     <div class="banniere" id="banniere-fb" hidden>
       <div class="banniere-corps">
@@ -203,6 +222,43 @@
 
   <!-- ══════════════════ FOURNISSEURS ══════════════════ -->
   <section class="vue" id="vue-fournisseurs">
+    <!-- Le bouton « Réserver » ment tant que `pousser_les_fiches` est éteint :
+         il est là, cliquable, et refuse. Cette bannière le dit AVANT le clic. -->
+    <div class="banniere" id="banniere-poussee" hidden>
+      <div class="banniere-corps">
+        <span class="banniere-icone">!</span>
+        <div>
+          <strong class="banniere-titre">L'envoi des fiches vers le site est éteint</strong>
+          <p>
+            « Réserver » refusera : les tables d'attente n'existent pas encore
+            sur akora.fonenako.mg. Appliquez d'abord
+            <code>migration/20260823120000_fiches_reservees.sql</code>, puis
+            allumez <em>Autoriser l'envoi des fiches vers le site</em>.
+            Tout le reste — trier, corriger, exporter, préparer les
+            messages — fonctionne normalement.
+          </p>
+        </div>
+      </div>
+      <button class="bouton" id="btn-poussee-auto">Ouvrir les automatisations</button>
+    </div>
+
+    <!-- Doublons PROBABLES. Signalés, jamais fusionnés tout seuls : trois
+         fiches nommées « Fournisseur en Matériaux de construction » peuvent
+         parfaitement être trois pages différentes. Le rapprochement par
+         identifiant de compte Facebook, lui, est solide — mais c'est encore
+         un humain qui clique. -->
+    <details class="bloc-doublons" id="bloc-doublons" hidden>
+      <summary>
+        <strong id="doublons-titre">Doublons probables</strong>
+        <span class="doublons-aide">
+          Rapprochements proposés. <strong>Rien n'est fusionné sans votre
+          clic</strong> — une fusion déplace publications, offres et photos,
+          puis supprime la fiche vidée.
+        </span>
+      </summary>
+      <div id="doublons-liste"></div>
+    </details>
+
     <div class="filtres">
       <div class="puces" id="filtres-statut">
         <button class="puce actif" data-statut="">Tous</button>
@@ -298,6 +354,112 @@
       appuyez.
     </p>
     <div class="grille-trois" id="piles"></div>
+  </section>
+
+  <!-- ══════════════════ ANNUAIRE ══════════════════ -->
+  <section class="vue" id="vue-appels">
+    <div class="carte">
+      <h2>Les dépôts à appeler</h2>
+      <p class="aide">
+        <strong>84 % des publications collectées ne portent aucun prix</strong>
+        (440 sur 526). Le tarif ne se met pas dans le post : il se donne au
+        téléphone. Cette liste dit qui appeler et <strong>quoi lui
+        demander</strong>, nommément.
+      </p>
+      <p class="aide">
+        Le prix rentre ensuite dans la fiche du dépôt, à la main. Un produit ne
+        part sur le site que complet : <strong>référence du catalogue, prix, et
+        photo désignée</strong>.
+      </p>
+      <div class="ligne-form">
+        <span class="discret" id="etat-appels">—</span>
+        <button class="bouton" id="btn-appels-recharger">Recharger</button>
+      </div>
+    </div>
+    <div id="liste-appels"></div>
+    <p class="aide" id="appels-vide" hidden>
+      Aucun dépôt en attente de prix.
+    </p>
+  </section>
+
+  <section class="vue" id="vue-formats">
+    <div class="carte">
+      <h2>Atelier des formats</h2>
+      <p class="aide">
+        Ces offres <strong>ont déjà leur prix</strong> et <strong>leur type</strong>.
+        Il ne leur manque que le format — et c'est la seule chose que le bot
+        s'interdit de deviner : hériter le format de l'en-tête avait étiqueté
+        une tôle 0,45&nbsp;mm au prix d'une 0,14. Tant qu'il manque, le produit
+        ne peut pas exister sur le site, donc le dépôt ne peut pas être inscrit.
+      </p>
+      <p class="aide">
+        <strong>Regardez l'unité.</strong> Si le dépôt affiche un prix au m² et
+        que la référence se vend à la pièce, le format ne suffit pas : le prix
+        change de sens. L'atelier refuse ce cas tant que vous ne l'avez pas
+        confirmé.
+      </p>
+      <div class="ligne-form">
+        <span class="discret" id="etat-formats">—</span>
+        <button class="bouton" id="btn-formats-recharger">Recharger</button>
+      </div>
+    </div>
+    <div id="liste-formats"></div>
+    <p class="aide" id="formats-vide" hidden>
+      Aucune offre en attente de format. Tout ce qui a un prix a sa référence.
+    </p>
+  </section>
+
+  <section class="vue" id="vue-annuaire">
+    <div class="carte">
+      <h2>Qui vend des matériaux, et où</h2>
+      <p class="aide">
+        Le recensement complet : les fournisseurs <strong>déjà inscrits sur
+        akora.fonenako.mg</strong> et les dépôts <strong>repérés sur
+        Facebook</strong>, dans une seule liste. Une ligne marquée
+        <em>les&nbsp;deux</em> est un dépôt qu'on a re-trouvé sur Facebook alors
+        qu'il a déjà son compte — <strong>ne le démarchez pas</strong>.
+      </p>
+      <p class="aide fine">
+        Ville et familles restent vides pour un inscrit que la prospection n'a
+        jamais croisé : le site ne rend que sa raison sociale et ses numéros.
+      </p>
+
+      <div class="banniere" id="banniere-annuaire" hidden>
+        <div class="banniere-corps">
+          <span class="banniere-icone">!</span>
+          <div>
+            <strong class="banniere-titre">Liste incomplète</strong>
+            <p id="annuaire-avertissement"></p>
+          </div>
+        </div>
+      </div>
+
+      <div class="filtres fin">
+        <input type="search" id="annuaire-recherche"
+               placeholder="Nom, téléphone, ville, famille, statut…">
+        <a class="bouton fin" id="btn-export-annuaire" href="/api/annuaire.csv">
+          Exporter en CSV
+        </a>
+      </div>
+      <p class="ligne-compte" id="annuaire-compte"></p>
+
+      <div class="tableau-defilant">
+        <table class="tableau triable" id="table-annuaire">
+          <thead><tr>
+            <th data-tri="nom">Nom</th>
+            <th data-tri="telephones">Téléphones</th>
+            <th data-tri="ville">Ville</th>
+            <th data-tri="familles">Familles vendues</th>
+            <th class="nombre" data-tri="nb_offres">Offres</th>
+            <th data-tri="statut">Statut</th>
+            <th data-tri="client">Déjà client</th>
+            <th data-tri="origine">Vu où</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="vide" id="annuaire-vide" hidden>Personne dans le recensement.</p>
+    </div>
   </section>
 
   <!-- ══════════════════ MARCHÉ ══════════════════ -->
@@ -512,6 +674,26 @@
 
   <section class="vue" id="vue-sources">
     <div class="carte">
+      <h2>Importer une publication précise</h2>
+      <p class="aide">
+        Vous êtes tombé sur la bonne publication ? Collez son lien. Le bot la
+        lit comme s'il l'avait trouvée lui-même : mêmes photos, même
+        appariement au catalogue, même fiche de dépôt. <strong>Rien n'est
+        écrit sur Akora</strong> — l'inscription reste un geste à part.
+      </p>
+      <p class="aide">
+        Le lien du bouton « Copier le lien » convient
+        (<code>facebook.com/share/p/…</code>). Une publication de groupe privé
+        n'est lisible que si le compte du bot est membre du groupe.
+      </p>
+      <div class="ligne-form">
+        <input type="text" id="url-import" class="grand"
+               placeholder="https://www.facebook.com/share/p/…">
+        <button class="bouton principal" id="btn-importer">Importer</button>
+      </div>
+    </div>
+
+    <div class="carte">
       <h2>Où chercher</h2>
       <p class="aide">
         Collez une adresse, ou tapez un mot-clé. Le bot reconnaît tout seul de
@@ -677,7 +859,8 @@
       <button class="bouton" id="p-rejeter">Écarter</button>
       <button class="bouton" id="p-valider">Valider</button>
       <button class="bouton" id="p-reserver">Réserver la fiche</button>
-      <button class="bouton principal" id="p-inscrire">Inscrire sur le site</button>
+      <button class="bouton principal" id="p-inscrire">Transférer le fournisseur</button>
+      <button class="bouton principal" id="p-produits">Actualiser les produits</button>
     </footer>
   </div>
 </aside>
