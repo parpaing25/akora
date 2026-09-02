@@ -19,9 +19,10 @@ sur un profil, les deux fiches sont **absorbées** l'une dans l'autre.
 """
 from __future__ import annotations
 
+import re
 from urllib.parse import urlsplit
 
-from . import akora, base
+from . import akora, base, referentiel
 from . import score as notation
 
 
@@ -83,6 +84,180 @@ def absorber(source_id: str, cible_id: str) -> None:
                    (cible_id, source_id))
         cx.execute("DELETE FROM prospects WHERE id = ?", (source_id,))
     base.evenement(cible_id, "statut", "Fiche fusionnée avec un doublon (même numéro).")
+
+
+# ── Doublons PROBABLES : on les signale, on ne les fusionne pas ────────────
+def _identifiant_facebook(fiche: dict) -> str:
+    """L'identifiant du compte Facebook derrière une fiche, ou `''`.
+
+    `page_url` prend trois formes, selon d'où venait la publication :
+
+        facebook.com/profile.php?id=61577268412763
+        facebook.com/groups/842470991701989/user/61577268412763
+        facebook.com/NomDeLaPage
+
+    Les DEUX PREMIÈRES désignent le MÊME compte. C'est exactement ce que
+    `cle_de_regroupement` ne voit pas : il compare des URL entières, donc
+    « vu dans le groupe A » et « vu sur son profil » font deux fiches — et le
+    même vendeur vu depuis deux groupes différents en fait deux aussi.
+
+    Un groupe (`/groups/842470991701989` sans `/user/`) n'est PAS un compte :
+    il rend `''`, sinon tous les membres d'un même groupe seraient déclarés
+    identiques.
+    """
+    url = (fiche.get("page_url") or "").strip().lower()
+    if not url:
+        return ""
+    trouve = (re.search(r"/user/(\d+)", url)
+              or re.search(r"profile\.php\?id=(\d+)", url))
+    if trouve:
+        return trouve.group(1)
+    chemin = url.split("facebook.com/", 1)[-1].strip("/")
+    return chemin if chemin and "/" not in chemin else ""
+
+
+def _resumer(fiche: dict) -> dict:
+    """Ce qu'il faut voir pour trancher, et rien de plus."""
+    return {
+        "id": fiche["id"],
+        "nom": fiche.get("nom") or "",
+        "telephone": fiche.get("telephone") or "",
+        "page_url": fiche.get("page_url") or "",
+        "ville": fiche.get("ville") or fiche.get("quartier") or "",
+        "statut": fiche.get("statut") or "",
+        "score": fiche.get("score") or 0,
+        "nb_publications": fiche.get("nb_publications") or 0,
+        "nb_offres": fiche.get("nb_offres") or 0,
+        "derniere_vue": fiche.get("derniere_vue") or "",
+    }
+
+
+def _richesse(fiche: dict) -> tuple:
+    """De quoi choisir la fiche à GARDER par défaut : la mieux remplie."""
+    return (
+        1 if fiche.get("telephone_cle") else 0,
+        int(fiche.get("nb_offres") or 0),
+        int(fiche.get("nb_publications") or 0),
+        int(fiche.get("score") or 0),
+    )
+
+
+def _grouper(lot: list[dict], certitude: str, raison: str) -> dict:
+    tries = sorted(lot, key=_richesse, reverse=True)
+    return {
+        "cle": "|".join(sorted(f["id"] for f in tries)),
+        "certitude": certitude,
+        "raison": raison,
+        "nom": tries[0].get("nom") or "",
+        # Proposition, pas décision : l'interface laisse changer la fiche
+        # gardée avant de fusionner.
+        "garder": tries[0]["id"],
+        "fiches": [_resumer(f) for f in tries],
+    }
+
+
+# Sous cette longueur, un nom normalisé ne prouve plus rien : « ets », « depot »
+# se retrouvent chez tout le monde.
+NOM_MINIMAL = 6
+
+# Fiches déjà tranchées : les rapprocher n'apprendrait rien et ferait du bruit.
+STATUTS_HORS_JEU = ("rejete", "doublon", "refuse")
+
+
+def doublons_probables(fiches: list[dict] | None = None) -> list[dict]:
+    """Les fiches qui SONT PEUT-ÊTRE la même. **Ne fusionne rien.**
+
+    Mesuré le 24/08/2026 sur les 134 prospects de `data/bot.db` : 180
+    publications pour 180 empreintes, aucun doublon de téléphone, aucun
+    doublon d'offre — le dédoublonnage de `cle_de_regroupement` tient. Restent
+    cinq groupes de fiches HOMONYMES :
+
+        3× « Fournisseur en Matériaux de construction »
+        2× « Varotra vato sy fasika ary biriky »
+        2× « Abdel Hamid Moussa Morou »
+        2× « Biriky Volombary »
+        2× « El Yan »
+
+    En regardant les URL de compte, les cinq groupes viennent en fait du MÊME
+    identifiant Facebook : le même vendeur vu depuis deux groupes, ou vu une
+    fois avec son numéro et une fois sans. Le nom seul, lui, ne prouve rien —
+    « Fournisseur en Matériaux de construction » est une enseigne générique
+    que plusieurs pages RÉELLEMENT différentes portent.
+
+    D'où deux niveaux, et **aucune fusion automatique** :
+
+      - `certitude = "compte"` : même identifiant Facebook. Solide.
+      - `certitude = "nom"`    : même nom normalisé, comptes différents ou
+        inconnus. À regarder, jamais à fusionner les yeux fermés.
+
+    Fusionner à l'aveugle détruirait ce qu'on ne peut pas reconstruire : deux
+    dépôts distincts n'en feraient plus qu'un, avec les offres de l'un collées
+    sur le téléphone de l'autre. La fusion reste un geste humain
+    (`POST /api/doublons/fusionner`, qui appelle `absorber`).
+    """
+    if fiches is None:
+        fiches = base.lister_prospects(limite=5000)
+    retenues = [
+        f for f in fiches
+        if (f.get("statut") or "") not in STATUTS_HORS_JEU
+    ]
+
+    par_compte: dict[str, list[dict]] = {}
+    par_nom: dict[str, list[dict]] = {}
+    for fiche in retenues:
+        compte = _identifiant_facebook(fiche)
+        if compte:
+            par_compte.setdefault(compte, []).append(fiche)
+        # Même normalisation que le référentiel : NFKD, accents tombés,
+        # ponctuation ramenée à des espaces. « Ets RAKOTO Matériaux » et
+        # « ets rakoto materiaux » sont le même nom.
+        nom = referentiel.normaliser(fiche.get("nom") or "")
+        if len(nom) >= NOM_MINIMAL:
+            par_nom.setdefault(nom, []).append(fiche)
+
+    signales: list[dict] = []
+    deja: set[str] = set()
+    for compte, lot in par_compte.items():
+        if len(lot) < 2:
+            continue
+        groupe = _grouper(lot, "compte", f"même compte Facebook ({compte})")
+        deja.add(groupe["cle"])
+        signales.append(groupe)
+    for nom, lot in par_nom.items():
+        if len(lot) < 2:
+            continue
+        groupe = _grouper(lot, "nom", "même nom, comptes différents ou inconnus")
+        if groupe["cle"] in deja:
+            continue      # déjà dit, et mieux dit, par l'identifiant de compte
+        signales.append(groupe)
+
+    signales.sort(key=lambda g: (g["certitude"] != "compte", -len(g["fiches"]),
+                                 g["nom"].lower()))
+    return signales
+
+
+def fusionner_a_la_main(garder: str, absorbes: list[str], cfg: dict) -> dict:
+    """Verse plusieurs fiches dans une autre. Déclenché par un humain, jamais seul.
+
+    Renvoie le nombre de fiches absorbées et la fiche gardée, recalculée.
+    """
+    if not garder:
+        raise ValueError("Aucune fiche à garder n'a été désignée.")
+    cible = base.prospect(garder)
+    if not cible:
+        raise ValueError("La fiche à garder n'existe plus.")
+    faites = 0
+    for pid in absorbes:
+        if pid == garder or not base.prospect(pid):
+            continue
+        absorber(pid, garder)
+        faites += 1
+    if faites:
+        base.evenement(
+            garder, "statut",
+            f"{faites} fiche(s) fusionnée(s) à la main — doublon(s) probable(s).",
+        )
+    return {"absorbees": faites, "fiche": evaluer(garder, cfg)}
 
 
 def enregistrer(lecture: dict, post: dict, source: dict, cfg: dict) -> tuple[str, bool]:

@@ -45,6 +45,10 @@ def enregistrer(lecture: dict, post: dict, source: dict, empreinte: str,
         "auteur_url": post.get("auteur_url") or "",
         "texte": post.get("texte") or "",
         "publie_le": post.get("heure") or "",
+        # La date résolue, vide quand elle est illisible. « 1 sem. »
+        # ci-dessus était vrai le jour de la collecte et faux le
+        # lendemain : une demande se lit à sa date, pas à son âge figé.
+        "publie_date": post.get("publie_date") or "",
         "dossier": dossier,
         **{c: lecture.get(c) for c in (
             "telephone", "telephone_cle", "ville", "quartier", "langue",
@@ -192,7 +196,10 @@ def argumentaire(prospect_id: str, jours: int = 7) -> dict:
             "quantite": resume_quantite(demande),
             "lieu": demande.get("quartier") or demande.get("ville") or "",
             "urgence": bool(demande.get("urgence")),
-            "quand": demande.get("publie_le") or "",
+            # La date réelle si on la connaît ; le texte relatif de
+            # Facebook seulement en repli, et jamais la date du jour.
+            "quand": (demande.get("publie_date")
+                      or demande.get("publie_le") or ""),
         })
     return {"demandes": retenues[:6], "total": len(retenues), "jours": jours}
 

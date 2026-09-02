@@ -27,6 +27,7 @@ import time
 import unicodedata
 
 from . import base
+from .collecteur import navigateur_perdu
 from .config import charger
 
 # Ce que le bot cherche. C'est LE point d'adaptation d'un bot à l'autre :
@@ -458,7 +459,13 @@ def prospecter(page, requetes: list[str] | None = None, genres=("groupe", "page"
     total = len(requetes) * len(genres)
     fait = 0
 
+    # Levé quand le navigateur meurt en cours de route : on garde ce qui a été
+    # trouvé et on s'arrête, au lieu de rejouer dix requêtes contre un onglet
+    # fermé (vu le 23/08 : chaque échec ajoutait sa ligne d'erreur au journal).
+    arret = False
     for requete in requetes:
+        if arret:
+            break
         for genre in genres:
             fait += 1
             if rappel:
@@ -475,6 +482,16 @@ def prospecter(page, requetes: list[str] | None = None, genres=("groupe", "page"
                     page.wait_for_timeout(1_800)
                 brut = page.evaluate(JS_RESULTATS)
             except Exception as e:                      # noqa: BLE001
+                # Contexte ou navigateur MORT (TargetClosedError) : les
+                # requêtes suivantes échoueraient toutes pareil. On abandonne
+                # proprement — les candidats déjà notés sont rendus quand même.
+                if navigateur_perdu(e) or page.is_closed():
+                    base.logguer(
+                        "Navigateur perdu, prospection de sources interrompue.",
+                        "erreur",
+                    )
+                    arret = True
+                    break
                 base.logguer(
                     f"Prospection « {requete} » ({genre}) : {type(e).__name__}.", "erreur"
                 )

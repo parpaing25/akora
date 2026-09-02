@@ -23,6 +23,23 @@ from statistics import median
 from . import akora, base, referentiel
 
 
+def _quand(ligne: dict) -> str:
+    """La date qui DATE un relevé : celle de la publication, sinon celle du relevé.
+
+    `vu_le` dit quand le bot a vu passer le prix. C'est vrai, mais ce n'est
+    pas la date du prix : un tarif relevé aujourd'hui sur une publication de
+    mars vaut pour mars, et un tarif relevé sur une publication de 2019 ne
+    vaut plus rien du tout. Avant le 24/08/2026, `historique()` rangeait tout
+    au mois de la COLLECTE — la courbe de prix ne montrait donc pas le marché,
+    elle montrait le calendrier des collectes.
+
+    Repli sur `vu_le` quand `publie_le` est vide (date illisible : c'est
+    encore le cas de la plupart des publications). C'est la meilleure
+    approximation disponible ; refuser ces lignes viderait l'observatoire.
+    """
+    return (ligne.get("publie_le") or "") or (ligne.get("vu_le") or "")
+
+
 def _mois(horodatage: str) -> str:
     try:
         return datetime.fromisoformat(horodatage).strftime("%Y-%m")
@@ -62,8 +79,8 @@ def observatoire(famille: str = "", ville: str = "") -> list[dict]:
         groupe["fournisseurs"].add(ligne["prospect_id"])
         if ligne.get("ville"):
             groupe["villes"].add(ligne["ville"])
-        if (ligne.get("vu_le") or "") > groupe["derniere"]:
-            groupe["derniere"] = ligne["vu_le"]
+        if _quand(ligne) > groupe["derniere"]:
+            groupe["derniere"] = _quand(ligne)
 
     resultat = []
     for groupe in groupes.values():
@@ -98,7 +115,7 @@ def historique(materiau_slug: str) -> list[dict]:
     for ligne in base.toutes_les_offres_appariees():
         if ligne["materiau_slug"] != materiau_slug:
             continue
-        cle = _mois(ligne.get("vu_le") or "")
+        cle = _mois(_quand(ligne))
         if cle:
             par_mois.setdefault(cle, []).append(int(ligne["prix"]))
     return [
