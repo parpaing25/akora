@@ -794,6 +794,37 @@ def prospect_par_telephone(telephone_cle: str) -> dict | None:
         ).fetchone())
 
 
+def prospect_par_compte(compte: str) -> dict | None:
+    """La fiche du compte Facebook `compte`, ou None.
+
+    `compte` est ce que rend `fusion.compte_facebook` : l'identifiant
+    numérique d'un profil, ou le nom d'une page. `page_url`, lui, garde
+    l'adresse telle que Facebook l'a donnée, sous quatre formes :
+
+        facebook.com/profile.php?id=<id>
+        facebook.com/groups/<groupe>/user/<id>
+        facebook.com/people/<nom>/<id>
+        facebook.com/<NomDeLaPage>
+
+    Quand plusieurs fiches portent le même compte (héritage d'avant le
+    02/09/2026, ou deux numéros pour un dépôt), on rend celle qui a un
+    numéro, puis la plus vue : c'est elle qu'on complète.
+    """
+    if not compte:
+        return None
+    compte = compte.strip().lower()
+    with _verrou, connexion() as cx:
+        return _sortir(cx.execute(
+            "SELECT * FROM prospects WHERE lower(page_url) LIKE ? "
+            "   OR lower(page_url) LIKE ? OR lower(page_url) LIKE ? "
+            "   OR lower(page_url) = ? "
+            " ORDER BY (telephone_cle IS NOT NULL AND telephone_cle <> '') DESC, "
+            "          nb_publications DESC LIMIT 1",
+            (f"%/user/{compte}", f"%profile.php?id={compte}",
+             f"%/people/%/{compte}", f"facebook.com/{compte}"),
+        ).fetchone())
+
+
 def prospect(pid: str) -> dict | None:
     with _verrou, connexion() as cx:
         ligne = cx.execute("SELECT * FROM prospects WHERE id = ?", (pid,)).fetchone()

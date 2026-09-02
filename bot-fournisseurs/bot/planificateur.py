@@ -96,7 +96,7 @@ class Planificateur:
             except Exception as e:
                 base.logguer(f"Planificateur : {e}", "erreur")
 
-    def _verifier(self) -> None:
+    def _verifier(self, maintenant: datetime | None = None) -> None:
         config = charger()
         if not config.get("collecte_auto"):
             return
@@ -104,29 +104,26 @@ class Planificateur:
         if not heures:
             return
 
-        maintenant = datetime.now()
-        # Le créneau est « passé » dès son heure, et jusqu'à 30 min après : un
-        # PC en veille à 10 h pile ne doit pas faire sauter la collecte.
-        for heure in heures:
-            moment = datetime.combine(
-                maintenant.date(), datetime.strptime(heure, "%H:%M").time()
-            )
-            if not (moment <= maintenant < moment + timedelta(minutes=30)):
-                continue
+        maintenant = maintenant or datetime.now()
+        heure = creneau_du(heures, maintenant)
+        if not heure:
+            return                  # avant le premier passage de la journée
 
-            marque = f"{date.today().isoformat()} {heure}"
-            if base.lire_etat(CLE_DERNIER) == marque:
-                return          # déjà fait
-            if self.est_occupe():
-                return          # on retentera dans 30 s, le créneau dure 30 min
+        marque = f"{maintenant.date().isoformat()} {heure}"
+        if base.lire_etat(CLE_DERNIER) == marque:
+            return                  # déjà fait
+        if self.est_occupe():
+            return                  # on retentera dans 30 s
 
-            base.ecrire_etat(CLE_DERNIER, marque)
-            self._retour_du_site()
-            self._declencher(config, heure, heures)
-            # Les automatisations tournent APRÈS la collecte, une fois par
-            # jour : elles se nourrissent de ce qui vient d'être ramassé.
-            self._taches_du_jour(config)
-            return
+        base.ecrire_etat(CLE_DERNIER, marque)
+        self._retour_du_site()
+        # Les automatisations tournent APRÈS la collecte, une fois par jour :
+        # elles se nourrissent de ce qui vient d'être ramassé. « Après » pour
+        # de vrai : la collecte part dans un fil et rend la main tout de
+        # suite ; jusqu'au 02/09/2026 les tâches du jour démarraient donc
+        # PENDANT la collecte, sur les données de la veille.
+        self._declencher(config, heure, heures,
+                         apres=lambda: self._taches_du_jour(config))
 
     def _taches_du_jour(self, config: dict) -> None:
         """Les automatisations réglables, chacune muette si elle est éteinte.
@@ -402,7 +399,8 @@ class Planificateur:
             except Exception as e:                           # noqa: BLE001
                 base.logguer(f"Pré-tri photos en échec : {str(e)[:120]}", "avert")
 
-    def _declencher(self, config: dict, creneau: str, heures: list[str]) -> None:
+    def _declencher(self, config: dict, creneau: str, heures: list[str],
+                    apres=None) -> None:
         deja = trouves_aujourdhui()
         objectif = int(config.get("objectif_par_jour") or 0)
         dernier_creneau = creneau == heures[-1]
@@ -424,10 +422,37 @@ class Planificateur:
                 f"Collecte automatique de {creneau} — {deja} fournisseur(s) déjà "
                 "aujourd'hui.", "info",
             )
-        self.lancer_collecte(reglages)
+        lancee = self.lancer_collecte(reglages, apres)
+        # La collecte n'a pas pu partir (navigateur pris, mémoire) : les
+        # tâches du jour ne l'attendent pas, elles ont leur propre garde
+        # « une fois par jour » et travaillent sur ce qu'on a déjà.
+        if lancee is False and apres:
+            apres()
 
     def fermer(self) -> None:
         self.arret.set()
+
+
+def creneau_du(heures: list[str], maintenant: datetime) -> str:
+    """Le créneau DÛ à cet instant : le dernier dont l'heure est passée aujourd'hui.
+
+    Un créneau reste dû jusqu'à l'arrivée du suivant — plus une fenêtre de
+    30 minutes. Le 02/09/2026, le bot est resté mort de 21 h 48 la veille à
+    14 h 20 : la collecte de 10 h était perdue, et celle de 17 h aurait été
+    la première de la journée. Un bot qui revient rattrape ce qu'il a manqué
+    tant que le créneau suivant n'est pas là ; il ne rattrape jamais DEUX
+    créneaux d'un coup — le suivant, lui, sera dû à son heure.
+
+    `heures` est triée (voir `_heures`). Avant le premier passage : `''`.
+    """
+    du = ""
+    for heure in heures:
+        moment = datetime.combine(
+            maintenant.date(), datetime.strptime(heure, "%H:%M").time()
+        )
+        if moment <= maintenant:
+            du = heure
+    return du
 
 
 def bilan_du_jour(config: dict) -> dict:

@@ -1202,10 +1202,28 @@ def au_demarrage():
             "Référentiel non chargé — onglet Réglages, « Synchroniser le "
             "référentiel Akora ».", "avert",
         )
+    def collecte_planifiee(reglages, apres=None) -> bool:
+        """La collecte du planificateur, puis `apres()` — dans le MÊME fil.
+
+        `_lancer` rend la main dès que le fil est parti : c'est ce qui laissait
+        les tâches du jour démarrer pendant la collecte. Ici elles attendent
+        sa fin, réussie ou non. Renvoie False si la collecte n'a pas pu
+        partir — le planificateur sait alors quoi faire de `apres`.
+        """
+        def travail():
+            try:
+                collecteur.collecter(reglages=reglages)
+            finally:
+                if apres:
+                    try:
+                        apres()
+                    except Exception as e:                   # noqa: BLE001
+                        base.logguer(f"Tâches du jour : {e}", "erreur")
+
+        return _lancer("collecte", travail)
+
     _planificateur = plan.Planificateur(
-        lancer_collecte=lambda reglages: _lancer(
-            "collecte", lambda: collecteur.collecter(reglages=reglages)
-        ),
+        lancer_collecte=collecte_planifiee,
         est_occupe=_occupe,
         synchroniser=reservation.synchroniser_statuts,
     )

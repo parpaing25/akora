@@ -93,7 +93,18 @@ def test_un_inscrit_jamais_croise_figure_quand_meme(monkeypatch):
 
 
 def test_un_prospect_deja_inscrit_est_signale(monkeypatch):
-    """Le seul chiffre qui compte vraiment : qui ne faut-il PAS démarcher."""
+    """Le seul chiffre qui compte vraiment : qui ne faut-il PAS démarcher.
+
+    Le prospect est créé ICI, dans la base jetable des tests. Jusqu'au
+    02/09/2026 ce test passait parce qu'il lisait `data/bot.db` — la vraie
+    base — et y trouvait par hasard des prospects avec un numéro.
+    """
+    from bot import base
+    base.creer_prospect({
+        "cle": "tel:0341112233", "nom": "Dépôt Test Croisé",
+        "telephone": "034 11 122 33", "telephone_cle": "0341112233",
+        "statut": "valide", "nb_publications": 1, "telephones_autres": [],
+    })
     monkeypatch.setattr(prospection.akora, "annuaire", lambda: [
         {"id": "cccc", "raison_sociale": "Déjà Client", "slug": "deja-client",
          "tel": "0341112233", "tel2": ""},

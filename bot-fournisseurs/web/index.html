@@ -4,32 +4,59 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Bot fournisseurs — Akora</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23bb4a18'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-family='Inter,Arial,sans-serif' font-size='18' font-weight='700' fill='white'%3EA%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 
-<header class="barre">
+<!-- Icônes (lucide, tracées une fois, réutilisées par <use>) -->
+<svg hidden aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="i-bord" viewBox="0 0 24 24"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></symbol>
+  <symbol id="i-fournisseurs" viewBox="0 0 24 24"><path d="M22 8.35V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8.35A2 2 0 0 1 3.26 6.5l8-3.2a2 2 0 0 1 1.48 0l8 3.2A2 2 0 0 1 22 8.35Z"/><path d="M6 18h12"/><path d="M6 14h12"/><rect width="12" height="12" x="6" y="10"/></symbol>
+  <symbol id="i-appels" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></symbol>
+  <symbol id="i-formats" viewBox="0 0 24 24"><path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z"/><path d="m14.5 12.5 2-2"/><path d="m11.5 9.5 2-2"/><path d="m8.5 6.5 2-2"/><path d="m17.5 15.5 2-2"/></symbol>
+  <symbol id="i-prospection" viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></symbol>
+  <symbol id="i-demandes" viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></symbol>
+  <symbol id="i-marche" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></symbol>
+  <symbol id="i-annuaire" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></symbol>
+  <symbol id="i-sources" viewBox="0 0 24 24"><path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/></symbol>
+  <symbol id="i-candidats" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-automatisations" viewBox="0 0 24 24"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></symbol>
+  <symbol id="i-reglages" viewBox="0 0 24 24"><line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="18" y2="18"/></symbol>
+</svg>
+
+<div class="coque">
+
+<aside class="nav" id="nav" aria-label="Navigation principale">
   <div class="marque">
     <span class="pastille">A</span>
     <div>
       <strong>Bot fournisseurs</strong>
-      <small>Facebook → fiches réservées Akora</small>
+      <small>Facebook → akora.fonenako.mg</small>
     </div>
   </div>
+
   <nav class="onglets">
-    <button class="onglet actif" data-vue="bord">Tableau de bord</button>
-    <button class="onglet" data-vue="fournisseurs">Fournisseurs <span id="pastille-trier" class="compteur zero">0</span></button>
-    <button class="onglet" data-vue="demandes">Demandes <span id="pastille-demandes" class="compteur zero">0</span></button>
-    <button class="onglet" data-vue="prospection">Prospection <span id="pastille-file" class="compteur zero">0</span></button>
-    <button class="onglet" data-vue="appels">À appeler <span id="pastille-appels" class="compteur zero">0</span></button>
-    <button class="onglet" data-vue="formats">Formats <span id="pastille-formats" class="compteur zero">0</span></button>
-    <button class="onglet" data-vue="annuaire">Annuaire</button>
-    <button class="onglet" data-vue="marche">Marché</button>
-    <button class="onglet" data-vue="automatisations">Automatisations</button>
-    <button class="onglet" data-vue="sources">Sources</button>
-    <button class="onglet" data-vue="candidats">Nouvelles sources <span id="pastille-candidats" class="compteur zero">0</span></button>
-    <button class="onglet" data-vue="reglages">Réglages</button>
+    <span class="nav-groupe">Travail du jour</span>
+    <button class="onglet actif" data-vue="bord"><svg class="ico"><use href="#i-bord"/></svg><span>Tableau de bord</span></button>
+    <button class="onglet" data-vue="fournisseurs"><svg class="ico"><use href="#i-fournisseurs"/></svg><span>Fournisseurs</span> <span id="pastille-trier" class="compteur zero">0</span></button>
+    <button class="onglet" data-vue="appels"><svg class="ico"><use href="#i-appels"/></svg><span>À appeler</span> <span id="pastille-appels" class="compteur zero">0</span></button>
+    <button class="onglet" data-vue="formats"><svg class="ico"><use href="#i-formats"/></svg><span>Formats</span> <span id="pastille-formats" class="compteur zero">0</span></button>
+    <button class="onglet" data-vue="prospection"><svg class="ico"><use href="#i-prospection"/></svg><span>Prospection</span> <span id="pastille-file" class="compteur zero">0</span></button>
+    <button class="onglet" data-vue="demandes"><svg class="ico"><use href="#i-demandes"/></svg><span>Demandes</span> <span id="pastille-demandes" class="compteur zero">0</span></button>
+
+    <span class="nav-groupe">Marché</span>
+    <button class="onglet" data-vue="marche"><svg class="ico"><use href="#i-marche"/></svg><span>Prix et couverture</span></button>
+    <button class="onglet" data-vue="annuaire"><svg class="ico"><use href="#i-annuaire"/></svg><span>Annuaire</span></button>
+
+    <span class="nav-groupe">Le bot</span>
+    <button class="onglet" data-vue="sources"><svg class="ico"><use href="#i-sources"/></svg><span>Sources</span></button>
+    <button class="onglet" data-vue="candidats"><svg class="ico"><use href="#i-candidats"/></svg><span>Nouvelles sources</span> <span id="pastille-candidats" class="compteur zero">0</span></button>
+    <button class="onglet" data-vue="automatisations"><svg class="ico"><use href="#i-automatisations"/></svg><span>Automatisations</span></button>
+    <button class="onglet" data-vue="reglages"><svg class="ico"><use href="#i-reglages"/></svg><span>Réglages</span></button>
   </nav>
+
   <div class="etats">
     <button class="etat" id="etat-ref" title="Catalogue des matériaux Akora">
       <i></i><span>Catalogue</span>
@@ -38,6 +65,16 @@
       <i></i><span id="etat-fb-texte">Facebook</span>
     </button>
   </div>
+</aside>
+<button class="nav-voile" id="nav-voile" aria-label="Fermer le menu" hidden></button>
+
+<div class="page">
+<header class="barre">
+  <button class="menu" id="btn-nav" aria-label="Ouvrir le menu" aria-controls="nav" aria-expanded="false">
+    <svg class="ico"><use href="#i-menu"/></svg>
+  </button>
+  <h1 id="titre-vue">Tableau de bord</h1>
+  <div class="barre-etat" id="barre-etat" aria-live="polite"></div>
 </header>
 
 <main>
@@ -842,6 +879,8 @@
   </section>
 
 </main>
+</div><!-- .page -->
+</div><!-- .coque -->
 
 <!-- ══════════════════ PANNEAU DE DÉTAIL ══════════════════ -->
 <aside class="panneau" id="panneau" hidden>

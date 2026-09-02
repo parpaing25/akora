@@ -406,6 +406,53 @@ expressions régulières.
 
 ---
 
+## Audit du 02/09/2026 — ce qui a changé, et pourquoi
+
+Chaque point porte l'incident qui l'a motivé : sans lui, la règle ne tient pas.
+
+- **Un créneau manqué se rattrape.** Le bot est resté mort de 21 h 48 la
+  veille à 14 h 20 (gardien désactivé) : avec la fenêtre de 30 minutes
+  d'alors, la collecte de 10 h était perdue. Un créneau reste dû jusqu'à
+  l'arrivée du suivant (`planificateur.creneau_du`). Et les « tâches du
+  jour » (inscriptions, réservations, bulletin) tournent maintenant vraiment
+  **après** la collecte — elles démarraient pendant, sur les données de la
+  veille. Vérifié en direct : « Collecte automatique de 10:00 » partie à
+  14 h 28, dès le redémarrage.
+- **Les tests n'écrivent plus dans la vraie base.** Chaque `pytest` laissait
+  cinq lignes dans le journal de production, lues comme de l'activité
+  réelle. `tests/conftest.py` détourne `AKORA_BOT_DATA` vers un dossier
+  jetable ; `tests/test_isolation.py` le vérifie.
+- **Le regroupement se fait par COMPTE Facebook**, plus par adresse entière :
+  `groups/<g>/user/<id>` et `profile.php?id=<id>` sont le même compte, et une
+  publication sans numéro rejoint la fiche du même compte (26 comptes
+  tenaient 62 fiches). Deux numéros différents sous un compte restent deux
+  fiches, signalées dans « Doublons probables ». Pour le passé :
+  `outils/regrouper_comptes.py` (à blanc par défaut, sauvegarde auto).
+- **Une légende d'image n'est pas une date.** « Peut être une image de texte
+  qui dit … Garantie 10ans » se lisait « il y a dix ans » : publication de
+  2026 écartée comme 2016. Longueur ≤ 60 signes et légendes refusées, côté
+  JS et côté Python.
+- **Les recherches donnent enfin.** Treize recherches avaient rendu deux
+  publications en dix jours : la page de résultats montre d'abord conseils et
+  questions, deux défilements « sans vendeur neuf » et le bot partait en onze
+  secondes ; et le premier lien `/posts/` était la recherche elle-même. Sur
+  une recherche, un défilement n'est stérile que s'il ne montre plus rien
+  d'inédit (`defilement_sterile`), et `/search/` n'est jamais un permalien.
+  Après correctif, « Hourdis Antananarivo » : 7 nouveaux dépôts et 6 demandes.
+- **Un plantage laisse une trace.** Lancé par le gardien (sans fenêtre),
+  stderr partait dans le vide. `demarrer.py --sans-navigateur` l'envoie
+  dans `data/bot-erreurs.log`, avec `faulthandler`.
+- **Deux outils de plus** : `outils/collecter_une_source.py <id>` parcourt une
+  seule source (le « premier passage sur UN seul » recommandé plus haut), et
+  `outils/diagnostic_recherche.py "mot-clé"` dit ce que le bot voit sur une
+  page de résultats.
+- **L'interface** : les douze onglets débordaient déjà à 1 366 px ; ils
+  deviennent un menu latéral groupé (travail du jour, marché, le bot),
+  l'en-tête montre l'état du bot en permanence, et le menu se replie en
+  tiroir sous 960 px.
+
+---
+
 ## Architecture
 
 ```

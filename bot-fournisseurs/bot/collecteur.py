@@ -271,7 +271,15 @@ JS_EXTRAIRE_FIL = """
   const nettoyerDate = (t) => (t || '')
     .replace(/[\\u00a0\\u202f\\u2009\\u2007]/g, ' ')
     .split('\\n')[0].trim().slice(0, 80);
-  const ressembleADate = (t) => !!t && (RE_RELATIF.test(t) || RE_ABSOLU.test(t));
+  // Une date Facebook est COURTE (« 12 août 2019 à 14:05 » fait 21 signes).
+  // Le 02/09/2026, la légende d'une image — « Peut être une image de texte
+  // qui dit '034 0348932323 89 323 23 Garantie 10ans 10 » — a été prise
+  // pour un horodatage : « 10ans » se lit « il y a dix ans », et une
+  // publication de 2026 a été écartée comme datant de 2016. Au-delà de
+  // 60 signes, ce n'est pas une date.
+  const LONGUEUR_MAX_DATE = 60;
+  const ressembleADate = (t) => !!t && t.length <= LONGUEUR_MAX_DATE
+    && (RE_RELATIF.test(t) || RE_ABSOLU.test(t));
 
   const dateDuBloc = (el) => {
     try {
@@ -289,7 +297,10 @@ JS_EXTRAIRE_FIL = """
     } catch (e) { /* piste morte : on passe à la suivante */ }
 
     const candidats = [];
-    const pousser = (v, src) => { if (v) candidats.push([String(v), src]); };
+    const pousser = (v, src) => {
+      const t = String(v || '');
+      if (t && t.length <= LONGUEUR_MAX_DATE) candidats.push([t, src]);
+    };
 
     try {
       const liens = [...el.querySelectorAll(
@@ -312,6 +323,9 @@ JS_EXTRAIRE_FIL = """
         pousser(n.getAttribute('data-tooltip-content'), 'tooltip');
       }
       for (const n of el.querySelectorAll('[aria-label]')) {
+        // L'aria-label d'une IMAGE est sa légende, jamais une date.
+        const nom = String(n.tagName || n.tag || '').toLowerCase();
+        if (nom === 'img') continue;
         pousser(n.getAttribute('aria-label'), 'aria-label');
       }
       for (const n of el.querySelectorAll('[role="link"]')) {
@@ -335,7 +349,10 @@ JS_EXTRAIRE_FIL = """
 
   return blocs.map(el => {
     const liens = [...el.querySelectorAll('a[href]')].map(a => a.href);
-    const permalien = liens.find(h =>
+    // Sur une page de RÉSULTATS, le premier lien qui contient « /posts/ » est
+    // l'adresse de la recherche elle-même (facebook.com/search/posts/?q=…) :
+    // toutes les publications recevaient ce même permalien (vu le 02/09/2026).
+    const permalien = liens.find(h => !/\\/search\\//.test(h) &&
       /\\/posts\\/|\\/permalink\\/|story_fbid=|multi_permalinks=|\\/videos\\//.test(h)) || '';
 
     const images = [...el.querySelectorAll('img')]
@@ -701,6 +718,28 @@ def navigateur_perdu(e: Exception) -> bool:
             or "browser has been closed" in texte
             or "browser closed" in texte
             or "connection closed" in texte)
+
+
+def defilement_sterile(genre: str, neufs: int, inedits: int) -> bool:
+    """Ce défilement n'a-t-il rien apporté ? La réponse dépend du genre.
+
+    Dans un GROUPE trié par date, un défilement sans vendeur neuf veut dire
+    qu'on est arrivé aux publications déjà en base : inutile d'insister.
+    Une RECHERCHE, elle, mêle conseils, questions et offres, et ses premiers
+    écrans sont rarement des vendeurs. Le 02/09/2026, treize recherches
+    avaient rendu DEUX publications en dix jours : deux défilements « sans
+    rien de neuf » — sans VENDEUR neuf — et le bot quittait la page en onze
+    secondes, avant d'avoir vu la moindre offre. Sur une recherche, un
+    défilement n'est stérile que s'il ne montre plus rien d'INÉDIT.
+    """
+    if genre == "recherche":
+        return inedits == 0
+    return neufs == 0
+
+
+def limite_steriles(genre: str) -> int:
+    """Combien de défilements stériles d'affilée avant de quitter la source."""
+    return 4 if genre == "recherche" else 2
 
 
 CLE_SESSION = "session_facebook"
@@ -1386,12 +1425,14 @@ class Collecteur:
             except Exception:
                 lot = []
 
-            neufs = 0
+            neufs = 0           # vendeurs neufs, mis en file
+            inedits = 0         # publications jamais vues dans ce tour, vendeurs ou non
             for post in lot:
                 cle = empreinte(post["texte"], post["permalien"])
                 if cle in vus_dans_ce_tour:
                     continue
                 vus_dans_ce_tour.add(cle)
+                inedits += 1
                 self.etat["parcourues"] += 1
                 # La vue se compte ICI, avant tout filtre. Comptée plus bas,
                 # après le tri, chaque source afficherait 100 % de rendement et
@@ -1514,8 +1555,8 @@ class Collecteur:
                     except Exception as e:
                         base.logguer(f"Origine non notée : {str(e)[:80]}", "avert")
 
-            steriles = steriles + 1 if neufs == 0 else 0
-            if steriles >= 2 or retenues >= plafond:
+            steriles = steriles + 1 if defilement_sterile(genre, neufs, inedits) else 0
+            if steriles >= limite_steriles(genre) or retenues >= plafond:
                 break
 
             page.mouse.wheel(0, random.randint(700, 1400))

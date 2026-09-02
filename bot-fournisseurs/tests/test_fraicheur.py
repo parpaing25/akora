@@ -182,6 +182,27 @@ def test_le_reglage_existe_et_vaut_2026():
     assert DEFAUTS["annee_minimum"] == 2026
 
 
+# La légende EXACTE relevée dans le journal du 02/09/2026 (collecte de 14 h 35,
+# groupe « Quincaillerie En Ligne Outillage ») : une publication de 2026
+# écartée comme datant de 2016, parce que « 10ans » se lit « il y a dix ans ».
+LEGENDE_REELLE = ("Peut être une image de texte qui dit ’034 0348932323 89 323 23 "
+                  "Garantie 10ans 10")
+
+
+def test_une_legende_d_image_n_est_pas_une_date():
+    v = fraicheur.verdict(LEGENDE_REELLE, 2026, 60, AUJ)
+    assert v["date"] is None and v["annee"] is None
+    assert v["garder"] is True, "une garantie décennale n'est pas un horodatage"
+    # Et la forme anglaise des légendes générées par Facebook.
+    assert fraicheur.date_de_publication("May be an image of text that says 2 ans", AUJ) is None
+
+
+def test_une_vraie_date_relative_en_annees_se_lit_toujours():
+    """Le garde-fou porte sur la longueur et la légende, pas sur l'unité."""
+    v = fraicheur.verdict("10\xa0ans", 2026, 60, AUJ)
+    assert v["annee"] == 2016 and v["garder"] is False and v["motif"] == "annee"
+
+
 # ── Le JS de lecture de date ───────────────────────────────────────────────
 # On ne peut pas vérifier le DOM RÉEL de Facebook depuis un test. Ce qu'on
 # peut vérifier, c'est que les cinq pistes sont là, qu'aucune ne peut faire
@@ -292,6 +313,12 @@ cas.roleLink = [creer("div", {"aria-posinset": "4"}, "Biriky vita amin'ny tanety
 cas.rien = [creer("div", {"aria-posinset": "5"}, "Ciment Holcim disponible, appelez-nous", [
   creer("img", {src: "https://scontent.xx.fbcdn.net/e.jpg", width: "800", height: "600"}),
 ])];
+// 6. La légende d'une image porte un aria-label qui RESSEMBLE à une date
+//    (« Garantie 10ans ») : cas réel du 02/09/2026. Elle ne doit pas être lue.
+cas.legende = [creer("div", {"aria-posinset": "6"}, "Tôle galva 0,45 mm, prix imbattable", [
+  creer("img", {src: "https://scontent.xx.fbcdn.net/f.jpg", width: "800", height: "600",
+                "aria-label": "Peut être une image de texte qui dit ’034 0348932323 89 323 23 Garantie 10ans 10"}),
+])];
 
 const sortie = {};
 for (const [nom, blocs] of Object.entries(cas)) {
@@ -344,3 +371,7 @@ def test_le_js_lit_la_date_sur_cinq_pistes():
     # Aucune piste : '' et rien d'autre. La publication est GARDÉE en aval.
     assert lot["rien"][0] == ["", "", ""]
     assert fraicheur.verdict("", 2026, 30, AUJ)["garder"] is True
+
+    # La légende d'image n'est pas une date : rien n'est lu, la publication
+    # reste — au lieu d'être écartée « publiée en 2016 ».
+    assert lot["legende"][0] == ["", "", ""]

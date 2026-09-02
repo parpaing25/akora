@@ -27,16 +27,40 @@ from . import score as notation
 
 
 def cle_de_regroupement(lecture: dict, post: dict, source: dict) -> str:
-    """La clé qui identifie le vendeur. Jamais vide."""
+    """La clé qui identifie le vendeur. Jamais vide.
+
+    Le compte Facebook se réduit à son IDENTIFIANT, pas à son adresse
+    entière. Jusqu'au 02/09/2026 la clé était l'URL telle quelle :
+    `groups/<g>/user/<id>` et `profile.php?id=<id>` — le MÊME compte —
+    faisaient deux fiches, et un vendeur vu depuis deux groupes en faisait
+    deux aussi. Mesuré ce jour-là sur `data/bot.db` : 26 comptes tenaient
+    62 fiches.
+
+    Une adresse de GROUPE, elle, n'identifie personne : c'est l'auteur « le
+    groupe lui-même ». En faire une clé aurait rangé toutes les publications
+    anonymes d'un groupe dans une seule fiche ; on retombe sur nom + source.
+    """
     if lecture.get("telephone_cle"):
         return "tel:" + lecture["telephone_cle"]
-    auteur_url = _url_propre(post.get("auteur_url") or "")
-    if auteur_url:
-        return "fb:" + auteur_url
+    compte = compte_facebook(post.get("auteur_url") or "")
+    if compte:
+        return "fb:" + compte
     if (source.get("genre") or "groupe") == "page":
-        return "fb:" + _url_propre(source.get("url") or "")
+        compte = compte_facebook(source.get("url") or "")
+        if compte:
+            return "fb:" + compte
     nom = (post.get("auteur") or "").strip().lower()
     return f"nom:{nom}|src:{source.get('id')}"
+
+
+def compte_facebook(url: str) -> str:
+    """L'identifiant du compte derrière une adresse Facebook, ou `''`.
+
+    Même lecture que `_identifiant_facebook`, appliquée à une adresse brute :
+    profil numérique (sous ses trois écritures) ou nom de page. Un groupe
+    rend `''`.
+    """
+    return _identifiant_facebook({"page_url": _url_propre(url)})
 
 
 def _url_propre(url: str) -> str:
@@ -109,7 +133,9 @@ def _identifiant_facebook(fiche: dict) -> str:
     if not url:
         return ""
     trouve = (re.search(r"/user/(\d+)", url)
-              or re.search(r"profile\.php\?id=(\d+)", url))
+              or re.search(r"profile\.php\?id=(\d+)", url)
+              # Quatrième écriture, vue dans le fil : facebook.com/people/<nom>/<id>
+              or re.search(r"/people/[^/]+/(\d+)", url))
     if trouve:
         return trouve.group(1)
     chemin = url.split("facebook.com/", 1)[-1].strip("/")
@@ -272,6 +298,24 @@ def enregistrer(lecture: dict, post: dict, source: dict, cfg: dict) -> tuple[str
         if par_numero:
             existant = par_numero
             cle = par_numero["cle"]
+
+    # Le même COMPTE Facebook a déjà sa fiche : on la complète au lieu d'en
+    # ouvrir une seconde. C'est l'absorption promise dans l'en-tête depuis le
+    # 23/08 — « une publication tardive apporte enfin le numéro » — qui
+    # n'existait que pour la clé exacte. Deux cas, et un seul refus :
+    #   - la fiche existante N'A PAS de numéro : la publication du jour lui
+    #     donne peut-être le sien, elle prend la clé `tel:` ;
+    #   - la fiche existante a un AUTRE numéro : on ne fusionne pas. Deux
+    #     lignes pour un dépôt, ou deux dépôts derrière un compte partagé ?
+    #     `doublons_probables` le signale, un humain tranche.
+    if not existant:
+        compte = compte_facebook(post.get("auteur_url") or "")
+        par_compte = base.prospect_par_compte(compte) if compte else None
+        if par_compte and not (lecture.get("telephone_cle")
+                               and par_compte.get("telephone_cle")):
+            existant = par_compte
+            if not lecture.get("telephone_cle"):
+                cle = par_compte["cle"]
 
     auteur = (post.get("auteur") or "").strip()
     nom = lecture.get("nom") or auteur or (source.get("nom") if

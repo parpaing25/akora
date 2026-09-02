@@ -119,6 +119,13 @@ _UNITES_ALT = "|".join(
 # se lit « 12 j » et une date de 2019 passe pour vieille de douze jours.
 _RE_RELATIF = re.compile(rf"(?<![0-9])(\d+)\s*({_UNITES_ALT})\b")
 
+# Ce qui n'est PAS une date : trop long pour un horodatage Facebook, ou
+# écrit comme une légende d'image générée (« Peut être une image de… »).
+LONGUEUR_MAX_DATE = 60
+_RE_LEGENDE = re.compile(
+    r"(peut etre une|peut-etre une|image de|photo de|may be an? |no photo description)"
+)
+
 # Formes sans chiffre.
 _RE_HIER = re.compile(r"\b(hier|yesterday|omaly)\b")
 _RE_INSTANT = re.compile(
@@ -258,6 +265,16 @@ def date_de_publication(heure: str, aujourdhui: date | None = None) -> date | No
     if not texte:
         return None
     reduit = sans_accents(texte)
+
+    # Une date Facebook est courte, et ce n'est jamais une légende d'image.
+    # Le 02/09/2026, « Peut être une image de texte qui dit '034 0348932323
+    # 89 323 23 Garantie 10ans 10 » est arrivé ici : « 10ans » s'est lu
+    # « il y a dix ans », et une publication de 2026 a été écartée comme
+    # datant de 2016 — un dépôt de tôles perdu pour une garantie décennale.
+    # Le JS filtre déjà en amont ; on refuse ICI aussi, parce qu'un
+    # garde-fou se pose à chaque bout du chemin qu'il protège.
+    if len(texte) > LONGUEUR_MAX_DATE or _RE_LEGENDE.search(reduit):
+        return None
 
     # L'absolu passe AVANT le relatif : il est le plus spécifique (un nom de
     # mois, des slashes) et aucune forme relative ne peut y ressembler.

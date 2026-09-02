@@ -110,14 +110,43 @@ async function api(chemin, options = {}) {
 }
 
 // ── Navigation ─────────────────────────────────────────────────────────────
+const TITRES_VUE = {
+  bord: "Tableau de bord", fournisseurs: "Fournisseurs", demandes: "Demandes d'acheteurs",
+  prospection: "Prospection", appels: "À appeler", formats: "Atelier des formats",
+  annuaire: "Annuaire", marche: "Prix et couverture", automatisations: "Automatisations",
+  sources: "Sources", candidats: "Nouvelles sources", reglages: "Réglages",
+};
+
 $$(".onglet").forEach((bouton) => {
   bouton.addEventListener("click", () => ouvrirVue(bouton.dataset.vue));
 });
 
+/* Le menu latéral se replie sous 960 px : un bouton l'ouvre, un voile ou
+   Échap le referme. Sur grand écran il est toujours là, rien à faire. */
+function basculerNav(ouvrir) {
+  const ouvert = ouvrir ?? !document.body.classList.contains("nav-ouverte");
+  document.body.classList.toggle("nav-ouverte", ouvert);
+  const voile = $("#nav-voile");
+  if (voile) voile.hidden = !ouvert;
+  const bouton = $("#btn-nav");
+  if (bouton) bouton.setAttribute("aria-expanded", String(ouvert));
+}
+surClic("#btn-nav", () => basculerNav());
+surClic("#nav-voile", () => basculerNav(false));
+
 function ouvrirVue(nom) {
+  if (!TITRES_VUE[nom]) nom = "bord";
   etat.vue = nom;
   $$(".onglet").forEach((b) => b.classList.toggle("actif", b.dataset.vue === nom));
   $$(".vue").forEach((v) => v.classList.toggle("active", v.id === "vue-" + nom));
+  const titre = $("#titre-vue");
+  if (titre) titre.textContent = TITRES_VUE[nom];
+  document.title = `${TITRES_VUE[nom]} — Bot fournisseurs Akora`;
+  basculerNav(false);
+  window.scrollTo({ top: 0 });
+  // La vue survit à un rechargement (le bot redémarre, F5) — pas à une
+  // nouvelle fenêtre : le matin, on arrive sur le tableau de bord.
+  try { sessionStorage.setItem("akora-vue", nom); } catch { /* navigation privée */ }
   if (nom === "fournisseurs") chargerProspects();
   if (nom === "demandes") chargerDemandes();
   if (nom === "prospection") chargerFile();
@@ -281,6 +310,38 @@ async function rafraichirEtat() {
   const pf = $("#pastille-file");
   pf.textContent = file;
   pf.classList.toggle("zero", file === 0);
+
+  rendreBarreEtat(donnees);
+}
+
+/** La ligne d'état de l'en-tête : ce que le bot fait MAINTENANT, en un
+ *  regard, quel que soit l'onglet ouvert. */
+function rendreBarreEtat(donnees) {
+  const zone = $("#barre-etat");
+  if (!zone) return;
+  const collecte = donnees.collecte || {};
+  const tache = donnees.tache || {};
+  const p = donnees.planning || {};
+  let classe = "calme", texte;
+  if (collecte.actif) {
+    classe = "actif";
+    texte = collecte.source
+      ? `Collecte en cours — ${collecte.source}`
+      : "Collecte en cours…";
+  } else if (tache.actif) {
+    classe = "actif";
+    texte = { reservation: "Réservation en cours", reservation_lot: "Réservation en lot",
+              connexion: "Fenêtre Facebook ouverte", synchro: "Relecture du site",
+              import: "Import d'une publication",
+              prospection_sources: "Recherche de sources" }[tache.type] || "Travail en cours";
+  } else if (p.actif) {
+    texte = `${p.trouves ?? 0} / ${p.objectif ?? 0} fournisseur(s) aujourd'hui · prochain passage ${p.prochain || "—"}`;
+  } else {
+    classe = "eteint";
+    texte = "Collectes automatiques éteintes";
+  }
+  zone.className = "barre-etat " + classe;
+  zone.innerHTML = `<i></i><span>${echapper(texte)}</span>`;
 }
 
 // ── Actions du tableau de bord ─────────────────────────────────────────────
@@ -1737,6 +1798,9 @@ async function chargerArbre() {
   await chargerReglages();
   await rafraichirEtat();
   setInterval(rafraichirEtat, 2000);
+  let derniereVue = "";
+  try { derniereVue = sessionStorage.getItem("akora-vue") || ""; } catch { /* ignoré */ }
+  if (derniereVue && derniereVue !== "bord") ouvrirVue(derniereVue);
 })();
 
 /* ------------------------------------------------------------------------ *
