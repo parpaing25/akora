@@ -301,6 +301,70 @@
     min-height: 2.75rem;
     min-width: 2.75rem;
   }
+
+  /* ── Les mouvements de la V2 (02/09/2026) ──────────────────────────────
+     Moins de mots, plus de gestes : le point de chantier respire, le camion
+     roule du dépôt au chantier, puis le prix rendu apparaît. Chaque mouvement
+     RACONTE le prix rendu chantier — aucun n'est décoratif. Tous s'éteignent
+     sous prefers-reduced-motion, en laissant l'état final visible. */
+  @keyframes akora-pulse {
+    0% { box-shadow: 0 0 0 0 hsl(var(--primary) / 0.38); }
+    70% { box-shadow: 0 0 0 16px hsl(var(--primary) / 0); }
+    100% { box-shadow: 0 0 0 0 hsl(var(--primary) / 0); }
+  }
+  .pulse-point { animation: akora-pulse 2.2s ease-out infinite; }
+
+  @keyframes akora-etire { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+  .ligne-trace { transform-origin: left center; animation: akora-etire 2.4s cubic-bezier(0.4, 0, 0.2, 1) 0.6s both; }
+  @keyframes akora-roule-ligne { from { left: 0; } to { left: calc(100% - 28px); } }
+  .camion-ligne { animation: akora-roule-ligne 2.4s cubic-bezier(0.4, 0, 0.2, 1) 0.6s both; }
+
+  @keyframes akora-trace { from { stroke-dashoffset: 600; } to { stroke-dashoffset: 0; } }
+  .trace { stroke-dasharray: 7 7; stroke-dashoffset: 600; animation: akora-trace 2.4s cubic-bezier(0.4, 0, 0.2, 1) 0.6s both; }
+  @keyframes akora-trajet { from { offset-distance: 0%; } to { offset-distance: 100%; } }
+  .camion-trajet { offset-path: var(--trajet); offset-rotate: 0deg; animation: akora-trajet 2.4s cubic-bezier(0.4, 0, 0.2, 1) 0.6s both; }
+
+  @keyframes akora-pop {
+    0% { opacity: 0; transform: translateY(8px) scale(0.9); }
+    60% { transform: scale(1.03); }
+    100% { opacity: 1; transform: none; }
+  }
+  .prix-pop { animation: akora-pop 520ms var(--courbe) 3s both; }
+  .part-barre { transform-origin: left center; animation: akora-etire 700ms var(--courbe) 3.1s both; }
+
+  @keyframes akora-anneau { from { stroke-dashoffset: var(--circ); } to { stroke-dashoffset: var(--reste); } }
+  .anneau-progres { animation: akora-anneau 1.2s var(--courbe) 0.3s both; }
+
+  @keyframes akora-tangue {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-2px) rotate(-1.5deg); }
+  }
+  .camion-tangue { animation: akora-tangue 1.8s ease-in-out infinite; transform-origin: center bottom; }
+  @keyframes akora-roues { to { transform: rotate(360deg); } }
+  .roue-tourne { transform-box: fill-box; transform-origin: center; animation: akora-roues 1.4s linear infinite; }
+
+  @keyframes akora-bondir {
+    0% { transform: translateY(80px); opacity: 0; }
+    70% { transform: translateY(-4px); opacity: 1; }
+    100% { transform: none; opacity: 1; }
+  }
+  .bondir { animation: akora-bondir 640ms var(--courbe) 0.9s both; }
+
+  @keyframes akora-assemble { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: none; } }
+  .assemble { animation: akora-assemble 460ms var(--courbe) both; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pulse-point, .ligne-trace, .camion-ligne, .trace, .camion-trajet, .prix-pop,
+    .part-barre, .anneau-progres, .camion-tangue, .roue-tourne, .bondir, .assemble {
+      animation: none;
+    }
+    .ligne-trace, .part-barre { transform: none; }
+    .camion-ligne { left: calc(100% - 28px); }
+    .trace { stroke-dashoffset: 0; }
+    .camion-trajet { offset-distance: 100%; }
+    .prix-pop, .bondir, .assemble { opacity: 1; transform: none; }
+    .anneau-progres { stroke-dashoffset: var(--reste); }
+  }
 }
 
 @layer utilities {

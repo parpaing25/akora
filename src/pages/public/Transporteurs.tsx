@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Truck, MapPin } from "lucide-react";
+import { Truck } from "lucide-react";
 import { Seo } from "@/components/Seo";
 import {
   listerTransporteurs,
@@ -10,7 +10,11 @@ import {
   type VehiculeTransporteur,
 } from "@/lib/donnees/transporteurs";
 import { formaterAriary } from "@/lib/format";
+import { haversine } from "@/lib/livraison";
+import { usePointLivraison } from "@/lib/point-livraison";
 import { BadgeVerification } from "@/components/marque/BadgeVerification";
+import { IllustrationCamion } from "@/components/motion/IllustrationCamion";
+import { SelecteurPoint } from "@/components/livraison/SelecteurPoint";
 import { Carte } from "@/components/ui/card";
 import { GrilleSquelettes } from "@/components/ui/skeleton";
 import { EtatErreur, EtatVide } from "@/components/ui/etats";
@@ -28,6 +32,7 @@ import { cn } from "@/lib/utils";
  */
 export default function Transporteurs() {
   const [categorie, setCategorie] = React.useState<string | null>(null);
+  const { point } = usePointLivraison();
 
   const transporteurs = useQuery({
     queryKey: ["transporteurs"],
@@ -35,11 +40,22 @@ export default function Transporteurs() {
     staleTime: 5 * 60_000,
   });
 
+  // Distance route jusqu'au chantier (même règle que partout : vol d'oiseau
+  // × coefficient de sinuosité 1,3), puis les plus proches d'abord. Sans
+  // point ni coordonnées, pas de distance — et pas d'invention.
   const filtres = React.useMemo(() => {
-    const tous = transporteurs.data ?? [];
-    if (!categorie) return tous;
-    return tous.filter((t) => t.vehicules.some((v) => v.categorie === categorie));
-  }, [transporteurs.data, categorie]);
+    const tous = (transporteurs.data ?? []).map((t) => ({
+      t,
+      distance:
+        point && t.lat != null && t.lng != null
+          ? haversine({ lat: Number(t.lat), lng: Number(t.lng) }, point) * 1.3
+          : null,
+    }));
+    const retenus = categorie
+      ? tous.filter(({ t }) => t.vehicules.some((v) => v.categorie === categorie))
+      : tous;
+    return retenus.sort((a, b) => (a.distance ?? 9e9) - (b.distance ?? 9e9));
+  }, [transporteurs.data, categorie, point]);
 
   const categoriesPresentes = React.useMemo(() => {
     const vues = new Set<string>();
@@ -56,11 +72,13 @@ export default function Transporteurs() {
         description="Camions bennes, plateaux et semi-remorques pour livrer sable, gravillons, briques et bois : les transporteurs référencés par Akora, avec capacité et tarifs annoncés."
       />
 
-      <h1 className="text-page">Transporteurs</h1>
+      <h1 className="text-page">Un camion ?</h1>
       <p className="mt-1 max-w-2xl text-legende text-muted-foreground">
-        Des camions pour le sable, les gravillons, les briques, le bois — avec la capacité et le
-        tarif que chaque transporteur annonce. Le prix rendu chantier se calcule sur sa page.
+        {point ? "Les plus proches de votre chantier d'abord." : "Dites où livrer : les plus proches d'abord, avec le prix du voyage."}
       </p>
+      <div className="mt-3">
+        <SelecteurPoint compact />
+      </div>
 
       {categoriesPresentes.length > 1 ? (
         <div className="mt-4 flex gap-2 overflow-x-auto pb-0.5" role="group" aria-label="Filtrer par type de camion">
@@ -114,97 +132,138 @@ export default function Transporteurs() {
           />
         ) : (
           <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {filtres.map((t) => (
-              <li key={t.id}>
-                <CarteTransporteur transporteur={t} />
+            {filtres.map(({ t, distance }, index) => (
+              <li key={t.id} className="entree" style={{ animationDelay: `${80 * index}ms` }}>
+                <CarteTransporteur transporteur={t} distanceKm={distance} />
               </li>
             ))}
           </ul>
         )}
       </div>
 
-      <div className="mt-8 rounded-lg bg-foreground p-5 text-background">
-        <p className="text-produit">Vous transportez des matériaux ?</p>
-        <p className="mt-1 max-w-xl text-legende text-background/75">
-          Inscrivez vos camions — capacité, zone, tarif au kilomètre — et recevez les demandes des
-          chantiers proches de chez vous. C'est gratuit.
-        </p>
+      {/* L'invitation bondit à l'arrivée : un transporteur qui passe par ici
+          doit la voir sans la chercher. */}
+      <div className="bondir mt-8 flex flex-wrap items-center gap-4 rounded-lg bg-foreground p-5 text-background shadow">
+        <Truck className="size-7 shrink-0" aria-hidden="true" />
+        <div className="min-w-0 flex-1">
+          <p className="text-produit">Vous avez un camion ?</p>
+          <p className="text-legende text-background/75">Gratuit, en deux minutes.</p>
+        </div>
         <Link
           to="/devenir-fournisseur"
-          className="cible-44 mt-3 inline-flex items-center rounded-md bg-background px-4 text-courant font-bold text-foreground"
+          className="cible-44 inline-flex shrink-0 items-center rounded-md bg-background px-4 text-courant font-bold text-foreground"
         >
-          Inscrire mes camions
+          L'inscrire
         </Link>
       </div>
     </div>
   );
 }
 
-function CarteTransporteur({ transporteur: t }: { transporteur: TransporteurPublic }) {
+/**
+ * Le prix d'UN voyage jusqu'au chantier, avec la formule du site
+ * (lib/livraison.ts : km facturés = max(0, d − km inclus) × 2 si aller-retour ;
+ * coût = max(plancher, forfait + km × prix/km)). Rien sans distance connue.
+ */
+function prixDuVoyage(v: VehiculeTransporteur, distanceKm: number | null): number | null {
+  if (distanceKm == null) return null;
+  const forfait = Number(v.forfait_base ?? 0);
+  const parKm = Number(v.prix_par_km ?? 0);
+  if (forfait <= 0 && parKm <= 0) return null;
+  const km = Math.max(0, distanceKm - Number(v.km_inclus ?? 0)) * (v.facturer_aller_retour ? 2 : 1);
+  return Math.ceil(Math.max(Number(v.prix_minimum ?? 0), forfait + km * parKm) / 100) * 100;
+}
+
+function CarteTransporteur({
+  transporteur: t,
+  distanceKm,
+}: {
+  transporteur: TransporteurPublic;
+  distanceKm: number | null;
+}) {
+  const principal = t.vehicules[0] ?? null;
+  const prix = principal ? prixDuVoyage(principal, distanceKm) : null;
+
   return (
-    <Carte className="carte-vivante flex h-full flex-col p-4">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="truncate text-produit">
-            <Link to={`/fournisseurs/${t.slug}`} className="hover:underline">
+    <Carte className="carte-vivante flex h-full flex-col gap-3 p-4">
+      <div className="flex items-center gap-3">
+        <IllustrationCamion categorie={principal?.categorie} />
+        <div className="min-w-0 flex-1">
+          <p className="flex items-center gap-2 text-produit">
+            <Link to={`/fournisseurs/${t.slug}`} className="truncate hover:underline">
               {t.raison_sociale}
             </Link>
+            <BadgeVerification niveau={t.niveau_verification as never} compact />
           </p>
-          <p className="mt-0.5 flex items-center gap-1 text-legende text-muted-foreground">
-            <MapPin className="size-3.5 shrink-0" aria-hidden="true" />
+          <p className="nombres mt-0.5 text-legende text-muted-foreground">
             {t.localite_nom ?? "Lieu non renseigné"}
-            {t.nature === "mixte" ? " · vend aussi des matériaux" : ""}
+            {distanceKm != null ? ` · ${distanceKm.toFixed(1).replace(".", ",")} km` : ""}
           </p>
+          {principal ? <Specs vehicule={principal} /> : null}
         </div>
-        <BadgeVerification niveau={t.niveau_verification as never} compact />
       </div>
 
-      <ul className="mt-3 flex-1 space-y-2">
-        {t.vehicules.length === 0 ? (
-          <li className="text-legende text-muted-foreground">Flotte non détaillée.</li>
-        ) : (
-          t.vehicules.map((v, index) => <Vehicule key={index} vehicule={v} />)
-        )}
-      </ul>
+      {t.vehicules.length > 1 ? (
+        <ul className="space-y-1.5 border-t border-border pt-2.5">
+          {t.vehicules.slice(1).map((v, index) => (
+            <li key={index} className="flex items-center gap-2 text-legende">
+              <Truck className="size-4 shrink-0 text-primary" aria-hidden="true" />
+              <span className="font-semibold">
+                {v.categorie ? (LIBELLE_CATEGORIE_VEHICULE[v.categorie] ?? v.categorie) : (v.nom ?? "Camion")}
+              </span>
+              <Specs vehicule={v} inline />
+            </li>
+          ))}
+        </ul>
+      ) : null}
 
-      <div className="mt-3 flex gap-2">
-        <Bouton asChild taille="compact" pleineLargeur>
-          <Link to={`/fournisseurs/${t.slug}/livraison`}>Simuler un transport</Link>
-        </Bouton>
-        <Bouton asChild variante="secondaire" taille="compact" pleineLargeur>
-          <Link to={`/fournisseurs/${t.slug}`}>Voir la fiche</Link>
+      <div className="mt-auto flex items-center justify-between gap-3 border-t border-border pt-3">
+        <div className="nombres min-w-0">
+          {prix !== null ? (
+            <>
+              <p className="text-[1.375rem] font-extrabold leading-none text-primary">{formaterAriary(prix)}</p>
+              <p className="mt-0.5 text-[0.78rem] text-muted-foreground">jusqu'à votre chantier · 1 voyage</p>
+            </>
+          ) : principal && (Number(principal.forfait_base) > 0 || Number(principal.prix_par_km) > 0) ? (
+            <>
+              <p className="text-[1.125rem] font-bold leading-none">
+                {Number(principal.forfait_base) > 0
+                  ? formaterAriary(Number(principal.forfait_base))
+                  : `${formaterAriary(Number(principal.prix_par_km))} / km`}
+              </p>
+              <p className="mt-0.5 text-[0.78rem] text-muted-foreground">
+                {Number(principal.forfait_base) > 0 ? "forfait de sortie" : "au kilomètre"} · dites où livrer
+              </p>
+            </>
+          ) : (
+            <p className="text-legende text-muted-foreground">Tarif à demander</p>
+          )}
+        </div>
+        <Bouton asChild taille="compact">
+          <Link to={`/fournisseurs/${t.slug}`}>Contacter</Link>
         </Bouton>
       </div>
     </Carte>
   );
 }
 
-function Vehicule({ vehicule: v }: { vehicule: VehiculeTransporteur }) {
-  const traits: string[] = [];
-  if (v.nb_roues) traits.push(`${v.nb_roues} roues`);
-  if (v.capacite_m3) traits.push(`${v.capacite_m3} m³`);
-  if (v.capacite_kg) traits.push(v.capacite_kg >= 1000 ? `${v.capacite_kg / 1000} t` : `${v.capacite_kg} kg`);
-  if (v.marque) traits.push(v.marque);
-
-  const tarif =
-    v.forfait_base && v.forfait_base > 0
-      ? `${formaterAriary(v.forfait_base)} le voyage`
-      : v.prix_par_km && v.prix_par_km > 0
-        ? `${formaterAriary(v.prix_par_km)} / km`
-        : null;
-
+function Specs({ vehicule: v, inline = false }: { vehicule: VehiculeTransporteur; inline?: boolean }) {
+  const puces: string[] = [];
+  if (v.categorie && !inline) puces.push(LIBELLE_CATEGORIE_VEHICULE[v.categorie] ?? v.categorie);
+  if (v.nb_roues) puces.push(`${v.nb_roues} roues`);
+  if (v.capacite_m3) puces.push(`${v.capacite_m3} m³`);
+  if (v.capacite_kg) puces.push(Number(v.capacite_kg) >= 1000 ? `${Number(v.capacite_kg) / 1000} t` : `${v.capacite_kg} kg`);
+  if (v.marque && !inline) puces.push(v.marque);
+  if (puces.length === 0) {
+    return <p className="mt-1 text-[0.78rem] text-muted-foreground">Capacité à confirmer par téléphone.</p>;
+  }
   return (
-    <li className="rounded-md border border-border bg-muted/30 p-2.5">
-      <p className="flex items-center gap-1.5 text-legende font-semibold">
-        <Truck className="size-4 shrink-0 text-primary" aria-hidden="true" />
-        {v.categorie ? (LIBELLE_CATEGORIE_VEHICULE[v.categorie] ?? v.categorie) : (v.nom ?? "Camion")}
-      </p>
-      {traits.length > 0 ? (
-        <p className="nombres mt-0.5 text-[0.78rem] text-muted-foreground">{traits.join(" · ")}</p>
-      ) : (
-        <p className="mt-0.5 text-[0.78rem] text-muted-foreground">Capacité à confirmer par téléphone.</p>
-      )}
-      {tarif ? <p className="nombres mt-0.5 text-[0.78rem] font-semibold">{tarif}</p> : null}
-    </li>
+    <span className={cn("flex flex-wrap gap-1.5", inline ? "" : "mt-1.5")}>
+      {puces.map((puce) => (
+        <span key={puce} className="nombres rounded-full bg-muted px-2 py-0.5 text-[0.72rem] font-semibold text-muted-foreground">
+          {puce}
+        </span>
+      ))}
+    </span>
   );
 }

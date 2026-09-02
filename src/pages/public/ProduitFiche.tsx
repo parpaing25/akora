@@ -20,6 +20,8 @@ import { couverture, quantitePourSurface } from "@/lib/couverture";
 import { Prix } from "@/components/produit/Prix";
 import { SimulateurLivraison } from "@/components/livraison/SimulateurLivraison";
 import { SelecteurPoint } from "@/components/livraison/SelecteurPoint";
+import { RouteLivraison } from "@/components/motion/RouteLivraison";
+import { usePointLivraison } from "@/lib/point-livraison";
 import { Carte } from "@/components/ui/card";
 import { Bouton } from "@/components/ui/button";
 import { Pastille } from "@/components/ui/badge";
@@ -29,6 +31,7 @@ import NonTrouve from "@/pages/NonTrouve";
 export default function ProduitFiche() {
   const { slug, produitSlug } = useParams<{ slug: string; produitSlug: string }>();
   const ajouter = usePanier((e) => e.ajouter);
+  const { point } = usePointLivraison();
   const [quantite, setQuantite] = React.useState(1);
   const [surface, setSurface] = React.useState(0);
   const [photoActive, setPhotoActive] = React.useState(0);
@@ -95,6 +98,25 @@ export default function ProduitFiche() {
     () => (p && p.unite === "piece" ? couverture(p as never) : null),
     [p],
   );
+
+  // V2 : « Combien ? » se répond en un tap. Les paliers proposés dépendent de
+  // l'unité — 100 sacs de ciment se commandent, 100 m³ de sable non.
+  const presets = React.useMemo(() => {
+    const minimum = Number(p?.quantite_min ?? 1);
+    const base =
+      p?.unite === "m3" || p?.unite === "tonne" || p?.unite === "chargement"
+        ? [1, 2, 5, 10]
+        : p?.unite === "sac" || p?.unite === "botte" || p?.unite === "palette"
+          ? [10, 20, 50, 100]
+          : p?.unite === "m2" || p?.unite === "ml"
+            ? [10, 25, 50, 100]
+            : [50, 100, 200, 500];
+    return base.filter((q) => q >= minimum);
+  }, [p?.unite, p?.quantite_min]);
+
+  const coutLivraison =
+    livraison?.statut === "estimee" ? livraison.cout : livraison?.statut === "offerte" ? 0 : null;
+  const totalRendu = coutLivraison === null ? null : totalProduits + coutLivraison;
 
   return (
     <div className="container pb-28 pt-6 sm:pb-6">
@@ -260,6 +282,31 @@ export default function ProduitFiche() {
         <div className="mt-6 grid gap-4 lg:grid-cols-2">
           <div className="space-y-3">
             <SelecteurPoint />
+            {/* V2 : le trajet du dépôt au chantier, puis le total qui apparaît.
+                La formule détaillée reste juste en dessous, pour qui veut. */}
+            {totalRendu !== null && (livraison?.statut === "estimee" || livraison?.statut === "offerte") ? (
+              <Carte className="p-4">
+                <p className="text-legende font-semibold">Livré à mon chantier</p>
+                <RouteLivraison
+                  variante="courbe"
+                  depart={p.fournisseur_nom as string}
+                  arrivee={point?.libelle ?? "mon chantier"}
+                  distanceKm={livraison.detail.distanceRouteKm}
+                  montant={totalRendu}
+                  legende={`tout compris · ${formaterAriary(totalRendu / quantite)} / ${LIBELLE_UNITE[p.unite as never]} rendue`}
+                  sousTitre={`${livraison.detail.vehicule?.nom ?? "camion"} · ${livraison.detail.rotations} voyage${livraison.detail.rotations > 1 ? "s" : ""}`}
+                  className="mt-1"
+                />
+                <div className="mt-3 flex h-2.5 overflow-hidden rounded-full bg-muted" aria-hidden="true">
+                  <span className="part-barre bg-foreground" style={{ width: `${Math.round((totalProduits / totalRendu) * 100)}%` }} />
+                  <span className="part-barre bg-primary" style={{ width: `${100 - Math.round((totalProduits / totalRendu) * 100)}%`, animationDelay: "3.5s" }} />
+                </div>
+                <div className="nombres mt-1.5 flex justify-between text-[0.78rem] text-muted-foreground">
+                  <span><span className="mr-1.5 inline-block size-2 rounded-full bg-foreground" aria-hidden="true" />Matériaux {formaterAriary(totalProduits)}</span>
+                  <span><span className="mr-1.5 inline-block size-2 rounded-full bg-primary" aria-hidden="true" />Livraison {coutLivraison === 0 ? "offerte" : formaterAriary(coutLivraison ?? 0)}</span>
+                </div>
+              </Carte>
+            ) : null}
             {livraison ? (
               <SimulateurLivraison resultat={livraison} />
             ) : (
@@ -322,12 +369,32 @@ export default function ProduitFiche() {
 
             <div className="mt-3 flex items-center gap-2">
               <label htmlFor="quantite-produit" className="text-legende font-semibold">
-                Quantité
+                Combien ?
               </label>
               <span className="text-legende text-muted-foreground">
                 ({LIBELLE_UNITE[p.unite as never]}, minimum {String(p.quantite_min)})
               </span>
             </div>
+            {presets.length > 0 ? (
+              <div className="mt-1.5 flex flex-wrap gap-2" role="group" aria-label="Quantités courantes">
+                {presets.map((q) => (
+                  <button
+                    key={q}
+                    type="button"
+                    aria-pressed={quantite === q}
+                    onClick={() => setQuantite(q)}
+                    className={
+                      "nombres cible-44 min-w-[3.25rem] rounded-md border px-3 text-courant font-semibold " +
+                      (quantite === q
+                        ? "border-foreground bg-foreground text-background"
+                        : "border-border bg-card hover:bg-muted")
+                    }
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
+            ) : null}
             <div className="mt-1.5 flex items-center gap-2">
               <Bouton
                 variante="tertiaire"
@@ -440,7 +507,14 @@ export default function ProduitFiche() {
                 toast.success("Ajouté au panier");
               }}
             >
-              Ajouter · {formaterAriary(totalProduits)}
+              {totalRendu !== null ? (
+                <>
+                  Commander · {formaterAriary(totalRendu)}
+                  <span className="sr-only">rendu chantier</span>
+                </>
+              ) : (
+                <>Ajouter · {formaterAriary(totalProduits)}</>
+              )}
             </Bouton>
           </div>
         </div>

@@ -13,6 +13,7 @@ import { Bouton } from "@/components/ui/button";
 import { GroupeRadio, OptionRadio } from "@/components/ui/radio-group";
 import { Squelette } from "@/components/ui/skeleton";
 import { EtatVide } from "@/components/ui/etats";
+import { AnneauProgression } from "@/components/motion/AnneauProgression";
 
 /**
  * Publier dans le fil.
@@ -161,11 +162,21 @@ export default function Publier() {
   return (
     <>
       <Seo titre="Publier dans le fil" chemin="/pro/publier" indexable={false} />
-      <h1 className="text-page">Publier dans le fil</h1>
-      <p className="mt-1 text-legende text-muted-foreground">
-        Votre annonce apparaît sur l'accueil des acheteurs, avec le prix rendu à leur chantier.
-        Dix publications par jour au maximum.
-      </p>
+      {/* V2 : « Je publie » — trois gestes, un anneau qui se remplit. Le
+          dépôt voit où il en est sans lire une ligne. */}
+      <div className="flex items-center gap-4">
+        <AnneauProgression
+          fait={[texte.trim().length >= 10, photos.length > 0, produitIds.length > 0].filter(Boolean).length}
+          total={3}
+        />
+        <div>
+          <h1 className="text-page">Je publie</h1>
+          <p className="mt-1 text-legende text-muted-foreground">
+            Un mot, une photo, un produit — et votre annonce est sur l'accueil des acheteurs, avec
+            le prix rendu à leur chantier.
+          </p>
+        </div>
+      </div>
 
       <form onSubmit={soumettre} className="mt-5 space-y-5">
         <fieldset className="m-0 border-0 p-0">

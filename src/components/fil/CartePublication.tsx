@@ -9,6 +9,7 @@ import { formaterAriary } from "@/lib/format";
 import { BadgeVerification } from "@/components/marque/BadgeVerification";
 import { LogoAkora } from "@/components/marque/LogoAkora";
 import { Visionneuse, useVisionneuse } from "@/components/ui/visionneuse";
+import { RouteLivraison } from "@/components/motion/RouteLivraison";
 
 /**
  * Une publication du fil.
@@ -152,12 +153,12 @@ function PostFournisseur({ publication }: { publication: Publication }) {
       ) : null}
 
       {produit ? (
-        <div className="flex flex-wrap items-center gap-4 border-b border-border px-4 py-3.5">
-          <div className="min-w-0 flex-1">
+        <div className="flex flex-col gap-2.5 border-b border-border px-4 py-3.5">
+          <div className="min-w-0">
             <p className="truncate text-produit">{produit.nom_affiche}</p>
             <p className="mt-0.5 flex flex-wrap items-baseline gap-2">
               <span className="nombres text-[1.375rem] font-bold">{formaterAriary(prixUnitaire)}</span>
-              <span className="text-legende text-muted-foreground">/ {produit.unite}</span>
+              <span className="text-legende text-muted-foreground">/ {produit.unite} au dépôt</span>
               {produit.prix_promo ? (
                 <span className="nombres text-legende text-muted-foreground line-through">
                   {formaterAriary(produit.prix_unitaire)}
@@ -165,32 +166,33 @@ function PostFournisseur({ publication }: { publication: Publication }) {
               ) : null}
             </p>
           </div>
-          <div className="shrink-0 sm:border-l sm:border-border sm:pl-4 sm:text-right">
-            <p className="nombres text-[0.66rem] uppercase tracking-[0.08em] text-muted-foreground">
-              Rendu chantier · {quantite} {produit.unite}
+          {/* V2 : le camion roule du dépôt au chantier, puis le prix rendu
+              apparaît. Sans point de livraison, pas de trajet — on n'invente
+              rien, on le dit. */}
+          {rendu !== null ? (
+            <RouteLivraison
+              variante="ligne"
+              depart={publication.localite_nom ?? "dépôt"}
+              arrivee={point?.libelle ?? "mon chantier"}
+              distanceKm={
+                livraison?.statut === "estimee" || livraison?.statut === "offerte"
+                  ? livraison.detail.distanceRouteKm
+                  : null
+              }
+              montant={rendu}
+              legende={`${quantite} ${produit.unite}, livrés${livraison?.statut === "offerte" ? " · livraison offerte" : ""}`}
+            />
+          ) : (
+            <p className="text-legende text-muted-foreground">
+              {livraison?.statut === "retrait_sur_place"
+                ? "Ce dépôt n'a pas encore déclaré de camion : retrait sur place, ou livraison à convenir avec lui."
+                : !point
+                  ? "Indiquez où livrer pour voir le prix rendu à votre chantier."
+                  : livraison?.statut === "hors_zone"
+                    ? "Hors zone de livraison — à négocier avec le dépôt."
+                    : "Prix rendu en cours de calcul."}
             </p>
-            {rendu !== null ? (
-              <>
-                <p className="nombres text-[1.3125rem] font-bold text-primary">
-                  {formaterAriary(rendu)}
-                </p>
-                <p className="nombres text-legende text-muted-foreground">
-                  {formaterAriary(rendu / quantite)} / {produit.unite} rendue
-                  {livraison?.statut === "offerte" ? " · livraison offerte" : ""}
-                </p>
-              </>
-            ) : (
-              <p className="max-w-[220px] text-legende text-muted-foreground">
-                {livraison?.statut === "retrait_sur_place"
-                  ? "Ce dépôt n'a pas encore déclaré de camion : retrait sur place, ou livraison à convenir avec lui."
-                  : !point
-                    ? "Indiquez où livrer pour voir le prix rendu."
-                    : livraison?.statut === "hors_zone"
-                      ? "Hors zone de livraison — à négocier avec le dépôt."
-                      : "Prix rendu en cours de calcul."}
-              </p>
-            )}
-          </div>
+          )}
         </div>
       ) : null}
 

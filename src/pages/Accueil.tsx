@@ -11,6 +11,7 @@ import { chargerFil, TAILLE_PAGE, type FiltreFil } from "@/lib/donnees/fil";
 
 import { Squelette } from "@/components/ui/skeleton";
 import { EtatErreur } from "@/components/ui/etats";
+import { TuilesFamilles } from "@/components/accueil/TuilesFamilles";
 
 /**
  * La carte du fil est chargée À LA DEMANDE.
@@ -160,30 +161,40 @@ export default function Accueil() {
 
         {/* ── Colonne centrale : le fil ───────────────────────────────── */}
         <div className="flex min-w-0 flex-col gap-4">
-          {!session ? (
-            <section className="rounded-lg bg-gradient-to-br from-primary to-primary-strong p-5 text-primary-foreground">
-              <h1 className="text-section">Le prix rendu chantier, pas le prix au dépôt.</h1>
-              <p className="mt-1.5 max-w-xl text-courant text-primary-foreground/90">
-                Le sable le moins cher à la carrière n'est presque jamais le moins cher une fois
-                livré. Ici, les dépôts vérifiés annoncent leur stock, et chaque prix est calculé
-                livraison comprise depuis votre chantier.
+          {/*
+            V2 (02/09/2026) : une question, un geste. Tout prix affiché dépend
+            du point de livraison — c'est donc la PREMIÈRE chose qu'on demande,
+            en gros, avant toute phrase. Le point respire tant qu'il manque.
+          */}
+          <section className="entree">
+            <p className="text-legende text-muted-foreground">Salama !</p>
+            <h1 className="mt-0.5 text-[1.625rem] font-extrabold leading-tight tracking-tight">
+              {point ? "Livrer à votre chantier" : "Où livrer ?"}
+            </h1>
+            <button
+              type="button"
+              onClick={ouvrirTiroir}
+              className={
+                "mt-3 flex min-h-[3.75rem] w-full items-center gap-3 rounded-lg px-4 text-left text-[1.0625rem] font-bold shadow " +
+                (point
+                  ? "border border-primary/40 bg-primary-soft text-foreground"
+                  : "pulse-point bg-primary text-primary-foreground")
+              }
+            >
+              <MapPin size={24} className={point ? "shrink-0 text-primary" : "shrink-0"} aria-hidden="true" />
+              <span className="min-w-0 flex-1 truncate">{point ? point.libelle : "Mon chantier"}</span>
+              <span className="shrink-0 text-legende font-semibold opacity-85">
+                {point ? "Changer" : "Choisir"}
+              </span>
+            </button>
+            {!session && !point ? (
+              <p className="mt-2 text-legende text-muted-foreground">
+                Chaque prix est calculé livraison comprise, depuis votre chantier.
               </p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <Link
-                  to="/inscription"
-                  className="cible-44 flex items-center rounded-md bg-background px-4 text-courant font-bold text-foreground"
-                >
-                  Créer un compte
-                </Link>
-                <Link
-                  to="/materiaux"
-                  className="cible-44 flex items-center rounded-md border border-primary-foreground/40 px-4 text-courant font-semibold"
-                >
-                  Voir les matériaux
-                </Link>
-              </div>
-            </section>
-          ) : null}
+            ) : null}
+          </section>
+
+          <TuilesFamilles />
 
           <div className="carte p-3.5">
             <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -194,16 +205,14 @@ export default function Accueil() {
                 <Search size={16} aria-hidden="true" />
                 <span className="truncate">Chercher un matériau, un fournisseur…</span>
               </Link>
-              {/* Ce bouton OUVRE le choix du point — il ne navigue plus vers
-                  /materiaux en laissant croire qu'il fait autre chose. */}
-              <button
-                type="button"
-                onClick={ouvrirTiroir}
-                className="cible-44 flex shrink-0 items-center gap-2 rounded-full border border-primary/40 bg-primary-soft px-3.5 text-courant font-semibold"
+              {/* Le point de livraison a son grand bouton en tête de page (V2) :
+                  ici, le raccourci vers la demande d'achat. */}
+              <Link
+                to="/demandes/nouvelle"
+                className="cible-44 flex shrink-0 items-center rounded-full border border-primary/40 bg-primary-soft px-3.5 text-courant font-semibold text-primary-strong"
               >
-                <MapPin size={15} className="text-primary" aria-hidden="true" />
-                {point ? point.libelle : "Choisir où livrer"}
-              </button>
+                Je cherche…
+              </Link>
             </div>
 
             <ul className="mt-3 flex gap-2 overflow-x-auto pb-0.5 lg:hidden" aria-label="Raccourcis">
