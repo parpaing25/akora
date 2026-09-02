@@ -547,6 +547,125 @@ export type Database = {
         }
         Relationships: []
       }
+      demandes: {
+        Row: {
+          created_at: string
+          date_souhaitee: string | null
+          expire_le: string
+          id: string
+          lat: number | null
+          libelle_lieu: string | null
+          lng: number | null
+          localite_id: string | null
+          note: string | null
+          publication_id: string | null
+          statut: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date_souhaitee?: string | null
+          expire_le?: string
+          id?: string
+          lat?: number | null
+          libelle_lieu?: string | null
+          lng?: number | null
+          localite_id?: string | null
+          note?: string | null
+          publication_id?: string | null
+          statut?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date_souhaitee?: string | null
+          expire_le?: string
+          id?: string
+          lat?: number | null
+          libelle_lieu?: string | null
+          lng?: number | null
+          localite_id?: string | null
+          note?: string | null
+          publication_id?: string | null
+          statut?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demandes_localite_id_fkey"
+            columns: ["localite_id"]
+            isOneToOne: false
+            referencedRelation: "localites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demandes_publication_id_fkey"
+            columns: ["publication_id"]
+            isOneToOne: false
+            referencedRelation: "fil_publications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demandes_publication_id_fkey"
+            columns: ["publication_id"]
+            isOneToOne: false
+            referencedRelation: "publications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      demandes_lignes: {
+        Row: {
+          demande_id: string
+          id: string
+          materiau_ref_id: string
+          ordre: number
+          precision: string | null
+          quantite: number
+          unite: Database["public"]["Enums"]["unite"]
+        }
+        Insert: {
+          demande_id: string
+          id?: string
+          materiau_ref_id: string
+          ordre?: number
+          precision?: string | null
+          quantite: number
+          unite: Database["public"]["Enums"]["unite"]
+        }
+        Update: {
+          demande_id?: string
+          id?: string
+          materiau_ref_id?: string
+          ordre?: number
+          precision?: string | null
+          quantite?: number
+          unite?: Database["public"]["Enums"]["unite"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demandes_lignes_demande_id_fkey"
+            columns: ["demande_id"]
+            isOneToOne: false
+            referencedRelation: "demandes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demandes_lignes_materiau_ref_id_fkey"
+            columns: ["materiau_ref_id"]
+            isOneToOne: false
+            referencedRelation: "formats_vitrine"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demandes_lignes_materiau_ref_id_fkey"
+            columns: ["materiau_ref_id"]
+            isOneToOne: false
+            referencedRelation: "materiaux_ref"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       demandes_materiau: {
         Row: {
           categorie_id: string
@@ -1792,6 +1911,121 @@ export type Database = {
           ville?: string | null
         }
         Relationships: []
+      }
+      propositions: {
+        Row: {
+          created_at: string
+          delai_jours: number | null
+          demande_id: string
+          fournisseur_id: string
+          id: string
+          livraison: number | null
+          message: string | null
+          statut: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          delai_jours?: number | null
+          demande_id: string
+          fournisseur_id: string
+          id?: string
+          livraison?: number | null
+          message?: string | null
+          statut?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          delai_jours?: number | null
+          demande_id?: string
+          fournisseur_id?: string
+          id?: string
+          livraison?: number | null
+          message?: string | null
+          statut?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "propositions_demande_id_fkey"
+            columns: ["demande_id"]
+            isOneToOne: false
+            referencedRelation: "demandes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "propositions_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "fil_publications"
+            referencedColumns: ["fournisseur_id"]
+          },
+          {
+            foreignKeyName: "propositions_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "fournisseurs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "propositions_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "fournisseurs_publics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "propositions_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "produits_publics"
+            referencedColumns: ["fournisseur_id"]
+          },
+          {
+            foreignKeyName: "propositions_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "transporteurs_publics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      propositions_lignes: {
+        Row: {
+          disponible: boolean
+          ligne_id: string
+          prix_unitaire: number | null
+          proposition_id: string
+        }
+        Insert: {
+          disponible?: boolean
+          ligne_id: string
+          prix_unitaire?: number | null
+          proposition_id: string
+        }
+        Update: {
+          disponible?: boolean
+          ligne_id?: string
+          prix_unitaire?: number | null
+          proposition_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "propositions_lignes_ligne_id_fkey"
+            columns: ["ligne_id"]
+            isOneToOne: false
+            referencedRelation: "demandes_lignes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "propositions_lignes_proposition_id_fkey"
+            columns: ["proposition_id"]
+            isOneToOne: false
+            referencedRelation: "propositions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       prospects_fournisseurs: {
         Row: {
@@ -3118,6 +3352,35 @@ export type Database = {
         Args: { _email: string; _usage?: string; _user_id: string }
         Returns: string
       }
+      creer_demande: {
+        Args: {
+          _date_souhaitee?: string
+          _lat?: number
+          _libelle_lieu?: string
+          _lignes: Json
+          _lng?: number
+          _localite_id?: string
+          _note?: string
+        }
+        Returns: string
+      }
+      demandes_pour_mon_depot: {
+        Args: never
+        Returns: {
+          created_at: string
+          date_souhaitee: string
+          deja_propose: boolean
+          distance_km: number
+          expire_le: string
+          id: string
+          libelle_lieu: string
+          lignes: Json
+          localite_nom: string
+          nb_correspondances: number
+          note: string
+          statut_proposition: string
+        }[]
+      }
       devenir_fournisseur: { Args: never; Returns: undefined }
       ecrire_ledger: {
         Args: {
@@ -3144,6 +3407,7 @@ export type Database = {
         Args: { _reference: string; _retrait_id: string }
         Returns: undefined
       }
+      fermer_demande: { Args: { _demande_id: string }; Returns: undefined }
       fiche_reservee: { Args: { _jeton: string }; Returns: Json }
       generer_code_otp: { Args: never; Returns: string }
       has_role: {
@@ -3164,6 +3428,7 @@ export type Database = {
         Returns: undefined
       }
       liberer_sequestre: { Args: { _paiement_id: string }; Returns: number }
+      ma_demande: { Args: never; Returns: Json }
       moderer_avis: {
         Args: {
           _avis_id: string
@@ -3171,6 +3436,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      mon_fournisseur_id: { Args: never; Returns: string }
       notifier: {
         Args: {
           _categorie?: string
@@ -3224,6 +3490,16 @@ export type Database = {
         }[]
       }
       prochain_numero_commande: { Args: never; Returns: string }
+      proposer: {
+        Args: {
+          _delai_jours?: number
+          _demande_id: string
+          _lignes: Json
+          _livraison?: number
+          _message?: string
+        }
+        Returns: string
+      }
       purger_codes_expires: { Args: never; Returns: number }
       recalculer_niveau_verification: {
         Args: { _fournisseur_id: string }
@@ -3256,6 +3532,10 @@ export type Database = {
       }
       refuser_retrait: {
         Args: { _motif: string; _retrait_id: string }
+        Returns: undefined
+      }
+      repondre_proposition: {
+        Args: { _decision: string; _proposition_id: string }
         Returns: undefined
       }
       reveler_contact_fournisseur: {
@@ -3394,12 +3674,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3423,11 +3703,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3448,11 +3728,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3473,11 +3753,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3490,11 +3770,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }

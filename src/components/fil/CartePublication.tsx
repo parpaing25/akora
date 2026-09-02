@@ -281,12 +281,20 @@ function PostDemande({ publication }: { publication: Publication }) {
         </span>
       </header>
       <p className="mb-3 whitespace-pre-line text-courant">{publication.texte}</p>
-      <Link
-        to="/demandes/nouvelle"
-        className="cible-44 inline-flex items-center rounded-md border border-foreground px-4 text-courant font-semibold"
-      >
-        Publier ma propre demande
-      </Link>
+      <div className="flex flex-wrap gap-2">
+        <Link
+          to="/pro/demandes"
+          className="cible-44 inline-flex items-center rounded-md bg-primary px-4 text-courant font-bold text-primary-foreground"
+        >
+          Proposer mon prix
+        </Link>
+        <Link
+          to="/demandes/nouvelle"
+          className="cible-44 inline-flex items-center rounded-md border border-foreground px-4 text-courant font-semibold"
+        >
+          Je cherche aussi…
+        </Link>
+      </div>
     </article>
   );
 }

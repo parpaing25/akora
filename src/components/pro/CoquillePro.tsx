@@ -10,6 +10,7 @@ const ENTREES = [
   { to: "/pro", libelle: "Tableau de bord", exact: true },
   { to: "/pro/verification", libelle: "Vérification" },
   { to: "/pro/publier", libelle: "Publier dans le fil" },
+  { to: "/pro/demandes", libelle: "Demandes des acheteurs" },
   { to: "/pro/catalogue", libelle: "Catalogue" },
   { to: "/pro/livraison", libelle: "Livraison" },
   { to: "/pro/commandes", libelle: "Commandes" },
