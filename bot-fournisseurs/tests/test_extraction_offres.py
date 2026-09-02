@@ -159,10 +159,16 @@ def test_mitady_seul_ne_condamne_pas_un_vendeur():
 
     C'est une accroche de vendeur. Prendre « mitady » pour un mot d'acheteur
     ferait disparaître les meilleures annonces du corpus.
+
+    Depuis le 02/09/2026, une phrase sans prix n'est plus une offre par
+    elle-même — mais elle n'est pas une DEMANDE non plus : elle ouvre
+    l'en-tête, et le tarif qui suit lui est rattaché.
     """
-    assert extraction.raison_hors_offre(
-        "Raha mitady tôle tsara, matanjaka ary prix abordable, ity no fotoana!"
-    ) is None
+    accroche = "Raha mitady tôle tsara, matanjaka ary prix abordable, ity no fotoana!"
+    assert extraction.raison_hors_offre(accroche) != "demande d'acheteur"
+    lues = extraction.offres(accroche + "\n0,30 : 22 000 Ar/m", CFG)
+    assert len(lues) == 1
+    assert lues[0]["type_slug"] == "tole" and lues[0]["prix"] == 22_000
 
 
 def test_le_mobilier_facebook_n_est_pas_une_offre():

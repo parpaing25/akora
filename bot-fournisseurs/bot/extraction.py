@@ -331,6 +331,70 @@ def marques_de_page(texte: str) -> tuple[str, ...]:
     return tuple(couple for couple, vu in comptes.items() if vu >= 2)
 
 
+# Une ligne SANS prix n'est une offre que si elle ressemble à une ligne de
+# stock, pas à une phrase. Mesuré le 02/09/2026 sur la page « Le Guide
+# Construction Madagascar » : « Préparation du béton avec une bétonnière
+# professionnelle », « Solution idéale pour un plancher fini durable », « Vous
+# recevrez votre plancher clé en main… » étaient devenues sept « produits »
+# sans prix, parce qu'un mot du catalogue y traînait. Une ligne de stock ne
+# conjugue pas de verbe et ne s'adresse à personne.
+MOTS_PROSE = ("vous", "nous", "votre", "vos", "notre", "nos", "je", "on", "est",
+              "sont", "sera", "avec", "pour", "dans", "chez", "grace", "toute",
+              "tous", "toutes", "ianao", "ianareo", "izahay", "isika", "hanao",
+              "manao", "afaka", "tonga", "atolotray", "atolotra")
+MOTS_MAX_SANS_PRIX = 8
+
+
+def ressemble_a_de_la_prose(reduit: str) -> bool:
+    """Une phrase, pas une ligne de tarif — pour une ligne SANS prix."""
+    mots = reduit.split()
+    if len(mots) > MOTS_MAX_SANS_PRIX:
+        return True
+    return any(mot in MOTS_PROSE for mot in mots)
+
+
+# Les lignes « clé : valeur » d'une fiche produit, telles que les pages les
+# écrivent : « Dimensions : 20 × 20 × 53 cm », « Prix : 4 800 Ar / pièce ».
+# La cote rejoint l'en-tête (le matériau au-dessus), le prix fait l'offre.
+MOTIF_ATTRIBUT = re.compile(
+    r"^\s*(dimensions?|dim|taille|format|epaisseur|longueur|largeur|hauteur|"
+    r"section|diametre|calibre|classe|prix|vidiny|tarif)\s*[:=]\s*(.+)$")
+CLES_COTE = ("dimensions", "dimension", "dim", "taille", "format", "epaisseur",
+             "longueur", "largeur", "hauteur", "section", "diametre", "calibre",
+             "classe")
+
+
+def ligne_attribut(ligne: str) -> tuple[str, str] | None:
+    """(« dimensions », « 20 x 20 x 53 cm ») pour une ligne « clé : valeur »."""
+    trouve = MOTIF_ATTRIBUT.match(referentiel.sans_accents(ligne or ""))
+    if not trouve:
+        return None
+    return trouve.group(1), trouve.group(2).strip()
+
+
+# L'unité ÉCRITE JUSTE APRÈS le montant, qui prime sur tout mot d'unité perdu
+# ailleurs dans la ligne : « 4 800 Ar/pièce », « 17.500 Ar/m », « 700ar/pcs »,
+# « 3 500 Ar/pc », « 25 000 Ar ny m2 », « 1500ar / unité ».
+MOTIF_UNITE_APRES_PRIX = re.compile(
+    r"(?:ar|ariary|fmg)\s*(?:/|par|le|la|ny|isaky ny|l')?\s*"
+    r"(m3|m2|ml|m|pce|pcs|pc|p|piece|pieces|pies|unite|u|iray|isa|sac|sacs|"
+    r"tonne|t|botte|paquet|camion|voyage|kg|1m|1piece|1pies)(?![a-z0-9])")
+UNITES_APRES_PRIX = {
+    "m3": "m3", "m2": "m2", "ml": "ml", "m": "ml", "1m": "ml",
+    "pce": "piece", "pcs": "piece", "pc": "piece", "p": "piece", "piece": "piece",
+    "pieces": "piece", "pies": "piece", "unite": "piece", "u": "piece", "iray": "piece",
+    "isa": "piece", "1piece": "piece", "1pies": "piece",
+    "sac": "sac", "sacs": "sac", "tonne": "tonne", "t": "tonne",
+    "botte": "botte", "paquet": "botte", "camion": "chargement", "voyage": "chargement",
+}
+
+
+def unite_apres_prix(ligne: str) -> str | None:
+    reduit = referentiel.sans_accents(ligne or "").replace("²", "2").replace("³", "3")
+    trouve = MOTIF_UNITE_APRES_PRIX.search(reduit)
+    return UNITES_APRES_PRIX.get(trouve.group(1)) if trouve else None
+
+
 def raison_hors_offre(ligne: str, a_un_prix: bool = False,
                       marques: tuple[str, ...] = ()) -> str | None:
     """Pourquoi cette ligne n'est pas une offre — None si c'en est une.
@@ -358,6 +422,8 @@ def raison_hors_offre(ligne: str, a_un_prix: bool = False,
     if any(mot in reduit for mot in MOTS_COURTOISIE):
         return "remerciement ou slogan"
     if len(reduit.split()) >= MOTS_MAX_PROSE:
+        return "phrase, pas un tarif"
+    if ressemble_a_de_la_prose(reduit):
         return "phrase, pas un tarif"
     if marques:
         nu = reduit
@@ -428,7 +494,55 @@ def _type_seul(fiche: dict) -> dict:
     """
     return {**fiche,
             "materiau_slug": None, "materiau_nom": None, "ambigu": 1,
-            "certitude": min(int(fiche.get("certitude") or 0), 45)}
+            "certitude": min(int(fiche.get("certitude") or 0), 45),
+            "cote_lue": None}
+
+
+def _cote_lue(appariement: dict, ligne: str) -> dict | None:
+    """La cote qu'une ligne écrit pour un type reconnu SANS format : à créer."""
+    if appariement.get("materiau_slug") or not appariement.get("type_slug"):
+        return None
+    cote = referentiel.grammaires.lire_cote(appariement["type_slug"], ligne)
+    if cote:
+        return cote
+    # Le bois scié : une section complète que le catalogue ignore.
+    if (appariement["type_slug"] in referentiel.charger()["par_type"]
+            and referentiel.reference_a_creer(appariement["type_slug"], ligne).get("possible")):
+        return {"genre": "section", "valeur": ligne}
+    return None
+
+
+def _herite_de_l_entete(entete: dict, ligne: str) -> dict:
+    """Ce qu'une ligne de prix hérite de son en-tête : le TYPE, et le format
+    seulement si la cote l'écrit ENTIÈRE.
+
+    « ALU ZINC » puis « -014 : 8 500 Ar » : « 014 » n'est pas une cote complète,
+    la ligne reste au type (règle du 24/08). « Disponible parpaing » puis
+    « 20x20x40 : 3200ar » : la cote est entière et c'est exactement celle du
+    parpaing creux 20 — la référence est acquise. « HOURDIS DISPONIBLES »,
+    « Dimensions : 20 × 20 × 53 cm », « Prix : 4 800 Ar / pièce » : la cote est
+    entière et le catalogue ne la connaît pas — elle est rendue pour être créée.
+    """
+    fiche = entete["fiche"]
+    type_slug = fiche.get("type_slug")
+    if not type_slug:
+        return _type_seul(fiche)
+    texte_cotes = f"{entete.get('cotes', '')} {ligne}".strip()
+    cote = referentiel.grammaires.lire_cote(type_slug, texte_cotes)
+    if cote:
+        exact = referentiel.format_par_cote(type_slug, cote)
+        if exact:
+            return referentiel.fiche_du_format(exact, 95)
+        return {**_type_seul(fiche), "cote_lue": cote}
+    # Le bois scié : une section complète (deux cotes et une longueur).
+    propose = referentiel.propose_par_dimensions(type_slug, texte_cotes)
+    if propose:
+        materiau = referentiel.charger()["materiaux"].get(propose["slug"])
+        if materiau:
+            return referentiel.fiche_du_format(materiau, 95)
+    if referentiel.reference_a_creer(type_slug, texte_cotes).get("possible"):
+        return {**_type_seul(fiche), "cote_lue": {"genre": "section", "valeur": texte_cotes}}
+    return _type_seul(fiche)
 
 
 # ── Découpage en segments ──────────────────────────────────────────────────
@@ -442,6 +556,9 @@ def segments(texte: str) -> list[str]:
         ligne = brut.strip(" \t-–—=*.:_")
         if not ligne:
             continue
+        # « 20×20×53 » et « (12*33*33) » : le signe de multiplication devient
+        # un « x », pour que la cote se lise partout de la même façon.
+        ligne = re.sub(r"(?<=\d)\s*[×*]\s*(?=\d)", "x", ligne)
         # « Parpaing 15 : 1400 Ar, hourdis 12 : 1900 Ar » sur une seule ligne :
         # deux montants suivis d'une devise = deux offres.
         #
@@ -487,7 +604,28 @@ def offres(texte: str, cfg: dict) -> list[dict]:
 
     for ligne in segments(texte):
         montant, devise, consommes = prix_dans(ligne, cfg)
-        if raison_hors_offre(ligne, montant is not None, marques):
+
+        # Une ligne « Dimensions : 20 x 20 x 53 cm » n'est pas une offre : c'est
+        # la cote du matériau annoncé au-dessus. Elle rejoint l'en-tête, et
+        # la ligne « Prix : 4 800 Ar / pièce » qui suit fera l'offre entière.
+        attribut = ligne_attribut(ligne)
+        if attribut and attribut[0] in CLES_COTE and montant is None and entete is not None:
+            entete["cotes"] = (entete.get("cotes", "") + " " + attribut[1]).strip()
+            continue
+
+        raison = raison_hors_offre(ligne, montant is not None, marques)
+        if raison:
+            # Une phrase n'est pas une offre, mais elle peut ANNONCER le
+            # matériau des lignes qui suivent : « HOURDIS DISPONIBLES,
+            # construisez en toute confiance ! » puis « Dimensions : 20 × 20 ×
+            # 53 cm » puis « Prix : 4 800 Ar / pièce » (Le Guide Construction,
+            # 02/09/2026). Elle ouvre l'en-tête — au TYPE seul, jamais au
+            # format — et ne produit rien elle-même.
+            if raison == "phrase, pas un tarif" and montant is None:
+                titre = referentiel.apparier(ligne, consommes)
+                if titre is not None and titre.get("type_slug"):
+                    entete, depuis_entete = (
+                        {"texte": ligne, "fiche": _type_seul(titre), "cotes": ""}, 0)
             continue
 
         appariement = referentiel.apparier(ligne, consommes)
@@ -495,14 +633,19 @@ def offres(texte: str, cfg: dict) -> list[dict]:
         if appariement is not None:
             if _format_dementi(ligne, appariement):
                 appariement = _type_seul(appariement)
-            entete, depuis_entete = {"texte": ligne, "fiche": appariement}, 0
+            entete, depuis_entete = {"texte": ligne, "fiche": appariement, "cotes": ""}, 0
+            # Sans prix et reconnue de justesse (« Étayage du plancher brut »
+            # pris pour une planche à 16 %) : la ligne ouvre l'en-tête, elle
+            # ne fait pas une offre.
+            if montant is None and int(appariement.get("certitude") or 0) < 30:
+                continue
         else:
             depuis_entete += 1
             if (montant is None or entete is None
                     or depuis_entete > PORTEE_ENTETE
                     or len(ligne.split()) > MOTS_MAX_TARIF):
                 continue
-            appariement, herite = _type_seul(entete["fiche"]), True
+            appariement, herite = _herite_de_l_entete(entete, ligne), True
 
         # Le montant entre dans l'empreinte : sans lui, les seize épaisseurs de
         # tôle d'un même tarif se réduisaient à UNE offre, puisqu'elles portent
@@ -518,15 +661,27 @@ def offres(texte: str, cfg: dict) -> list[dict]:
         # « -014 : 8 500 Ar » tout seul ne veut plus rien dire dans la liste
         # d'Andry.
         libelle = f"{entete['texte'][:70]} › {ligne}" if herite else ligne
+        if herite and entete.get("cotes"):
+            libelle = f"{entete['texte'][:50]} {entete['cotes'][:30]} › {ligne}"
         resultat.append({
             "libelle_brut": libelle[:180],
             "prix": montant,
             "devise_source": devise,
-            "unite": referentiel.unite_dans(ligne) or appariement.get("unite"),
+            # L'unité écrite juste après le montant prime : « 17.500 Ar/m » est
+            # au mètre même si la ligne parle d'une feuille plus loin.
+            "unite": (unite_apres_prix(ligne) or referentiel.unite_dans(ligne)
+                      or appariement.get("unite")),
             "quantite_min": quantite_min_dans(ligne),
             **{c: appariement[c] for c in (
                 "materiau_slug", "materiau_nom", "type_slug", "type_nom",
                 "famille_slug", "certitude", "ambigu", "hors_catalogue")},
+            # Retirée AVANT l'écriture en base (voir collecteur) : c'est la
+            # cote que le catalogue ignore, donc la référence à créer. Lue sur
+            # la ligne BRUTE, avec sa ponctuation : normalisée, « Fer 20 :
+            # 120 000 Ar » devient « fer 20 120 000 ar » et le montant avale
+            # le diamètre.
+            "cote_lue": (appariement.get("cote_lue") if herite
+                         else _cote_lue(appariement, ligne)),
         })
 
     # Rattrapage : rien ligne par ligne, mais le texte entier parle bien d'un

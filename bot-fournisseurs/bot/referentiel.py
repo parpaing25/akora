@@ -24,7 +24,7 @@ import re
 import unicodedata
 from difflib import SequenceMatcher
 
-from . import akora, base
+from . import akora, base, grammaires
 from .config import CACHE_REFERENTIEL
 
 # Mots qui ne suffisent JAMAIS seuls : ce sont des mots de la langue courante
@@ -229,6 +229,11 @@ def normaliser(texte: str) -> str:
     """
     reduit = sans_accents(texte)
     reduit = reduit.replace("²", "2").replace("³", "3").replace("ø", "o")
+    # « 20×20×53 » et « (12*33*33) » sont des cotes : le signe de
+    # multiplication devient le « x » que tout le reste sait lire. Sans ça,
+    # « Hourdis 20×20×53 » perdait ses cotes et retombait sur le « 20 » seul —
+    # un hourdis de 60 × 20 × 20 au prix d'un 20 × 20 × 53 (02/09/2026).
+    reduit = re.sub(r"(?<=\d)\s*[×*]\s*(?=\d)", "x", reduit)
     reduit = re.sub(r"[^a-z0-9x/,.'-]+", " ", reduit)
     reduit = re.sub(r"\s+", " ", reduit).strip()
     return _reecrire(reduit)
@@ -348,6 +353,9 @@ def _indexer(brut: dict) -> dict:
             larges.update(re.findall(r"[0-9]+", str(fiche["dimensions"])))
         fiche["reperes_cles"] = {r for r in cles if r}
         fiche["reperes"] = {r for r in larges if r}
+        # La cote ENTIÈRE d'un bloc, en forme canonique (du plus petit au plus
+        # grand) : c'est elle qu'on compare à ce qu'un dépôt écrit.
+        fiche["cotes_bloc"] = grammaires.cotes_catalogue(fiche.get("dimensions"))
 
         # Les mots du nom qui n'appartiennent pas au type : « fin », « rivière »,
         # « CEM II ». Ce sont eux qui départagent « Sable fin » de « Sable de
@@ -570,6 +578,27 @@ def _choisir_format(type_slug: str, ligne_normalisee: str,
 
     nombres = _nombres_de_format(ligne_normalisee, nombres_prix)
 
+    # 0. Une cote COMPLÈTE de bloc (« 20x20x40 », « 12x33x33 ») se compare
+    #    entière, dans n'importe quel ordre d'écriture. Deux cotes sur la
+    #    ligne = deux formats pour un prix : on ne tranche pas. Une cote qui
+    #    ne correspond à AUCUNE référence n'en désigne aucune — surtout pas
+    #    celle qui partage un chiffre avec elle : « 20x20x53 » n'est pas le
+    #    hourdis 60 × 20 × 20, c'est une référence à créer.
+    if any(m.get("cotes_bloc") and len(m["cotes_bloc"]) == 3 for m in candidats):
+        lues = grammaires.triples(ligne_normalisee)
+        if len(lues) > 1:
+            return None, 0
+        if len(lues) == 1:
+            exacts = [m for m in candidats if m.get("cotes_bloc") == lues[0]]
+            if len(exacts) == 1:
+                return exacts[0], 98
+            if not exacts:
+                return None, 0
+            # Plusieurs références partagent cette cote (brique repressée et
+            # brique cuite pleine font toutes deux 22 × 11 × 6) : ce sont les
+            # mots qui trancheront, parmi elles seulement.
+            candidats = exacts
+
     # 1. Une dimension complète écrite telle quelle : « 40x20x15 ».
     dimension = re.search(r"\d+\s*x\s*\d+(?:\s*x\s*\d+)?", ligne_normalisee)
     if dimension:
@@ -718,6 +747,10 @@ def apparier(libelle: str, nombres_prix: set[str] | None = None) -> dict | None:
             "certitude": min(50, poids * 8),
             "ambigu": 1,
             "hors_catalogue": 0,
+            # La cote que la ligne écrit et que le catalogue ignore se lit
+            # dans `extraction`, sur la ligne BRUTE — ici elle est normalisée
+            # et le montant avale le chiffre qui le précède.
+            "cote_lue": None,
         }
     return _fiche(materiau, type_fiche, certitude, ambigu=False)
 
@@ -733,7 +766,41 @@ def _fiche(materiau: dict, type_fiche: dict, certitude: int, ambigu: bool) -> di
         "certitude": max(0, min(100, certitude)),
         "ambigu": 1 if ambigu else 0,
         "hors_catalogue": 0,
+        "cote_lue": None,
     }
+
+
+def fiche_du_format(materiau: dict, certitude: int = 95) -> dict:
+    """La fiche d'appariement d'une référence désignée par sa cote exacte."""
+    type_fiche = charger()["types"].get(materiau.get("type_slug"), {})
+    return _fiche(materiau, type_fiche, certitude, ambigu=False)
+
+
+def format_par_cote(type_slug: str, cote: dict) -> dict | None:
+    """La référence de ce type dont la cote est EXACTEMENT celle lue, si elle est seule."""
+    return grammaires.format_existant(cote, charger()["par_type"].get(type_slug, []))
+
+
+def reference_depuis_cote(type_slug: str, cote: dict) -> dict:
+    """La référence que cette cote réclame — `{"possible", "motif", ...}`.
+
+    Les blocs, le fer, le gravillon, la buse, le contreplaqué, le pavé, le
+    béton dosé et la tôle ont leur grammaire (`grammaires.py`) ; le bois scié
+    passe par `reference_a_creer` (section). Un slug déjà pris ne se recrée
+    pas : deux dépôts qui écrivent la même cote tombent sur la même référence.
+    """
+    catalogue = charger()
+    fiche_type = catalogue["types"].get(type_slug)
+    if not fiche_type:
+        return {"possible": False, "motif": "type inconnu du catalogue"}
+    if cote.get("genre") == "section":
+        return reference_a_creer(type_slug, cote["valeur"])
+    projet = grammaires.projet_de_reference(
+        type_slug, fiche_type["nom"], cote, catalogue["par_type"].get(type_slug, []))
+    if projet.get("possible") and projet["slug"] in catalogue["materiaux"]:
+        return {"possible": False, "motif": "cette reference existe deja",
+                "slug": projet["slug"]}
+    return projet
 
 
 def unite_dans(texte: str) -> str | None:

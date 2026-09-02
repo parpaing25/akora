@@ -292,7 +292,9 @@ class Planificateur:
         for resume in candidats:
             if crees + completes >= plafond:
                 break
-            if resume.get("statut") in ("rejete", "doublon", "refuse", "revendique"):
+            # « incomplet » = sans prix : il attend un appel, pas le site.
+            if resume.get("statut") in ("rejete", "doublon", "refuse", "revendique",
+                                        "incomplet"):
                 continue
             fiche = base.prospect(resume["id"])
             if not fiche or tri.fiche_depot_complete(fiche):

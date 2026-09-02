@@ -720,6 +720,72 @@ def navigateur_perdu(e: Exception) -> bool:
             or "connection closed" in texte)
 
 
+def admission(lecture: dict, cfg: dict) -> str:
+    """Pourquoi cette publication entre — ou « refuse ».
+
+    « prix » : au moins une offre chiffrée. « transport » : un camion (le
+    fret n'affiche pas de prix matériau). « serieux » : pas de prix mais assez
+    de matériaux distincts du catalogue pour valoir un appel — le dépôt entre
+    en « incomplet », dans la liste d'appels, jamais sur le site. « libre »
+    quand `prix_obligatoire` est éteint. Sinon « refuse ».
+    """
+    offres = lecture.get("offres") or []
+    if any(o.get("prix") for o in offres):
+        return "prix"
+    if lecture.get("vehicules"):
+        return "transport"
+    if not cfg.get("prix_obligatoire", True):
+        return "libre"
+    types = {o.get("type_slug") for o in offres if o.get("type_slug")}
+    if len(types) >= int(cfg.get("produits_min_sans_prix", 3) or 3):
+        return "serieux"
+    return "refuse"
+
+
+def url_de_suivi(auteur_url: str) -> str:
+    """L'adresse à surveiller pour un auteur : sa page, ou son profil.
+
+    `groups/<g>/user/<id>` est une vue de membre, pas un fil : on remonte au
+    profil `profile.php?id=<id>`. Un nom de page reste un nom de page. Un
+    groupe (auteur « le groupe lui-même ») ne se suit pas.
+    """
+    compte = fusion.compte_facebook(auteur_url or "")
+    if not compte:
+        return ""
+    if compte.isdigit():
+        return f"https://www.facebook.com/profile.php?id={compte}"
+    return f"https://www.facebook.com/{compte}"
+
+
+def creer_les_references(offres: list[dict], cfg: dict) -> list[dict]:
+    """Pose sur chaque offre chiffrée la référence que sa cote réclame.
+
+    La clé `cote_lue` est retirée dans tous les cas — `offres` ne la connaît
+    pas. Une référence ne naît que pour une offre AVEC prix : une cote sans
+    tarif n'enrichit rien, elle attend son appel.
+    """
+    from . import formats
+
+    resultat = []
+    for offre in offres:
+        cote = offre.pop("cote_lue", None)
+        if (cote and offre.get("prix") and not offre.get("materiau_slug")
+                and offre.get("type_slug") and cfg.get("creer_references", True)):
+            try:
+                fiche = formats.creer_reference_auto(
+                    offre["type_slug"], cote, offre.get("libelle_brut") or "")
+            except Exception as e:                       # noqa: BLE001
+                base.logguer(
+                    f"Référence non créée pour « {(offre.get('libelle_brut') or '')[:60]} » : "
+                    f"{str(e)[:120]}", "avert")
+                fiche = None
+            if fiche:
+                fiche.pop("cote_lue", None)
+                offre.update(fiche)
+        resultat.append(offre)
+    return resultat
+
+
 def defilement_sterile(genre: str, neufs: int, inedits: int) -> bool:
     """Ce défilement n'a-t-il rien apporté ? La réponse dépend du genre.
 
@@ -992,7 +1058,7 @@ class Collecteur:
                      # collecte, les rejets de la première en prime.
                      "rejet_question": 0, "rejet_perimetre": 0,
                      "rejet_chrome": 0, "rejet_annee": 0, "rejet_age": 0,
-                     "rejet_devise": 0}
+                     "rejet_devise": 0, "rejet_sans_prix": 0}
         # Un verrou pour l'écriture des prospects : plusieurs fils d'atelier
         # peuvent tomber sur le MÊME dépôt (il poste dans plusieurs groupes),
         # et deux créations simultanées feraient deux fiches au lieu d'une.
@@ -1111,7 +1177,8 @@ class Collecteur:
                           "parcourues": 0, "en_file": 0, "demandes": 0,
                           "rejet_question": 0, "rejet_perimetre": 0,
                           "rejet_chrome": 0, "rejet_annee": 0, "rejet_age": 0,
-                          "rejet_devise": 0, "prix_commentaires": 0})
+                          "rejet_devise": 0, "rejet_sans_prix": 0,
+                          "prix_commentaires": 0})
         depart = base.maintenant()
         self.atelier = Atelier(self._finir_publication, int(cfg.get("travailleurs", 3)))
         par_genre = {}
@@ -1408,7 +1475,12 @@ class Collecteur:
         plafond = int(cfg["posts_max_par_source"])
         steriles = 0        # défilements consécutifs sans rien de neuf
 
-        for _ in range(int(cfg["scrolls_max_par_source"])):
+        # La page d'un dépôt suivi n'a besoin que de ses dernières actualités :
+        # un petit budget, et on passe au suivant.
+        budget = int(cfg["scrolls_max_par_source"])
+        if (source.get("requete") or "").startswith("suivi:"):
+            budget = min(budget, int(cfg.get("scrolls_pages_fournisseurs", 4) or 4))
+        for _ in range(budget):
             if self.stop.is_set():
                 break
 
@@ -1755,6 +1827,35 @@ class Collecteur:
         )
         return True
 
+    def _prospect_connu(self, lecture: dict, post: dict) -> bool:
+        """Ce dépôt a-t-il déjà sa fiche — par son numéro ou par son compte ?"""
+        if lecture.get("telephone_cle") and base.prospect_par_telephone(lecture["telephone_cle"]):
+            return True
+        compte = fusion.compte_facebook(post.get("auteur_url") or "")
+        return bool(compte and base.prospect_par_compte(compte))
+
+    def _suivre_la_page(self, post: dict, prospect_id: str, lecture: dict, cfg: dict) -> None:
+        """La page ou le profil d'un dépôt qui affiche ses prix devient une source.
+
+        C'est ce qu'Andry a demandé le 02/09/2026 : que le bot ait la page de
+        chaque fournisseur et relise ses actualités systématiquement. La
+        source est marquée `suivi:<prospect>` — un petit budget de défilement
+        lui suffit, ses dernières publications sont en haut.
+        """
+        if not cfg.get("suivre_pages_fournisseurs", True):
+            return
+        if not any(o.get("prix") for o in lecture.get("offres") or []):
+            return
+        url = url_de_suivi(post.get("auteur_url") or "")
+        if not url or url in base.urls_sources():
+            return
+        source = base.ajouter_source(
+            nom=((post.get("auteur") or "").strip() or "Page fournisseur")[:60],
+            url=url, genre="page", requete=f"suivi:{prospect_id}")
+        base.logguer(
+            f"Page « {source['nom']} » ajoutée aux sources : ses actualités "
+            "seront relues à chaque passage.", "info")
+
     # -- Passe 2 : atelier, hors du navigateur ------------------------------
     def _finir_publication(self, travail: dict) -> None:
         """Lecture, appariement, rangement dans le bon prospect."""
@@ -1788,6 +1889,15 @@ class Collecteur:
             shutil.rmtree(dossier, ignore_errors=True)
             return
 
+        # Sans prix, un dépôt n'entre pas (Andry, 02/09/2026) — sauf s'il est
+        # SÉRIEUX (assez de matériaux du catalogue pour valoir un appel) ou
+        # déjà connu (une actualité sans tarif d'un dépôt qu'on suit).
+        if admission(lecture, cfg) == "refuse" and not self._prospect_connu(lecture, post):
+            self.etat["rejet_sans_prix"] = self.etat.get("rejet_sans_prix", 0) + 1
+            base.supprimer_publication(publication_id)
+            shutil.rmtree(dossier, ignore_errors=True)
+            return
+
         # Liste rouge : ce numéro a demandé à ne plus être contacté.
         if lecture.get("telephone_cle") and base.est_refuse(lecture["telephone_cle"]):
             base.supprimer_publication(publication_id)
@@ -1796,8 +1906,15 @@ class Collecteur:
 
         # Un seul fil à la fois ici : deux publications du même dépôt traitées
         # en parallèle créeraient deux fiches au lieu d'une.
+        # Le catalogue apprend ce que le terrain vend : une cote complète que
+        # le site ignore devient une référence AVANT que l'offre ne s'écrive.
+        # Et la clé `cote_lue` est retirée ici, toujours : la table `offres`
+        # ne la connaît pas.
+        lecture["offres"] = creer_les_references(lecture["offres"], cfg)
+
         with self._verrou_fusion:
             prospect_id, nouveau = fusion.enregistrer(lecture, post, source, cfg)
+            self._suivre_la_page(post, prospect_id, lecture, cfg)
             gardees = 0
             # La date de la PUBLICATION suit le prix. Sans elle, l'observatoire
             # daterait d'aujourd'hui un tarif relevé sur un post ancien, et le
@@ -1900,6 +2017,7 @@ def _ecartes(etat: dict) -> str:
         (etat.get("rejet_annee", 0), "d'une année révolue"),
         (etat.get("rejet_age", 0), "trop ancienne(s)"),
         (etat.get("rejet_devise", 0), "en francs CFA / hors zone"),
+        (etat.get("rejet_sans_prix", 0), "sans prix (dépôt inconnu, trop peu de produits)"),
     ]
     ecartes = [f"{n} {mot}" for n, mot in morceaux if n]
     phrase = ("Écarté : " + ", ".join(ecartes) + ". ") if ecartes else ""

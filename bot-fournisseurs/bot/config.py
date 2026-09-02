@@ -106,7 +106,22 @@ DEFAUTS = {
     "auto_inscription": True,
     "auto_inscription_max": 25,   # par tournee, pour ne pas noyer le journal
     "garder_les_incomplets": True,
-    "prix_obligatoire": False,   # un dépôt sans prix affiché reste un prospect
+    # VRAI depuis le 02/09/2026 (Andry : « on ne prend pas des fournisseurs
+    # sans prix »). Une publication sans aucun prix n'entre pas — sauf si elle
+    # vient d'un dépôt déjà connu, ou si elle est SÉRIEUSE : au moins
+    # `produits_min_sans_prix` types du catalogue, et alors le dépôt file
+    # dans « À appeler » (statut incomplet), jamais sur le site.
+    "prix_obligatoire": True,
+    "produits_min_sans_prix": 3,
+    # Le bot SUIT les pages des dépôts qu'il garde : dès qu'un dépôt a donné un
+    # prix, sa page ou son profil devient une source, relue à chaque passage
+    # avec un petit budget de défilement (ses dernières actualités suffisent).
+    "suivre_pages_fournisseurs": True,
+    "scrolls_pages_fournisseurs": 4,
+    # Le catalogue s'enrichit de ce que le terrain vend : une cote complète,
+    # chiffrée, d'un type qui a sa grammaire (`grammaires.py`) et que le site
+    # ignore devient une référence — avec son volume et son poids calculés.
+    "creer_references": True,
 
     # ── Devises croisées dans les publications malgaches.
     "taux_fmg_ar": 5,            # 1 Ar = 5 Fmg

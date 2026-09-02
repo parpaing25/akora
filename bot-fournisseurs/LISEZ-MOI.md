@@ -468,6 +468,52 @@ Chaque point porte l'incident qui l'a motivé : sans lui, la règle ne tient pas
   ligne supprimée. Appliqué le 02/09 : 10 fiches versées dans 7, plus aucun
   compte partagé.
 
+## Le 02/09 au soir — le bot apprend les matériaux, et on repart de zéro
+
+Demande d'Andry, avec la capture d'une publication du « Guide Construction
+Madagascar » : « Hourdis 20×20×53 à 4 800 Ar/pièce » écrit noir sur blanc,
+et le bot qui rendait sept « produits » sans prix tirés de phrases — donc les
+fiches à remplir à la main. Ce qui a changé :
+
+- **`bot/grammaires.py` — comment chaque type écrit son format.** Une cote
+  de bloc se lit ENTIÈRE et dans n'importe quel ordre (« 20×20×40 »,
+  « (12*33*33) », « 40 × 20 × 20 cm » sont la même chose), puis se compare
+  entière au catalogue. Un chiffre commun ne fait plus une référence :
+  « 20×20×53 » n'est pas le hourdis 60 × 20 × 20. Grammaires écrites pour
+  les blocs (parpaing, hourdis, briques, BTC, adobe, habillage, claustra),
+  le fer (Ø), le gravillon (calibre), la buse (Ø), le contreplaqué (mm), le
+  pavé (cm), le béton (dosage) et la tôle (épaisseur × longueur × forme) —
+  chacune avec ses bornes de vraisemblance.
+- **Le catalogue s'enrichit de ce que le terrain vend** (`creer_references`).
+  Une cote complète, chiffrée, que le site ignore devient une référence au
+  moment de la collecte : nom, slug, libellé, volume calculé, poids à la
+  masse volumique médiane du type, `note` qui dit d'où elle vient. Jamais
+  sans prix, jamais hors bornes, jamais pour un type sans grammaire (sable,
+  ciment, tuile… restent à l'atelier des formats).
+- **Une fiche produit sur trois lignes fait une offre** : le matériau
+  au-dessus, « Dimensions : 20 × 20 × 53 cm », « Prix : 4 800 Ar / pièce ».
+  Une phrase sans prix n'est plus un produit, mais elle ouvre l'en-tête. La
+  cote d'une ligne de prix héritée d'un en-tête donne le format quand elle est
+  exacte (« Disponible parpaing » puis « 15x20x40 : 2700 Ar » = parpaing
+  creux 15). L'unité écrite juste après le montant prime (« 17.500 Ar/m »).
+- **Sans prix, un dépôt n'entre pas** (`prix_obligatoire`, vrai). Une
+  publication sans tarif est refusée à la porte — sauf d'un dépôt déjà connu,
+  ou si elle est SÉRIEUSE : au moins `produits_min_sans_prix` (3) types du
+  catalogue ; le dépôt entre alors en « incomplet », dans **À appeler**,
+  jamais sur le site. Mesuré sur les 704 publications d'avant : 496 auraient
+  été refusées, 160 entrées par le prix, 13 comme sérieuses, 35 comme
+  transporteurs.
+- **Le bot suit la page de chaque dépôt qui affiche ses prix**
+  (`suivre_pages_fournisseurs`) : sa page ou son profil devient une source
+  marquée `suivi:<prospect>`, relue à chaque passage avec un petit budget
+  (`scrolls_pages_fournisseurs`, 4) — ses dernières actualités suffisent.
+- **Remise à zéro** (`outils/remise_a_zero.py`, sauvegarde dans
+  `data/archives/`) : 433 fiches, 704 publications, 1 249 offres, 1 779 photos
+  effacées ; les 141 sources et la liste rouge gardées. Côté site : les
+  24 fournisseurs du bot, leurs produits, les 40 fiches réservées et les
+  24 relevés de l'observatoire effacés, sauvegardés en JSON à côté.
+  Vérifié avant : aucune commande, aucune ligne de compte, aucun retrait.
+
 ---
 
 ## Architecture

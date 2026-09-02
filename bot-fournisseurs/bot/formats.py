@@ -254,6 +254,71 @@ def appliquer(decisions: list[dict]) -> dict:
     }
 
 
+def _ecrire_reference(type_slug: str, projet: dict, origine: str = "") -> str:
+    """Écrit la référence au catalogue du site et recharge le catalogue local.
+
+    La `note` garde la trace : créée par le bot, quand, depuis quelle ligne,
+    avec un poids calculé à quelle masse volumique. Rien n'est anonyme.
+    """
+    from datetime import date
+
+    note = (f"Créée par le bot fournisseurs le {date.today():%d/%m/%Y}"
+            + (f" depuis « {origine[:90]} »" if origine else "")
+            + (f" — poids à {projet.get('densite')} kg/m³ (médiane du type)."
+               if projet.get("densite") else "."))
+    lignes = akora.executer(
+        "INSERT INTO public.materiaux_ref "
+        "(categorie_id, type_id, nom, slug, libelle_court, dimensions, "
+        " unite_defaut, poids_kg_unite_defaut, volume_m3_unite_defaut, "
+        " attributs, ordre_format, note) "
+        "SELECT c.id, t.id, "
+        f"{akora.txt(projet['nom'])}, {akora.txt(projet['slug'])}, "
+        f"{akora.txt(projet['libelle_court'])}, {akora.txt(projet['dimensions'])}, "
+        f"{akora.txt(projet['unite'])}::public.unite, "
+        f"{akora.reel(projet['poids'])}, {akora.reel(projet['volume'])}, "
+        f"{akora.jsonb(projet['attributs'])}, {akora.reel(projet['ordre_format'])}, "
+        f"{akora.txt(note)} "
+        "  FROM public.types_materiaux t "
+        "  JOIN public.categories c ON c.id = t.categorie_id "
+        f" WHERE t.slug = {akora.txt(type_slug)} "
+        "ON CONFLICT (slug) DO NOTHING "
+        "RETURNING slug;")
+    if not lignes:
+        raise ErreurFormats(
+            "La reference n'a pas ete creee — type absent du site, ou nom "
+            "deja pris dans cette famille.")
+
+    # Le catalogue local doit connaitre la nouveaute AVANT qu'on l'applique.
+    referentiel.synchroniser()
+    base.logguer(
+        f"Référence « {projet['nom']} » créée au catalogue "
+        f"({projet['volume']} m³, {projet['poids']} kg"
+        + (f" à {projet['densite']} kg/m³" if projet.get("densite") else "") + ").",
+        "succes")
+    return projet["slug"]
+
+
+def creer_reference_auto(type_slug: str, cote: dict, origine: str = "") -> dict | None:
+    """Crée (ou retrouve) la référence qu'une cote lue réclame, pendant la collecte.
+
+    Rend la fiche d'appariement à poser sur l'offre, ou None si la cote ne
+    fait pas une référence (bornes, type sans grammaire, poids incalculable).
+    Le motif du refus est journalisé UNE fois par libellé.
+    """
+    projet = referentiel.reference_depuis_cote(type_slug, cote)
+    if not projet.get("possible"):
+        if projet.get("slug"):                       # existe déjà : on l'applique
+            materiau = referentiel.charger()["materiaux"].get(projet["slug"])
+            return referentiel.fiche_du_format(materiau, 95) if materiau else None
+        base.logguer(
+            f"Référence non créée pour « {origine[:70]} » : {projet.get('motif')}.",
+            "info")
+        return None
+    _ecrire_reference(type_slug, projet, origine=origine)
+    materiau = referentiel.charger()["materiaux"].get(projet["slug"])
+    return referentiel.fiche_du_format(materiau, 95) if materiau else None
+
+
 def creer_reference(type_slug: str, ligne: str, ids: list[int] | None = None,
                     longueur_m: float | None = None) -> dict:
     """Ecrit au catalogue la reference que cette ligne reclame, puis l'applique.
@@ -271,34 +336,7 @@ def creer_reference(type_slug: str, ligne: str, ids: list[int] | None = None,
     projet = referentiel.reference_a_creer(type_slug, ligne, longueur_m)
     if not projet.get("possible"):
         raise ErreurFormats(projet.get("motif") or "reference impossible a composer")
-
-    lignes = akora.executer(
-        "INSERT INTO public.materiaux_ref "
-        "(categorie_id, type_id, nom, slug, libelle_court, dimensions, "
-        " unite_defaut, poids_kg_unite_defaut, volume_m3_unite_defaut, "
-        " attributs, ordre_format) "
-        "SELECT c.id, t.id, "
-        f"{akora.txt(projet['nom'])}, {akora.txt(projet['slug'])}, "
-        f"{akora.txt(projet['libelle_court'])}, {akora.txt(projet['dimensions'])}, "
-        f"{akora.txt(projet['unite'])}::public.unite, "
-        f"{akora.reel(projet['poids'])}, {akora.reel(projet['volume'])}, "
-        f"{akora.jsonb(projet['attributs'])}, {akora.reel(projet['ordre_format'])} "
-        "  FROM public.types_materiaux t "
-        "  JOIN public.categories c ON c.id = t.categorie_id "
-        f" WHERE t.slug = {akora.txt(type_slug)} "
-        "ON CONFLICT (slug) DO NOTHING "
-        "RETURNING slug;")
-    if not lignes:
-        raise ErreurFormats(
-            "La reference n'a pas ete creee — type absent du site, ou nom "
-            "deja pris dans cette famille.")
-
-    # Le catalogue local doit connaitre la nouveaute AVANT qu'on l'applique.
-    referentiel.synchroniser()
-    base.logguer(
-        f"Reference « {projet['nom']} » creee au catalogue "
-        f"({projet['volume']} m3, {projet['poids']} kg a "
-        f"{projet['densite']} kg/m3).", "succes")
+    _ecrire_reference(type_slug, projet, origine=ligne)
 
     applique = appliquer([{"ids": ids or [], "materiau_slug": projet["slug"]}]) \
         if ids else {"appliquees": 0}
