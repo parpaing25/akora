@@ -19,6 +19,7 @@ sur un profil, les deux fiches sont **absorbées** l'une dans l'autre.
 """
 from __future__ import annotations
 
+import json
 import re
 from urllib.parse import urlsplit
 
@@ -96,18 +97,49 @@ def absorber(source_id: str, cible_id: str) -> None:
     if source_id == cible_id:
         return
     with base._verrou, base.connexion() as cx:
-        cx.execute("UPDATE publications SET prospect_id = ? WHERE prospect_id = ?",
-                   (cible_id, source_id))
-        cx.execute("UPDATE offres SET prospect_id = ? WHERE prospect_id = ?",
-                   (cible_id, source_id))
-        cx.execute("UPDATE photos SET prospect_id = ? WHERE prospect_id = ?",
-                   (cible_id, source_id))
-        cx.execute("UPDATE vehicules SET prospect_id = ? WHERE prospect_id = ?",
-                   (cible_id, source_id))
-        cx.execute("UPDATE evenements SET prospect_id = ? WHERE prospect_id = ?",
-                   (cible_id, source_id))
+        source = cx.execute("SELECT * FROM prospects WHERE id = ?", (source_id,)).fetchone()
+        cible = cx.execute("SELECT * FROM prospects WHERE id = ?", (cible_id,)).fetchone()
+        if source is None or cible is None:
+            return
+        for table in ("publications", "offres", "photos", "vehicules", "evenements"):
+            cx.execute(f"UPDATE {table} SET prospect_id = ? WHERE prospect_id = ?",
+                       (cible_id, source_id))
         cx.execute("DELETE FROM prospects WHERE id = ?", (source_id,))
-    base.evenement(cible_id, "statut", "Fiche fusionnée avec un doublon (même numéro).")
+
+        # Ce que la fiche versée savait et que la cible ignore. Jusqu'au
+        # 02/09/2026, tout cela disparaissait avec la ligne supprimée : le
+        # second numéro d'un dépôt (une SIM par opérateur, c'est la norme),
+        # sa page, son quartier — et surtout sa fiche réservée, dont le lien
+        # était peut-être déjà parti dans un message.
+        maj: dict = {}
+        autres = list(json.loads(cible["telephones_autres"] or "[]"))
+        for numero in [source["telephone_cle"], *json.loads(source["telephones_autres"] or "[]")]:
+            if numero and numero != cible["telephone_cle"] and numero not in autres:
+                autres.append(numero)
+        if not cible["telephone_cle"] and source["telephone_cle"]:
+            maj["telephone"] = source["telephone"]
+            maj["telephone_cle"] = source["telephone_cle"]
+            maj["cle"] = "tel:" + source["telephone_cle"]      # la ligne source est supprimée : la clé est libre
+            autres = [n for n in autres if n != source["telephone_cle"]]
+        maj["telephones_autres"] = json.dumps(autres, ensure_ascii=False)
+        for champ in ("page_url", "auteur_fb", "ville", "quartier", "adresse",
+                      "metier", "site_web", "fournisseur_id"):
+            if not cible[champ] and source[champ]:
+                maj[champ] = source[champ]
+        if source["whatsapp"] and not cible["whatsapp"]:
+            maj["whatsapp"] = 1
+        if source["reserve_le"] and not cible["reserve_le"]:
+            for champ in ("jeton", "fiche_url", "reserve_le", "prospect_distant"):
+                maj[champ] = source[champ]
+        maj["nb_publications"] = cx.execute(
+            "SELECT COUNT(*) FROM publications WHERE prospect_id = ?", (cible_id,)
+        ).fetchone()[0]
+        maj["maj_le"] = base.maintenant()
+        assignations = ", ".join(f"{c} = ?" for c in maj)
+        cx.execute(f"UPDATE prospects SET {assignations} WHERE id = ?",
+                   (*maj.values(), cible_id))
+    base.evenement(cible_id, "statut",
+                   "Fiche fusionnée avec un doublon (même compte ou même numéro).")
 
 
 # ── Doublons PROBABLES : on les signale, on ne les fusionne pas ────────────

@@ -172,6 +172,14 @@ DEFAUTS = {
     # personne n'a cliqué « Publier ». Mettre en ligne le nom d'un dépôt et
     # des prix relevés sur Facebook n'est pas une décision qu'un bot prend.
     "inscrire_en_actif": False,
+    # Quand `inscrire_en_actif` est allumé : un dépôt n'est ACTIF dans
+    # l'annuaire que s'il a au moins un produit actif (référence + prix +
+    # photo). Sinon sa fiche existe, en brouillon, et passe active toute
+    # seule le jour où son premier produit se complète. Mesuré le 02/09/2026 :
+    # 24 fournisseurs actifs créés par le bot, 22 sans aucun produit — un
+    # visiteur voyait un nom, un numéro, et rien à acheter. FAUX = l'ancien
+    # comportement (le dépôt entre dès qu'il a nom, contact et lieu).
+    "actif_exige_un_produit": True,
 
     # ── Réservation de la fiche sur le site.
     "pousser_les_fiches": False,     # tant que la migration n'est pas appliquée

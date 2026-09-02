@@ -18,8 +18,18 @@ Ce qu'il fait, et ce qu'il refuse :
     Il les liste, `doublons_probables` les signale, un humain tranche.
 
 Usage :
-    python outils/regrouper_comptes.py            # à blanc : montre, n'écrit rien
-    python outils/regrouper_comptes.py --ecrire   # écrit, après sauvegarde
+    python outils/regrouper_comptes.py                  # à blanc : montre, n'écrit rien
+    python outils/regrouper_comptes.py --ecrire         # écrit, après sauvegarde
+    python outils/regrouper_comptes.py --ecrire --tout  # verse AUSSI les comptes à
+                                                        # plusieurs numéros (demande
+                                                        # d'Andry du 02/09 au soir)
+
+`--tout` : un même compte Facebook avec deux numéros est, à Madagascar, un
+dépôt avec une SIM par opérateur. La fiche gardée est celle qui engage le
+plus (inscrite > réservée > validée > à trier > écartée), puis la plus
+remplie ; `fusion.absorber` reporte les autres numéros, la page, le quartier
+et la fiche réservée. Seul refus : deux fiches liées à DEUX fournisseurs
+différents sur le site — ça ne se fusionne pas depuis ici.
 """
 from __future__ import annotations
 
@@ -52,8 +62,27 @@ def _telephone(fiche: dict) -> str:
     return (fiche.get("telephone_cle") or "").strip()
 
 
-def plan_de_fusion(fiches: list[dict]) -> tuple[list[tuple[dict, list[dict]]], list[list[dict]]]:
-    """(fusions sûres, groupes à trancher à la main)."""
+PRIORITE = {"inscrit": 0, "deja_client": 0, "revendique": 0, "reserve": 1,
+            "contacte": 1, "relance": 1, "a_contacter": 1, "valide": 2,
+            "a_trier": 3, "incomplet": 4, "rejete": 5, "doublon": 6, "refuse": 7}
+
+
+def _cible_du_lot(lot: list[dict]) -> dict:
+    """La fiche à garder : celle qui engage le plus, puis la mieux remplie."""
+    return min(lot, key=lambda f: (
+        PRIORITE.get(f.get("statut") or "", 9),
+        0 if _telephone(f) else 1,
+        -int(f.get("nb_publications") or 0),
+        -int(f.get("score") or 0),
+    ))
+
+
+def plan_de_fusion(fiches: list[dict], tout: bool = False
+                   ) -> tuple[list[tuple[dict, list[dict]]], list[list[dict]]]:
+    """(fusions à faire, groupes à trancher à la main).
+
+    `tout` : verse aussi les comptes à plusieurs numéros — voir l'en-tête.
+    """
     par_compte: dict[str, list[dict]] = {}
     for fiche in fiches:
         compte = fusion._identifiant_facebook(fiche)
@@ -66,8 +95,17 @@ def plan_de_fusion(fiches: list[dict]) -> tuple[list[tuple[dict, list[dict]]], l
             continue
         numeros = {_telephone(f) for f in lot if _telephone(f)}
         sans_numero = [f for f in lot if not _telephone(f)]
-        if len(numeros) > 1:
-            a_trancher.append(lot)
+        if len(numeros) > 1 or (tout and sans_numero and any(not _libre(f) for f in sans_numero)):
+            if not tout:
+                a_trancher.append(lot)
+                continue
+            # Deux fournisseurs DIFFÉRENTS sur le site : impossible d'ici.
+            distants = {f.get("fournisseur_id") for f in lot if f.get("fournisseur_id")}
+            if len(distants) > 1:
+                a_trancher.append(lot)
+                continue
+            cible = _cible_du_lot(lot)
+            sures.append((cible, [f for f in lot if f["id"] != cible["id"]]))
             continue
         if not sans_numero:
             continue
@@ -87,12 +125,13 @@ def plan_de_fusion(fiches: list[dict]) -> tuple[list[tuple[dict, list[dict]]], l
 
 def principal() -> None:
     ecrire = "--ecrire" in sys.argv
+    tout = "--tout" in sys.argv
     cx = sqlite3.connect(f"file:{BASE}?mode=ro", uri=True)
     cx.row_factory = sqlite3.Row
     fiches = [dict(l) for l in cx.execute("SELECT * FROM prospects").fetchall()]
     cx.close()
 
-    sures, a_trancher = plan_de_fusion(fiches)
+    sures, a_trancher = plan_de_fusion(fiches, tout=tout)
     print(f"{len(fiches)} fiches ; {sum(len(a) for _, a in sures)} à verser dans "
           f"{len(sures)} fiche(s) de compte ; {len(a_trancher)} groupe(s) à trancher à la main.")
     for cible, absorbees in sures:
@@ -123,14 +162,8 @@ def principal() -> None:
     faites = 0
     for cible, absorbees in sures:
         for f in absorbees:
-            fusion.absorber(f["id"], cible["id"])
+            fusion.absorber(f["id"], cible["id"])       # reporte numéros, page, réservation
             faites += 1
-        with base._verrou, base.connexion() as cx:
-            cx.execute(
-                "UPDATE prospects SET nb_publications = "
-                "(SELECT COUNT(*) FROM publications WHERE prospect_id = ?) WHERE id = ?",
-                (cible["id"], cible["id"]),
-            )
         fusion.evaluer(cible["id"], cfg)
         base.evenement(cible["id"], "statut",
                        f"{len(absorbees)} fiche(s) du même compte Facebook versée(s) ici "

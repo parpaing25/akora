@@ -295,6 +295,64 @@ def _ce_qui_manque(fiche: dict, publiables: list[dict]) -> list[str]:
     return tri.fiche_depot_complete(fiche)
 
 
+def a_de_quoi_etre_actif(publiables: list[dict], etat: dict, cfg: dict) -> bool:
+    """Ce dépôt a-t-il au moins UN produit qui sera actif sur le site ?
+
+    Réglage `actif_exige_un_produit` (vrai par défaut). Compte ce qui part
+    maintenant (`publiables` : référence + prix + photo) et ce que le site
+    porte déjà avec un prix et une image. Sans ça, l'annuaire montrait un
+    nom, un numéro, et rien à acheter — 22 fiches sur 24 le 02/09/2026.
+    """
+    if not cfg.get("actif_exige_un_produit", True):
+        return True
+    if publiables:
+        return True
+    muets = set(etat.get("sans_photo_en_ligne") or ())
+    prix = etat.get("prix_en_ligne") or {}
+    return any(slug not in muets and int(prix.get(slug) or 0) > 0
+               for slug in (etat.get("produits") or []))
+
+
+def _sql_aligner_statut(distant: str | None, proprietaire: str) -> str:
+    """Actif si au moins un produit actif, brouillon sinon — pour NOS fiches.
+
+    `owner_id = compte Akora` : une fiche revendiquée par son dépôt a changé
+    de propriétaire, elle n'est jamais touchée. `IS DISTINCT FROM` : on
+    n'écrit que ce qui change, `updated_at` n'est pas bousculé pour rien.
+    """
+    attendu = (
+        "(CASE WHEN EXISTS (SELECT 1 FROM public.produits p "
+        "  WHERE p.fournisseur_id = f.id "
+        "    AND p.statut = 'actif'::public.statut_produit) "
+        " THEN 'actif'::public.statut_fournisseur "
+        " ELSE 'brouillon'::public.statut_fournisseur END)"
+    )
+    cible = f"AND f.id = {akora.txt(distant)}::uuid " if distant else ""
+    return (
+        f"UPDATE public.fournisseurs f SET statut = {attendu}, updated_at = now() "
+        f"WHERE f.owner_id = {akora.txt(proprietaire)}::uuid {cible}"
+        "AND f.statut IN ('actif'::public.statut_fournisseur, "
+        "                 'brouillon'::public.statut_fournisseur) "
+        f"AND f.statut IS DISTINCT FROM {attendu};"
+    )
+
+
+def aligner_statut_sur_les_produits(distant: str | None = None) -> bool:
+    """Applique la règle « actif seulement avec un produit » sur le site.
+
+    `distant` vide = toutes les fiches portées par le compte Akora. Muette
+    quand `inscrire_en_actif` est éteint (tout reste en brouillon, la
+    publication est un clic humain) ou quand la règle est désactivée.
+    Renvoie vrai si elle a tourné.
+    """
+    cfg = charger()
+    if not (cfg.get("inscrire_en_actif") and cfg.get("actif_exige_un_produit", True)):
+        return False
+    akora.executer_systeme(_sql_aligner_statut(distant, compte_akora()))
+    akora.oublier_cache()
+    return True
+
+
 def inscrire(prospect_id: str, publier_aussi: bool = False,
              actualiser_prix: bool = False) -> dict:
     """Crée le fournisseur et ses produits sur Akora. Renvoie ce qui a été écrit.
@@ -402,7 +460,10 @@ def inscrire(prospect_id: str, publier_aussi: bool = False,
         pass
 
     photos = [p for p in fiche.get("photos", []) if p.get("garder") and p.get("url_o2")]
-    statut = "actif" if publier_aussi else "brouillon"
+    # Actif seulement s'il y a quelque chose à acheter : sinon la fiche existe
+    # en brouillon et s'active d'elle-même avec son premier produit complet.
+    statut = ("actif" if publier_aussi and a_de_quoi_etre_actif(publiables, etat, charger())
+              else "brouillon")
 
     if fiche.get("fournisseur_id"):
         distant = fiche["fournisseur_id"]
@@ -457,6 +518,9 @@ def inscrire(prospect_id: str, publier_aussi: bool = False,
     lier_fiche_reservee(fiche, distant, localite)
     if statut == "actif":
         publier_au_fil(fiche, distant, publiables)
+    # Le garde-fou se pose aussi à CE bout du chemin : une photo qui n'a pas
+    # pu partir laisse un dépôt actif sans produit actif — il redescend.
+    aligner_statut_sur_les_produits(distant)
 
     base.modifier_prospect(prospect_id, {"statut": "inscrit"})
     base.evenement(
@@ -564,6 +628,9 @@ def transferer_produits(prospect_id: str, actualiser_prix: bool = False) -> dict
             "  AND materiau_ref_id IS NOT NULL AND prix_unitaire > 0 "
             "  AND cardinality(photos) > 0;")
         publier_au_fil(fiche, distant, pretes)
+    # Le premier produit complet rend le dépôt visible ; sans produit, il
+    # reste (ou repasse) en brouillon.
+    aligner_statut_sur_les_produits(distant)
 
     akora.oublier_cache()
     base.evenement(

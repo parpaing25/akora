@@ -450,6 +450,23 @@ Chaque point porte l'incident qui l'a motivé : sans lui, la règle ne tient pas
   deviennent un menu latéral groupé (travail du jour, marché, le bot),
   l'en-tête montre l'état du bot en permanence, et le menu se replie en
   tiroir sous 960 px.
+- **Un dépôt n'est actif sur le site qu'avec un produit actif** (réglage
+  `actif_exige_un_produit`, vrai par défaut). Le 02/09 au soir, 24 fiches
+  actives portaient le nom du bot et 22 n'avaient rien à vendre : l'annuaire
+  montrait un nom, un numéro, et rien à acheter. La fiche est créée en
+  brouillon et passe active d'elle-même avec son premier produit complet
+  (référence + prix + photo), à l'inscription comme au transfert de produits ;
+  une fiche revendiquée par son dépôt n'est jamais touchée. Appliqué sur le
+  site le 02/09 : 22 fiches repassées en brouillon, 2 restent actives. Retour
+  arrière : `data/fournisseurs-vides-avant-brouillon-20260902.json` porte
+  leurs identifiants, et `inscrire_en_actif` + `actif_exige_un_produit` à
+  faux rendent l'ancien comportement.
+- **Un compte à plusieurs numéros est un dépôt** (une SIM par opérateur) :
+  `outils/regrouper_comptes.py --ecrire --tout` verse ces fiches aussi, et
+  `fusion.absorber` reporte désormais les autres numéros, la page, le quartier
+  et la fiche réservée sur la fiche gardée — rien ne se perd plus avec la
+  ligne supprimée. Appliqué le 02/09 : 10 fiches versées dans 7, plus aucun
+  compte partagé.
 
 ---
 
