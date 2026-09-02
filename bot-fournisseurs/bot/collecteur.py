@@ -41,8 +41,8 @@ from urllib.parse import parse_qsl, quote, urlencode, urlsplit, urlunsplit
 import requests
 from playwright.sync_api import sync_playwright
 
-from . import (analyse_llm, base, demandes, extraction, fraicheur, fusion,
-               referentiel, transport, verrou_navigateur)
+from . import (analyse_llm, base, demandes, devise_zone, extraction, fraicheur,
+               fusion, referentiel, transport, verrou_navigateur)
 from .config import DOSSIER_PROSPECTS, PROFIL_NAVIGATEUR, charger
 
 # Mots qui font d'une publication un candidat. Large exprès : le tri fin se
@@ -952,7 +952,8 @@ class Collecteur:
                      # du bot, et `_ecartes` annonçait donc, à la deuxième
                      # collecte, les rejets de la première en prime.
                      "rejet_question": 0, "rejet_perimetre": 0,
-                     "rejet_chrome": 0, "rejet_annee": 0, "rejet_age": 0}
+                     "rejet_chrome": 0, "rejet_annee": 0, "rejet_age": 0,
+                     "rejet_devise": 0}
         # Un verrou pour l'écriture des prospects : plusieurs fils d'atelier
         # peuvent tomber sur le MÊME dépôt (il poste dans plusieurs groupes),
         # et deux créations simultanées feraient deux fiches au lieu d'une.
@@ -1071,7 +1072,7 @@ class Collecteur:
                           "parcourues": 0, "en_file": 0, "demandes": 0,
                           "rejet_question": 0, "rejet_perimetre": 0,
                           "rejet_chrome": 0, "rejet_annee": 0, "rejet_age": 0,
-                          "prix_commentaires": 0})
+                          "rejet_devise": 0, "prix_commentaires": 0})
         depart = base.maintenant()
         self.atelier = Atelier(self._finir_publication, int(cfg.get("travailleurs", 3)))
         par_genre = {}
@@ -1451,6 +1452,22 @@ class Collecteur:
                     continue
                 if est_hors_perimetre(post["texte"]):
                     self.etat["rejet_perimetre"] = self.etat.get("rejet_perimetre", 0) + 1
+                    continue
+
+                # Hors zone monétaire : les annonces en francs CFA et les
+                # villes d'Afrique continentale. Le 01/09, la moitié de la
+                # table `vehicules` était une annonce FCFA, et un appartement
+                # de Yaoundé était apparié en bordure de trottoir. À part de
+                # `semble_vendeur` EXPRÈS : lui ne demande pas de prix, et
+                # c'est voulu (84 % des publications n'en portent aucun).
+                motif_zone = devise_zone.hors_zone_monetaire(post["texte"])
+                if motif_zone:
+                    self.etat["rejet_devise"] = self.etat.get("rejet_devise", 0) + 1
+                    if self.etat["rejet_devise"] <= 3:
+                        base.logguer(
+                            f"Écartée — {motif_zone} : {post['texte'][:60].strip()}…",
+                            "info",
+                        )
                     continue
 
                 # Un acheteur qui cherche part dans les demandes, pas a la
@@ -1841,6 +1858,7 @@ def _ecartes(etat: dict) -> str:
         # jours » ne disent pas la même chose du fil qu'on vient de lire.
         (etat.get("rejet_annee", 0), "d'une année révolue"),
         (etat.get("rejet_age", 0), "trop ancienne(s)"),
+        (etat.get("rejet_devise", 0), "en francs CFA / hors zone"),
     ]
     ecartes = [f"{n} {mot}" for n, mot in morceaux if n]
     phrase = ("Écarté : " + ", ".join(ecartes) + ". ") if ecartes else ""

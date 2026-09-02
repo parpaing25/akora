@@ -376,6 +376,32 @@ class Planificateur:
         except Exception as e:
             base.logguer(f"Retour du site indisponible : {e}", "avert")
 
+        config = charger()
+
+        # L'observatoire public se nourrit tout seul, une fois par jour —
+        # avec ses TROIS gardes (prix orphelin, unité, vraisemblance). Ce qui
+        # échoue à la vraisemblance part « à confirmer », jamais en ligne.
+        # La clé est LUE ici même : un drapeau annoncé qui n'est pas lu n'est
+        # pas un garde-fou (pousser_les_fiches, 24/08).
+        if config.get("pousser_observatoire", True):
+            try:
+                from . import observatoire_pousse
+                observatoire_pousse.lancer(ecrire=True)
+            except Exception as e:                           # noqa: BLE001
+                base.logguer(f"Observatoire non poussé : {str(e)[:120]}", "avert")
+
+        # Le pré-tri des photos par FAMILLE (jamais plus fin : un madrier
+        # 7×15 et un 7×17 sont indistinguables sur photo). Sans clé API,
+        # c'est une option qui se tait, pas une panne.
+        if config.get("classer_photos", True):
+            try:
+                from . import photos_familles
+                photos_familles.lancer(nombre=40, ecrire=True)
+            except photos_familles.VisionIndisponible as e:
+                base.logguer(f"Pré-tri photos non fait : {e}", "info")
+            except Exception as e:                           # noqa: BLE001
+                base.logguer(f"Pré-tri photos en échec : {str(e)[:120]}", "avert")
+
     def _declencher(self, config: dict, creneau: str, heures: list[str]) -> None:
         deja = trouves_aujourdhui()
         objectif = int(config.get("objectif_par_jour") or 0)

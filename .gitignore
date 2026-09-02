@@ -12,3 +12,5 @@ coverage
 supabase/.temp
 supabase/.branches
 stats.html
+# artefact de build (prebuild le regenere a chaque build)
+public/sitemap.xml

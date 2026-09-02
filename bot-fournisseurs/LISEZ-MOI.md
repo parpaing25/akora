@@ -308,6 +308,40 @@ ce que l'annuaire Akora porte déjà, et les huit familles. Une case rouge =
 aucun fournisseur en ligne et aucun prospect à appeler ; le clic ajoute la
 recherche Facebook correspondante aux sources.
 
+### L'observatoire se publie tout seul — derrière trois gardes (02/09)
+
+Une fois par jour (réglage `pousser_observatoire`), les prix collectés
+partent dans `public.releves_prix`, la table qui nourrit la page `/prix` du
+site — **anonymisés par construction** : une empreinte, jamais un nom ni un
+numéro. Trois gardes, chacune née d'un incident réel :
+
+1. **prix orphelin** — le montant doit figurer dans le libellé de SON offre
+   (une planche à 28 000 Ar au lieu de 4 700, pairage cassé) ;
+2. **unité** — une unité contraire à la référence ne se compare pas ;
+3. **vraisemblance** — quand l'observatoire connaît déjà la médiane d'un
+   matériau sur au moins deux dépôts, un prix qui s'en écarte d'un facteur
+   > 2,5 part « **à confirmer** », jamais en ligne. C'est la garde qui
+   aurait arrêté la planche appariée en *bordure de trottoir à
+   120 000 Ar/ml* (01/09) — un mauvais appariement passe les deux
+   premières gardes sans broncher.
+
+### Ce qui n'entre plus, et ce qui entre enfin (02/09)
+
+- **Les annonces en francs CFA** et celles situées à Yaoundé, Douala,
+  Abidjan… sont rejetées **à la porte** (`bot/devise_zone.py`, compteur
+  `rejet_devise` au bilan). Avant : une annonce FCFA était la moitié de la
+  table des véhicules, et un appartement camerounais s'était fait apparier
+  en bordure de trottoir. Le franc malgache (fmg) reste accepté.
+- **Les transporteurs** : la porte existait (`semble_vendeur` accepte une
+  annonce de camion) mais AUCUNE des 133 sources ne cherchait de transport.
+  Sept recherches dédiées sont en base (« location camion benne
+  Antananarivo », « kamiao manofa », « fiara manofa entana »…).
+- **Les photos se pré-trient par FAMILLE** (`bot/photos_familles.py`,
+  réglage `classer_photos`, clé API facultative) : la bande de vignettes du
+  panneau montre d'abord celles de la famille du produit. Jamais plus fin
+  que la famille — un madrier 7×15 et un 7×17 sont indistinguables sur
+  photo, le rattachement reste un clic humain.
+
 ---
 
 ## Collectes automatiques

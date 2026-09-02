@@ -818,6 +818,15 @@ function bandePhotos(offre, prospect) {
 
   const memePost = toutes.filter((f) => f.publication_id === offre.publication_id);
   const autres = toutes.filter((f) => f.publication_id !== offre.publication_id);
+
+  // Deuxieme cle de tri : la FAMILLE vue par le pre-tri (photos_familles.py).
+  // Celles de la famille du produit d'abord, les non-classees au milieu, les
+  // autres familles en queue. Le pre-tri propose, le clic humain dispose —
+  // et tant que rien n'est classe (f.famille absent), l'ordre ne bouge pas.
+  const rangFamille = (f) =>
+    !f.famille || !offre.famille_slug ? 1 : (f.famille === offre.famille_slug ? 0 : 2);
+  memePost.sort((a, b) => rangFamille(a) - rangFamille(b));
+  autres.sort((a, b) => rangFamille(a) - rangFamille(b));
   const nomDe = (photoId) => {
     const autre = prospect.offres.find(
       (x) => String(x.id) !== String(offre.id)

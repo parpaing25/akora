@@ -176,6 +176,16 @@ DEFAUTS = {
     # ── Réservation de la fiche sur le site.
     "pousser_les_fiches": False,     # tant que la migration n'est pas appliquée
     "pause_entre_envois_photos": 3.0,
+
+    # ── Observatoire des prix (public.releves_prix, une fois par jour).
+    # Trois gardes en amont : prix orphelin, unité, vraisemblance (un prix à
+    # plus de ×2,5 de la médiane part « à confirmer », jamais en ligne).
+    "pousser_observatoire": True,
+
+    # ── Pré-tri des photos par FAMILLE via l'API Claude (facultatif : sans
+    # clé dans ~/.akora-secrets/anthropic_key.txt, il se tait). Jamais plus
+    # fin que la famille — le rattachement photo→produit reste un clic.
+    "classer_photos": True,
 }
 
 
