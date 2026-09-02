@@ -165,6 +165,28 @@ def test_un_calibre_inconnu_remonte_comme_reference_a_creer():
     assert lues[0]["unite"] == "m3"
 
 
+def test_un_lot_se_ramene_a_l_unite():
+    """« 560 000 Ar 8m3 livré » = 70 000 Ar le m³ — c'est de l'arithmétique.
+    Le 03/09/2026 cette ligne avait fait naître « Gravillon et cailloux
+    2 x 3 cm, 8 m » au catalogue : un gravillon n'a pas de section."""
+    lues = extraction.offres("2/ Gravillon : 560 000 Ar 8m3 livré", CFG)
+    assert lues[0]["prix"] == 70_000 and lues[0]["unite"] == "m3"
+    assert lues[0]["type_slug"] == "gravillon" and lues[0]["materiau_slug"] is None
+    assert lues[0]["cote_lue"] is None
+    lues = extraction.offres("Fasika 1 camion 8m3 : 320 000 Ar", CFG)
+    assert lues[0]["prix"] == 40_000 and lues[0]["unite"] == "m3"
+    # Déjà écrit par unité : rien ne se divise.
+    lues = extraction.offres("Gravillon 5/15 camion 8m3 : 75 000 Ar/m³", CFG)
+    assert lues[0]["prix"] == 75_000 and lues[0]["unite"] == "m3"
+    assert extraction.quantite_vendue("Béton 350 : 450 000 Ar/m3") is None
+    assert extraction.quantite_vendue("1 camion 8m3 dia 6m3 : 320 000 Ar") is None   # deux lots
+
+
+def test_le_gravillon_n_a_pas_de_section():
+    assert referentiel.reference_a_creer("gravillon", "2 x 3 cm, 8 m")["possible"] is False
+    assert referentiel.reference_a_creer("madrier", "15cmx7cmx4m")["possible"] in (True, False)
+
+
 def test_l_unite_apres_le_prix_prime():
     assert extraction.unite_apres_prix("Épaisseur 0,30 → 17.500 Ar/m") == "ml"
     assert extraction.unite_apres_prix("Moellon lehibe 700ar/pcs") == "piece"

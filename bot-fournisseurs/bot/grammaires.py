@@ -134,6 +134,13 @@ LONGUEURS_TOLE = (2, 2.5, 3, 3.5, 4, 5, 6)
 
 ACIER_KG_PAR_M_PAR_MM2 = 0.006165        # masse d'une barre = 0,006165 × d² kg/m
 
+# Les seuls types qui se décrivent par une SECTION (deux cotes + une
+# longueur) : le bois scié. 🔴 Sans cette liste, la première tournée du
+# 03/09/2026 a créé « Gravillon et cailloux 2 x 3 cm, 8 m » à partir d'une
+# ligne « gravillon 2/3 … 8 m³ » : la lecture de section marchait, la densité
+# du gravillon était constante, rien ne disait que le type n'a pas de section.
+TYPES_A_SECTION = frozenset({"madrier", "planche", "chevron", "latte", "bois-carre", "volige"})
+
 
 def densite_du_type(par_type: list[dict]) -> float | None:
     """La masse volumique médiane des références DÉJÀ en place pour ce type.

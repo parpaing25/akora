@@ -932,6 +932,14 @@ def reference_a_creer(type_slug: str, ligne: str,
     fiche_type = charger()["types"].get(type_slug)
     if not fiche_type:
         return {"possible": False, "motif": "type inconnu du catalogue"}
+    # Le garde-fou vit ICI aussi, pas seulement chez l'appelant : le 03/09/2026
+    # « 2/ Gravillon : 560 000 Ar 8m3 livré » est devenu « Gravillon et
+    # cailloux 2 x 3 cm, 8 m » au catalogue — la section se lisait, la densité
+    # du gravillon était constante, et rien ne disait qu'un gravillon n'a pas
+    # de section.
+    if type_slug not in grammaires.TYPES_A_SECTION:
+        return {"possible": False,
+                "motif": "ce type ne se décrit pas par une section (bois scié seulement)"}
 
     section = mod_cotes.section(ligne)
     if not section:

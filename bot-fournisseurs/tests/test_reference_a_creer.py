@@ -26,6 +26,7 @@ CATALOGUE = {
     "types": {
         "madrier": {"nom": "Madrier"},
         "bois-rond": {"nom": "Bois rond et bambou"},
+        "chevron": {"nom": "Chevron"},
         "tole": {"nom": "Tôle"},
     },
     "materiaux": {"madrier-70x150-4m": {"slug": "madrier-70x150-4m"}},
@@ -39,6 +40,11 @@ CATALOGUE = {
         "bois-rond": [
             {"slug": "bois-rond-8-10-4m", "volume": 0.028, "poids": 20.0},
             {"slug": "bambou-8-10-5m", "volume": 0.030, "poids": 12.0},
+        ],
+        # Un bois scié dont les références ne s'accordent pas : 651 et 400.
+        "chevron": [
+            {"slug": "chevron-60x80-4m", "volume": 0.0192, "poids": 12.5},
+            {"slug": "chevron-bidon", "volume": 0.030, "poids": 12.0},
         ],
         "tole": [{"slug": "tole-030-3m", "volume": 0.005, "poids": 2.0}],
     },
@@ -108,9 +114,18 @@ def test_la_longueur_de_l_en_tete_peut_completer(catalogue):
 
 
 def test_un_type_sans_densite_constante_ne_cree_rien(catalogue):
-    projet = referentiel.reference_a_creer("bois-rond", "5*5*4m")
+    projet = referentiel.reference_a_creer("chevron", "5*5*4m")
     assert projet["possible"] is False
     assert "masse volumique" in projet["motif"]
+
+
+def test_un_type_sans_section_ne_cree_rien(catalogue):
+    """🔴 03/09/2026 : « 2/ Gravillon : 560 000 Ar 8m3 livré » était devenu
+    « Gravillon et cailloux 2 x 3 cm, 8 m ». Le bois rond non plus n'a pas
+    de section — il se décrit par un diamètre."""
+    projet = referentiel.reference_a_creer("bois-rond", "5*5*4m")
+    assert projet["possible"] is False
+    assert "section" in projet["motif"]
 
 
 def test_une_ligne_sans_cote_ne_cree_rien(catalogue):

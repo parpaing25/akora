@@ -395,6 +395,26 @@ def unite_apres_prix(ligne: str) -> str | None:
     return UNITES_APRES_PRIX.get(trouve.group(1)) if trouve else None
 
 
+# « 560 000 Ar 8m3 livré », « Fasika 1 camion 8m3 : 320 000 Ar », « Sable 3m3 =
+# 90 000 Ar » : le montant est celui d'un LOT de N unités, pas de l'unité.
+# Ramener au prix unitaire est de l'arithmétique, pas une supposition — à
+# condition que le prix ne soit pas déjà écrit « par unité » (« 75 000 Ar/m³ »).
+MOTIF_QUANTITE_VENDUE = re.compile(
+    r"(?<![\d.,/])(\d{1,2})\s*(m3|m2|ml|tonnes?|t|sacs?)(?![a-z0-9])")
+UNITES_QUANTITE = {"m3": "m3", "m2": "m2", "ml": "ml", "tonne": "tonne", "tonnes": "tonne",
+                   "t": "tonne", "sac": "sac", "sacs": "sac"}
+QUANTITE_MAX_LOT = 40
+
+
+def quantite_vendue(ligne: str) -> tuple[int, str] | None:
+    """(N, unité) quand la ligne vend un lot de N unités — « 8m3 », « 3 sacs »."""
+    reduit = referentiel.sans_accents(ligne or "").replace("²", "2").replace("³", "3")
+    lots = [(int(m.group(1)), UNITES_QUANTITE[m.group(2)])
+            for m in MOTIF_QUANTITE_VENDUE.finditer(_sans_telephones(reduit))]
+    lots = [(n, u) for n, u in lots if 2 <= n <= QUANTITE_MAX_LOT]
+    return lots[0] if len(lots) == 1 else None
+
+
 def raison_hors_offre(ligne: str, a_un_prix: bool = False,
                       marques: tuple[str, ...] = ()) -> str | None:
     """Pourquoi cette ligne n'est pas une offre — None si c'en est une.
@@ -505,8 +525,8 @@ def _cote_lue(appariement: dict, ligne: str) -> dict | None:
     cote = referentiel.grammaires.lire_cote(appariement["type_slug"], ligne)
     if cote:
         return cote
-    # Le bois scié : une section complète que le catalogue ignore.
-    if (appariement["type_slug"] in referentiel.charger()["par_type"]
+    # Le bois scié SEULEMENT : une section complète que le catalogue ignore.
+    if (appariement["type_slug"] in referentiel.grammaires.TYPES_A_SECTION
             and referentiel.reference_a_creer(appariement["type_slug"], ligne).get("possible")):
         return {"genre": "section", "valeur": ligne}
     return None
@@ -534,7 +554,9 @@ def _herite_de_l_entete(entete: dict, ligne: str) -> dict:
         if exact:
             return referentiel.fiche_du_format(exact, 95)
         return {**_type_seul(fiche), "cote_lue": cote}
-    # Le bois scié : une section complète (deux cotes et une longueur).
+    # Le bois scié SEULEMENT : une section complète (deux cotes et une longueur).
+    if type_slug not in referentiel.grammaires.TYPES_A_SECTION:
+        return _type_seul(fiche)
     propose = referentiel.propose_par_dimensions(type_slug, texte_cotes)
     if propose:
         materiau = referentiel.charger()["materiaux"].get(propose["slug"])
@@ -663,14 +685,19 @@ def offres(texte: str, cfg: dict) -> list[dict]:
         libelle = f"{entete['texte'][:70]} › {ligne}" if herite else ligne
         if herite and entete.get("cotes"):
             libelle = f"{entete['texte'][:50]} {entete['cotes'][:30]} › {ligne}"
+        # L'unité écrite juste après le montant prime : « 17.500 Ar/m » est au
+        # mètre même si la ligne parle d'une feuille plus loin. Sinon, un LOT
+        # (« 560 000 Ar 8m3 livré ») se ramène à l'unité : 70 000 Ar/m³.
+        unite = unite_apres_prix(ligne)
+        if unite is None and montant is not None:
+            lot = quantite_vendue(ligne)
+            if lot:
+                montant, unite = round(montant / lot[0]), lot[1]
         resultat.append({
             "libelle_brut": libelle[:180],
             "prix": montant,
             "devise_source": devise,
-            # L'unité écrite juste après le montant prime : « 17.500 Ar/m » est
-            # au mètre même si la ligne parle d'une feuille plus loin.
-            "unite": (unite_apres_prix(ligne) or referentiel.unite_dans(ligne)
-                      or appariement.get("unite")),
+            "unite": unite or referentiel.unite_dans(ligne) or appariement.get("unite"),
             "quantite_min": quantite_min_dans(ligne),
             **{c: appariement[c] for c in (
                 "materiau_slug", "materiau_nom", "type_slug", "type_nom",
