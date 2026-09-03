@@ -115,6 +115,23 @@ class Planificateur:
         if self.est_occupe():
             return                  # on retentera dans 30 s
 
+        # 🔴 RÈGLE POSÉE PAR ANDRY LE 03/09/2026 : pas de tournée automatique
+        #   tant qu'une session Claude tourne sur ce PC — c'est Chromium qui
+        #   mange la RAM (événement Windows 2004 à 11 h 10, navigateur perdu à
+        #   852 Mo libres à 14 h 47). La marque n'est PAS écrite : le créneau
+        #   reste dû, et `creneau_du` le fait partir de lui-même quand la
+        #   session s'éteint. Dit une fois par créneau, pas toutes les 30 s.
+        from . import session_claude
+        session = session_claude.active()
+        if session:
+            if getattr(self, "_suspendu_pour", None) != marque:
+                self._suspendu_pour = marque
+                base.logguer(
+                    f"Tournée de {heure} suspendue — {session}. Elle partira "
+                    "d'elle-même quand la session s'éteindra (règle du 03/09).",
+                    "info")
+            return
+
         base.ecrire_etat(CLE_DERNIER, marque)
         self._retour_du_site()
         # Les automatisations tournent APRÈS la collecte, une fois par jour :

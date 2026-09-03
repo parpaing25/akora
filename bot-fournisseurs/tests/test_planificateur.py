@@ -19,10 +19,22 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from bot import base  # noqa: E402
+import pytest
+
+from bot import base, session_claude  # noqa: E402
 from bot import planificateur as plan  # noqa: E402
 
 HEURES = ["10:00", "17:00"]
+
+
+@pytest.fixture(autouse=True)
+def aucune_session_claude(monkeypatch):
+    """Ces tests tournent… depuis une session Claude. Sans ce détour, le garde
+    du 03/09 (« pas de tournée tant qu'une session tourne ») verrait les
+    marqueurs RÉELS de ~/.claude/sessions-actives/ et suspendrait chaque
+    collecte simulée — sept tests tombés le 03/09/2026, pour cette raison
+    exacte. Le garde a son propre test, plus bas."""
+    monkeypatch.setattr(session_claude, "active", lambda *_a, **_k: None)
 
 
 def _a(h, m=0, jour=2):
@@ -114,6 +126,29 @@ def test_occupe_on_attend_sans_consommer_le_creneau(monkeypatch):
     p.est_occupe = lambda: False
     p._verifier(_a(10, 6))
     assert len(appels) == 1
+
+
+def test_une_session_claude_suspend_la_tournee_sans_consommer_le_creneau(monkeypatch):
+    """🔴 Règle d'Andry du 03/09/2026 : tant qu'une session Claude tourne sur
+    ce PC, aucune tournée automatique — c'est Chromium qui mange la RAM. Le
+    créneau n'est pas consommé : il part de lui-même quand la session
+    s'éteint, et la suspension n'est dite qu'une fois."""
+    _config(monkeypatch)
+    appels = []
+    p = _planificateur(appels)
+    monkeypatch.setattr(session_claude, "active",
+                        lambda *_a, **_k: "1 session(s) Claude active(s) sur ce PC")
+    p._verifier(_a(10, 5))
+    p._verifier(_a(10, 6))
+    assert appels == []
+    assert base.lire_etat(plan.CLE_DERNIER) == ""
+    dites = [l for l in base.lire_journal(20) if "suspendue" in l["message"]]
+    assert len(dites) == 1, "la suspension se dit une fois par créneau, pas toutes les 30 s"
+
+    monkeypatch.setattr(session_claude, "active", lambda *_a, **_k: None)   # la session s'éteint
+    p._verifier(_a(10, 7))
+    assert [a[0] for a in appels] == ["collecte"]
+    assert base.lire_etat(plan.CLE_DERNIER) == "2026-09-02 10:00"
 
 
 def test_les_taches_du_jour_passent_apres_la_collecte(monkeypatch):
