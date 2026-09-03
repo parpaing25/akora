@@ -31,7 +31,13 @@ export function Coquille() {
       <EnTete />
       <BandeauVerification />
       <main id="contenu" tabIndex={-1} className="flex-1">
-        <Outlet />
+        {/* ⭐ La clé change avec l'adresse : React remonte le contenu, et
+            `.page-entree` le fait glisser de 8 px en 220 ms. Assez pour
+            sentir l'écran changer, trop peu pour attendre. Éteint sous
+            prefers-reduced-motion (index.css). */}
+        <div key={pathname} className="page-entree">
+          <Outlet />
+        </div>
       </main>
       <PiedDePage />
       <BarreMobile />

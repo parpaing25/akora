@@ -141,8 +141,9 @@ export function EnTete() {
             <ShoppingCart className="size-5" aria-hidden="true" />
             {articles > 0 ? (
               <span
+                key={articles}
                 aria-hidden="true"
-                className="nombres absolute right-1 top-1 min-w-[1.1rem] rounded-full bg-primary px-1 text-center text-[0.65rem] font-bold leading-[1.1rem] text-primary-foreground"
+                className="pop-compteur nombres absolute right-1 top-1 min-w-[1.1rem] rounded-full bg-primary px-1 text-center text-[0.65rem] font-bold leading-[1.1rem] text-primary-foreground"
               >
                 {articles}
               </span>

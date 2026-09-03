@@ -476,7 +476,7 @@ export default function ProduitFiche() {
       ) : null}
 
       {p && ligneBase ? (
-        <div className="fixed inset-x-0 bottom-[var(--barre-mobile)] z-30 border-t border-border bg-card p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:hidden">
+        <div className="monte-du-bas fixed inset-x-0 bottom-[var(--barre-mobile)] z-30 border-t border-border bg-card p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:hidden">
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1">
               <Bouton

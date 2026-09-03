@@ -44,7 +44,7 @@ export function BarreMobile() {
               className={({ isActive }) =>
                 cn(
                   "flex min-h-[3.75rem] flex-col items-center justify-center gap-0.5 text-[0.75rem] font-medium",
-                  isActive ? "text-primary" : "text-muted-foreground",
+                  isActive ? "onglet-actif text-primary" : "text-muted-foreground",
                 )
               }
             >
@@ -52,7 +52,11 @@ export function BarreMobile() {
                 <Icone className="size-5" aria-hidden="true" />
                 {to === "/panier" && articles > 0 ? (
                   <span
-                    className="nombres absolute -right-2.5 -top-1.5 min-w-[1.1rem] rounded-full bg-primary px-1 text-center text-[0.65rem] font-bold leading-[1.1rem] text-primary-foreground"
+                    /* ⭐ `key` = le nombre : à chaque changement React remonte la
+                       pastille et l'animation rejoue. Sans retour visible, on
+                       ajoutait deux fois. */
+                    key={articles}
+                    className="pop-compteur nombres absolute -right-2.5 -top-1.5 min-w-[1.1rem] rounded-full bg-primary px-1 text-center text-[0.65rem] font-bold leading-[1.1rem] text-primary-foreground"
                     aria-hidden="true"
                   >
                     {articles}

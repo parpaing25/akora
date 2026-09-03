@@ -354,11 +354,57 @@
   @keyframes akora-assemble { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: none; } }
   .assemble { animation: akora-assemble 460ms var(--courbe) both; }
 
+  /* ── Les mouvements de la phase 2 (03/09/2026) ─────────────────────────
+     Quatre gestes, tous calculés sur la courbe et les deux durées du produit,
+     tous éteints sous prefers-reduced-motion. Aucun n'est décoratif :
+     · la page qui arrive glisse de 8 px en 220 ms — assez pour qu'on sente
+       le changement d'écran, trop peu pour attendre ;
+     · le compteur du panier « pop » quand il change, sinon on ajoute deux
+       fois — c'est le retour le plus demandé sur un téléphone ;
+     · la barre d'action de la fiche produit monte du bas, une fois, pour
+       dire qu'elle est là ;
+     · l'onglet actif de la barre basse se souligne en s'étirant. */
+  @keyframes akora-page {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: none; }
+  }
+  .page-entree { animation: akora-page var(--duree-normale) var(--courbe) both; }
+
+  @keyframes akora-pop-compteur {
+    0%   { transform: scale(1); }
+    40%  { transform: scale(1.35); }
+    100% { transform: scale(1); }
+  }
+  .pop-compteur { animation: akora-pop-compteur 420ms var(--courbe) both; }
+
+  @keyframes akora-monte {
+    from { transform: translateY(100%); }
+    to   { transform: none; }
+  }
+  .monte-du-bas { animation: akora-monte 320ms var(--courbe) both; }
+
+  .onglet-actif { position: relative; }
+  .onglet-actif::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 1.5rem;
+    height: 3px;
+    border-radius: 999px;
+    background: hsl(var(--primary));
+    transform: translateX(-50%) scaleX(1);
+    transform-origin: center;
+    animation: akora-etire var(--duree-normale) var(--courbe) both;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .pulse-point, .ligne-trace, .camion-ligne, .trace, .camion-trajet, .prix-pop,
-    .part-barre, .anneau-progres, .camion-tangue, .roue-tourne, .bondir, .assemble {
+    .part-barre, .anneau-progres, .camion-tangue, .roue-tourne, .bondir, .assemble,
+    .page-entree, .pop-compteur, .monte-du-bas, .onglet-actif::after {
       animation: none;
     }
+    .page-entree, .monte-du-bas { opacity: 1; transform: none; }
     .ligne-trace, .part-barre { transform: none; }
     .camion-ligne { left: calc(100% - 28px); }
     .trace { stroke-dashoffset: 0; }
