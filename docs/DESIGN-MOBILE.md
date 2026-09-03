@@ -50,13 +50,15 @@ sur seize pages du site, à 390 × 844 px (Playwright, `scratchpad/akora/mesure3
 
 ---
 
-## Ce que la mesure a dit (avant → après la première passe, 03/09/2026)
+## Ce que la mesure a dit (avant → après, 03/09/2026, seize pages à 390 px)
 
 | Mesure à 390 px | Avant | Après |
 |---|---|---|
-| Cibles sous 44 px sur l'accueil | 19 | 5 (dont le lien d'évitement, 1 × 1 px) |
-| Cibles sous 44 px sur /prix | 36 | 2 |
-| Cibles sous 44 px sur /fournisseurs | 14 | 3 |
+| Cibles sous 44 px sur l'accueil | 19 | 1 (le lien d'évitement, 1 × 1 px, invisible par construction) |
+| Cibles sous 44 px sur /prix | 36 | 1 (idem) |
+| Cibles sous 44 px sur /fournisseurs | 14 | 2 |
+| Cibles sous 44 px, seize pages | — | 32, dont 16 liens d'évitement et des liens en ligne dans du texte |
+| Erreurs JavaScript, seize pages | 0 | 0 |
 | Textes sous 12 px (16 pages) | 71 occurrences | 0 |
 | Pages qui débordent horizontalement | /prix (tableau de 640 px) | 0 |
 | Pages sans `h1` | /recherche | 0 |
