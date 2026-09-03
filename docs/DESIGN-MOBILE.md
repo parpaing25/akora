@@ -89,13 +89,19 @@ Ce qui a été fait, et pourquoi c'est calculé et non choisi :
 | Tuile (4 par rangée) | 81 px | (358 − 3 × 8) / 4 |
 | Carte (2 par rangée) | 175 px | (358 − 8) / 2 |
 | En-tête | 56 px | `min-h-[3.5rem]` |
-| Barre basse | 60 px + zone sûre | `--barre-mobile` |
+| Barre basse | 60 px + zone sûre, jusqu'à 1023 px | `--barre-mobile` |
+| Rail gauche (navigation, devenir fournisseur) | 260 px dès 1024, 300 px dès 1536 | `Rails.tsx`, collant |
+| Rail droit (panier, point de livraison, badge) | 340 px dès 1280, 380 px dès 1536 | à 1024 il ne resterait que 372 px au contenu |
+| Liens de section dans l'en-tête | dès 1024 ; les secondaires dès 1280 | l'en-tête débordait de 23 à 178 px entre 768 et 1279 |
 | Cible minimale | 44 × 44 px | `.cible-44`, règle 44 px sous 768 px |
 | Texte courant / légende / minimum | 15 / 13 / 12 px | échelle AKORA-DESIGN §2 |
 | Titre de page (mobile) | 26 px | `text-[1.625rem]` de l'accueil |
 
 ## Fait le 03/09, après le brief
 
+- **Les deux colonnes latérales suivent le visiteur** sur toutes les pages (demande d'Andry) :
+  elles vivent dans la coquille, collantes au défilement, et l'accueil ne garde que le fil.
+  Mesuré de 390 à 1920 px : zéro débordement, une navigation à chaque largeur.
 - **Inscription** : vitrine animée en trois cartes (camion, badge, anneau du séquestre),
   sans un seul prix d'exemple (règle A2.8) ; le camion roule dans le panneau latérite.
 - **Espace pro** : cockpit du dépôt (`/pro` — commandes à traiter, vendu sur 30 jours,
