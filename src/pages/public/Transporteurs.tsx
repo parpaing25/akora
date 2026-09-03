@@ -260,7 +260,7 @@ function Specs({ vehicule: v, inline = false }: { vehicule: VehiculeTransporteur
   return (
     <span className={cn("flex flex-wrap gap-1.5", inline ? "" : "mt-1.5")}>
       {puces.map((puce) => (
-        <span key={puce} className="nombres rounded-full bg-muted px-2 py-0.5 text-[0.72rem] font-semibold text-muted-foreground">
+        <span key={puce} className="nombres rounded-full bg-muted px-2 py-0.5 text-[0.75rem] font-semibold text-muted-foreground">
           {puce}
         </span>
       ))}

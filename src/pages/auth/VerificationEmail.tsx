@@ -183,7 +183,7 @@ export default function VerificationEmail() {
               Mauvaise adresse ? Se déconnecter et recommencer
             </button>
 
-            <p className="mt-4 flex items-center justify-center gap-2 border-t border-border pt-4 text-[0.72rem] text-muted-foreground">
+            <p className="mt-4 flex items-center justify-center gap-2 border-t border-border pt-4 text-[0.75rem] text-muted-foreground">
               <ShieldCheck size={14} className="shrink-0" aria-hidden="true" />
               Regardez dans les courriers indésirables. Personne d'Akora ne vous demandera ce code.
             </p>

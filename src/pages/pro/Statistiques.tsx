@@ -180,7 +180,7 @@ export default function Statistiques() {
                 {l.ecart} %
               </span>
               {!l.fiable ? (
-                <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[0.72rem] text-muted-foreground">
+                <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[0.75rem] text-muted-foreground">
                   indicatif · {l.nbDepots} dépôt{l.nbDepots > 1 ? "s" : ""}
                 </span>
               ) : null}

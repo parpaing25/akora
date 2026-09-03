@@ -214,7 +214,7 @@ export default function Publier() {
             />
           )}
         </Champ>
-        <p className="nombres -mt-3 text-right text-[0.72rem] text-muted-foreground">
+        <p className="nombres -mt-3 text-right text-[0.75rem] text-muted-foreground">
           {texte.length} / 1200
         </p>
 
@@ -268,7 +268,7 @@ export default function Publier() {
           <p className="mb-1 text-legende font-semibold">
             Produits mis en avant (quatre au maximum)
           </p>
-          <p className="mb-2 text-[0.72rem] text-muted-foreground">
+          <p className="mb-2 text-[0.75rem] text-muted-foreground">
             Le premier produit porte le prix rendu chantier affiché sur la carte.
           </p>
           {produitsActifs.length === 0 ? (

@@ -96,7 +96,7 @@ export function BandeauMarque({
         {action}
       </div>
       {surtitre ? (
-        <p className="nombres mb-1.5 text-[0.72rem] tracking-[0.1em] text-primary-foreground/75">
+        <p className="nombres mb-1.5 text-[0.75rem] tracking-[0.1em] text-primary-foreground/75">
           {surtitre}
         </p>
       ) : null}

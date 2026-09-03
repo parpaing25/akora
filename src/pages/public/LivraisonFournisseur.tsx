@@ -257,7 +257,7 @@ export default function LivraisonFournisseur() {
         <aside className="space-y-4 lg:sticky lg:top-20 lg:self-start">
           <div className="carte overflow-hidden p-0">
             <div className="bg-foreground p-4 text-background">
-              <p className="nombres text-[0.66rem] uppercase tracking-wider text-background/60">
+              <p className="nombres text-[0.75rem] uppercase tracking-wider text-background/60">
                 Prix rendu chantier
               </p>
               <p className="nombres mt-0.5 text-[1.75rem] font-bold leading-none">

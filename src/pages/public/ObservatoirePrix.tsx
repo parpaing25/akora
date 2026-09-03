@@ -165,14 +165,51 @@ export default function ObservatoirePrix() {
             phrase="L'observatoire se remplit au fil des offres publiées et de la veille Akora. Élargissez le lieu, ou revenez bientôt."
           />
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          {/* ── Téléphone : une carte par matériau ──────────────────────────
+              ⚠ Le tableau impose 640 px : à 390 il DÉBORDAIT, « Min – max »
+                et « Dépôts » coupés, et la page entière défilait de côté.
+                Un tableau de six colonnes ne se lit pas sur un téléphone ;
+                on empile ce qu'il dit, dans le même ordre d'importance :
+                le matériau, la médiane en gros, puis le reste en légende. */}
+          <ul className="divide-y divide-border/60 sm:hidden" aria-label="Prix par matériau">
+            {(lignes.data ?? []).map((ligne) => (
+              <li key={ligne.materiau_ref_id} className="flex items-start justify-between gap-3 py-3">
+                <div className="min-w-0">
+                  <Link
+                    to={`/prix/${ligne.materiau_slug}/${localite?.slug ?? "madagascar"}`}
+                    className="cible-44 inline-flex items-center font-semibold hover:underline"
+                  >
+                    {ligne.materiau_nom}
+                  </Link>
+                  <p className="nombres text-legende text-muted-foreground">
+                    {formaterAriary(ligne.prix_min)} – {formaterAriary(ligne.prix_max)} · {ligne.nb_depots}{" "}
+                    dépôt{ligne.nb_depots > 1 ? "s" : ""} · {formaterDate(ligne.dernier_releve)}
+                  </p>
+                </div>
+                <div className="shrink-0 text-right">
+                  <p className="nombres text-[1.125rem] font-bold text-primary-strong">
+                    {formaterAriary(ligne.prix_median)}
+                  </p>
+                  <p className="text-legende text-muted-foreground">/ {ligne.unite}</p>
+                  {ligne.fiable ? null : (
+                    <span className="mt-1 inline-block rounded-full bg-muted px-2 py-0.5 text-[0.75rem] font-medium text-muted-foreground">
+                      indicatif
+                    </span>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+
+          <div className="hidden overflow-x-auto sm:block">
             <table className="w-full min-w-[640px] border-collapse text-legende">
               <caption className="sr-only">
                 Prix du marché par matériau à {titreLieu} : médiane, minimum, maximum, nombre de
                 dépôts et date du dernier relevé.
               </caption>
               <thead>
-                <tr className="border-b border-border text-left text-[0.78rem] uppercase tracking-wide text-muted-foreground">
+                <tr className="border-b border-border text-left text-[0.8125rem] uppercase tracking-wide text-muted-foreground">
                   <th scope="col" className="py-2 pr-3 font-semibold">Matériau</th>
                   <th scope="col" className="py-2 pr-3 text-right font-semibold">Médiane</th>
                   <th scope="col" className="py-2 pr-3 text-right font-semibold">Min – max</th>
@@ -205,7 +242,7 @@ export default function ObservatoirePrix() {
                     <td className="nombres py-2.5 pr-3">{formaterDate(ligne.dernier_releve)}</td>
                     <td className="py-2.5">
                       {ligne.fiable ? null : (
-                        <span className="rounded-full bg-muted px-2 py-0.5 text-[0.72rem] font-medium text-muted-foreground">
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-[0.75rem] font-medium text-muted-foreground">
                           indicatif
                         </span>
                       )}
@@ -215,6 +252,7 @@ export default function ObservatoirePrix() {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </div>
 

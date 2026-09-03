@@ -78,6 +78,7 @@
     --barre-mobile: 3.75rem;
   }
 
+
   * {
     @apply border-border;
   }
@@ -440,5 +441,19 @@
   .container {
     max-width: none;
     padding: 0;
+  }
+}
+
+/* ═══ HORS DE TOUTE COUCHE — voir la note ci-dessous ═════════════════════ */
+/* ── Un doigt a droit à 44 px (03/09/2026) ──────────────────────────────
+   Mesuré à 390 px : 19 cibles sous 44 px à l'accueil, 36 sur /prix, 14 sur
+   /fournisseurs — presque toutes des puces de filtre à `min-h-9` (36 px),
+   dessinées pour une souris. Plutôt que de retoucher dix-sept endroits et
+   d'en oublier trois, la règle se pose là où elle vaut : quand le pointeur
+   est grossier. À la souris, 36 px restent justes. Hors `@layer` à dessein :
+   une règle en couche perdrait contre l'utilitaire Tailwind. */
+@media (pointer: coarse), (max-width: 767px) {
+  .min-h-9 {
+    min-height: 2.75rem;
   }
 }

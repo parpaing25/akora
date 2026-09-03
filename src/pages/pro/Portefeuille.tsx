@@ -203,7 +203,7 @@ export default function Portefeuille() {
                       {LIBELLE_RETRAIT[r.statut] ?? r.statut}
                     </Pastille>
                     {r.motif_refus ? (
-                      <span className="block text-[0.72rem] text-destructive-strong">{r.motif_refus}</span>
+                      <span className="block text-[0.75rem] text-destructive-strong">{r.motif_refus}</span>
                     ) : null}
                   </td>
                   <td className="font-mono text-[0.8rem]">{r.reference ?? "—"}</td>

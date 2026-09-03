@@ -112,7 +112,7 @@ export function DialogueFournisseurs({
                                 </span>
                                 <BadgeVerification niveau={offre.fournisseur_niveau} compact />
                                 {index === 0 ? (
-                                  <span className="rounded-full bg-success-soft px-2 py-0.5 text-[0.66rem] font-semibold text-success-strong">
+                                  <span className="rounded-full bg-success-soft px-2 py-0.5 text-[0.75rem] font-semibold text-success-strong">
                                     Le moins cher
                                   </span>
                                 ) : null}
@@ -136,7 +136,7 @@ export function DialogueFournisseurs({
                               <span className="nombres block text-courant font-semibold">
                                 {formaterAriary(offre.prix_unitaire)}
                               </span>
-                              <span className="block text-[0.72rem] text-muted-foreground">
+                              <span className="block text-[0.75rem] text-muted-foreground">
                                 / {offre.unite}
                               </span>
                             </span>

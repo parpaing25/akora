@@ -227,7 +227,7 @@ export function RechercheMateriaux({
               >
                 <span
                   className={
-                    "nombres shrink-0 rounded-xs px-1.5 py-0.5 text-[0.66rem] uppercase tracking-wider " +
+                    "nombres shrink-0 rounded-xs px-1.5 py-0.5 text-[0.75rem] uppercase tracking-wider " +
                     (r.kind === "type"
                       ? "bg-primary text-primary-foreground"
                       : r.kind === "famille"

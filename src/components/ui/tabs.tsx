@@ -35,7 +35,7 @@ export const OngletDeclencheur = React.forwardRef<
     {compteur !== undefined && (
       <span
         className={cn(
-          "nombres rounded-full px-1.5 text-[0.72rem] font-bold",
+          "nombres rounded-full px-1.5 text-[0.75rem] font-bold",
           "bg-muted text-muted-foreground",
           "group-data-[state=active]:bg-accent group-data-[state=active]:text-accent-foreground",
         )}

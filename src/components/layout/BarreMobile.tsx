@@ -43,7 +43,7 @@ export function BarreMobile() {
               end={exact}
               className={({ isActive }) =>
                 cn(
-                  "flex min-h-[3.75rem] flex-col items-center justify-center gap-0.5 text-[0.7rem] font-medium",
+                  "flex min-h-[3.75rem] flex-col items-center justify-center gap-0.5 text-[0.75rem] font-medium",
                   isActive ? "text-primary" : "text-muted-foreground",
                 )
               }

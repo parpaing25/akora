@@ -124,7 +124,7 @@ export function DialogueCode({
           </button>
         ) : null}
 
-        <p className="text-center text-[0.72rem] text-muted-foreground">
+        <p className="text-center text-[0.75rem] text-muted-foreground">
           Regardez aussi dans les courriers indésirables. Personne d'Akora ne vous demandera jamais
           ce code.
         </p>

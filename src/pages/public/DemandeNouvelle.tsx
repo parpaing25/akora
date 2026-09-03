@@ -562,7 +562,7 @@ function CarteProposition({
 
       <div className="mt-2 flex flex-wrap items-end justify-between gap-3 border-t border-border pt-2">
         <div className="nombres">
-          <p className="text-[0.66rem] uppercase tracking-[0.08em] text-muted-foreground">Rendu chantier</p>
+          <p className="text-[0.75rem] uppercase tracking-[0.08em] text-muted-foreground">Rendu chantier</p>
           <p className="text-[1.375rem] font-extrabold leading-none text-primary">
             {total == null ? <span className="text-[1rem] font-semibold text-muted-foreground">à convenir</span> : formaterAriary(total)}
           </p>
@@ -660,7 +660,7 @@ function Suggestions({ slugs, lat, lng, titre }: { slugs: string[]; lat: number;
                       <span className="nombres shrink-0 text-right">
                         <span className="font-semibold">{formaterAriary(Number(o.prix_unitaire))}</span>
                         {o.distance_km != null ? (
-                          <span className="block text-[0.72rem] text-muted-foreground">à {Number(o.distance_km).toFixed(1).replace(".", ",")} km</span>
+                          <span className="block text-[0.75rem] text-muted-foreground">à {Number(o.distance_km).toFixed(1).replace(".", ",")} km</span>
                         ) : null}
                       </span>
                     </Link>

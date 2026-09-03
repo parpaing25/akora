@@ -106,7 +106,7 @@ export default function Referentiels() {
                   {l.lat == null ? (
                     <Pastille ton="attention">sans coordonnées</Pastille>
                   ) : (
-                    <span className="nombres text-[0.72rem] text-muted-foreground">
+                    <span className="nombres text-[0.75rem] text-muted-foreground">
                       {l.lat.toFixed(3)}, {l.lng?.toFixed(3)}
                     </span>
                   )}

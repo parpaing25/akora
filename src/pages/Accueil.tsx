@@ -70,12 +70,18 @@ const LIENS_NAVIGATION = [
  * l'accueil mobile se réduisait au fil — ni Fournisseurs, ni Calculateurs,
  * ni demande d'achat n'étaient accessibles (audit 01/09).
  */
+/**
+ * ⚠ TROIS, PAS CINQ (03/09/2026). L'accueil mobile empilait quatre zones de
+ *   choix avant la première publication : huit tuiles, la recherche, cinq
+ *   raccourcis, quatre filtres. « Fournisseurs » est dans le pied de page et à
+ *   deux gestes des tuiles ; « Je cherche un matériau » doublait le bouton
+ *   « Je cherche… » juste au-dessus. Restent les trois entrées que rien
+ *   d'autre ne porte à l'écran.
+ */
 const RACCOURCIS_MOBILES = [
-  { vers: "/fournisseurs", intitule: "Fournisseurs" },
-  { vers: "/transporteurs", intitule: "Transporteurs" },
   { vers: "/prix", intitule: "Prix du marché" },
+  { vers: "/transporteurs", intitule: "Transporteurs" },
   { vers: "/calculateurs", intitule: "Calculateurs" },
-  { vers: "/demandes/nouvelle", intitule: "Je cherche un matériau" },
 ];
 
 export default function Accueil() {
@@ -442,7 +448,7 @@ function RecapPanier() {
           <dd className="nombres">{formaterAriary(montant)}</dd>
         </div>
       </dl>
-      <p className="mt-1 text-[0.72rem] text-muted-foreground">
+      <p className="mt-1 text-[0.75rem] text-muted-foreground">
         La livraison s'ajoute au panier, une fois le point de chantier connu.
       </p>
       <Link

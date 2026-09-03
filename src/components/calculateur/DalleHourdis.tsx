@@ -271,7 +271,7 @@ export function DalleHourdis() {
     <>
       {/* ── Le coût AVANT la liste : un métré sans prix ne sert à rien ── */}
       <section className="print:hidden rounded-lg bg-foreground p-4 text-background sm:p-5">
-        <p className="nombres text-[0.66rem] uppercase tracking-wider text-background/60">
+        <p className="nombres text-[0.75rem] uppercase tracking-wider text-background/60">
           Coût total rendu chantier
         </p>
         <p className="nombres mt-0.5 text-[2.125rem] font-bold leading-none">
@@ -295,7 +295,7 @@ export function DalleHourdis() {
 
         <dl className="mt-4 grid gap-4 border-t border-background/15 pt-4 sm:grid-cols-3">
           <div>
-            <dt className="nombres text-[0.66rem] uppercase tracking-wider text-background/60">
+            <dt className="nombres text-[0.75rem] uppercase tracking-wider text-background/60">
               Coût au m² de dalle
             </dt>
             <dd className="nombres text-[1.375rem] font-bold">
@@ -307,7 +307,7 @@ export function DalleHourdis() {
             </dd>
           </div>
           <div>
-            <dt className="nombres text-[0.66rem] uppercase tracking-wider text-background/60">
+            <dt className="nombres text-[0.75rem] uppercase tracking-wider text-background/60">
               Poids à transporter
             </dt>
             <dd className="nombres text-[1.375rem] font-bold">
@@ -318,7 +318,7 @@ export function DalleHourdis() {
             </dd>
           </div>
           <div>
-            <dt className="nombres text-[0.66rem] uppercase tracking-wider text-background/60">
+            <dt className="nombres text-[0.75rem] uppercase tracking-wider text-background/60">
               Marge de sécurité
             </dt>
             <dd className="nombres text-[1.375rem] font-bold">{marge} %</dd>
@@ -382,8 +382,8 @@ export function DalleHourdis() {
                   }
                 >
                   <span className="nombres block text-courant font-bold">{f.nom}</span>
-                  <span className="block text-[0.66rem] text-muted-foreground">{f.matiere}</span>
-                  <span className="nombres block text-[0.66rem] text-muted-foreground">≤ {nombre(f.porteeMaxM, 2)} m</span>
+                  <span className="block text-[0.75rem] text-muted-foreground">{f.matiere}</span>
+                  <span className="nombres block text-[0.75rem] text-muted-foreground">≤ {nombre(f.porteeMaxM, 2)} m</span>
                 </button>
               ))}
             </div>
@@ -492,13 +492,13 @@ export function DalleHourdis() {
                   <tr key={ligne.cle} className="ligne-survol border-t border-border">
                     <th scope="row" className="px-4 py-3 text-left align-top">
                       <span className="block text-courant font-semibold">{ligne.libelle}</span>
-                      <span className="nombres block text-[0.72rem] text-muted-foreground">
+                      <span className="nombres block text-[0.75rem] text-muted-foreground">
                         {ligne.formule}
                       </span>
                     </th>
                     <td className="px-4 py-3 text-right align-top">
                       <span className="nombres block text-produit">{nombre(ligne.quantite, 2)}</span>
-                      <span className="block text-[0.72rem] text-muted-foreground">{ligne.unite}</span>
+                      <span className="block text-[0.75rem] text-muted-foreground">{ligne.unite}</span>
                     </td>
                     <td className="nombres px-4 py-3 text-right align-top text-courant">
                       {ligne.offre ? formaterAriary(ligne.offre.prix_unitaire) : "—"}
@@ -507,7 +507,7 @@ export function DalleHourdis() {
                       <span className="block text-legende font-semibold">
                         {ligne.offre?.fournisseur_nom}
                       </span>
-                      <span className="nombres block text-[0.72rem] text-muted-foreground">
+                      <span className="nombres block text-[0.75rem] text-muted-foreground">
                         {ligne.offre?.distance_km != null
                           ? `${nombre(ligne.offre.distance_km, 1)} km`
                           : "distance inconnue"}
@@ -518,7 +518,7 @@ export function DalleHourdis() {
                         {ligne.offre ? formaterAriary(ligne.total) : "—"}
                       </span>
                       {totalRendu > 0 && ligne.total > 0 ? (
-                        <span className="nombres block text-[0.72rem] text-muted-foreground">
+                        <span className="nombres block text-[0.75rem] text-muted-foreground">
                           {Math.round((ligne.total / totalRendu) * 100)} % du budget
                         </span>
                       ) : null}
@@ -538,7 +538,7 @@ export function DalleHourdis() {
                 <tr className="border-t border-border bg-muted">
                   <th scope="row" colSpan={4} className="px-4 py-2.5 text-left text-courant">
                     Livraison rendue chantier
-                    <span className="nombres block text-[0.72rem] font-normal text-muted-foreground">
+                    <span className="nombres block text-[0.75rem] font-normal text-muted-foreground">
                       {parDepot.length} fournisseur{parDepot.length > 1 ? "s" : ""} · {rotations}{" "}
                       rotation{rotations > 1 ? "s" : ""}
                     </span>
@@ -574,7 +574,7 @@ export function DalleHourdis() {
                   </li>
                 ))}
               </ul>
-              <p className="mt-1.5 text-[0.72rem] text-muted-foreground">
+              <p className="mt-1.5 text-[0.75rem] text-muted-foreground">
                 Ces postes restent nécessaires à l'ouvrage : la quantité est calculée, à commander
                 ailleurs.
               </p>

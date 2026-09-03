@@ -126,6 +126,11 @@ export default function Recherche() {
     <div className="container py-6">
       <Seo titre={q ? "Recherche : " + q : "Recherche"} chemin="/recherche" indexable={false} />
 
+      {/* ⚠ La page n'avait AUCUN h1 : le lecteur d'écran arrivait sur un champ
+          sans savoir où. Sur téléphone c'est l'entrée « Recherche » de la barre
+          basse — elle mérite son titre. */}
+      <h1 className="mb-3 text-page">Rechercher</h1>
+
       <form
         role="search"
         onSubmit={(e) => {

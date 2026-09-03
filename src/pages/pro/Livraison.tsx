@@ -262,7 +262,7 @@ export default function Livraison() {
                     {apercu.detail.vehicule.nom}
                     {apercu.detail.rotations > 1 ? " · " + apercu.detail.rotations + " rotations" : ""}
                   </p>
-                  <pre className="mt-2 whitespace-pre-wrap font-mono text-[0.72rem] text-muted-foreground">
+                  <pre className="mt-2 whitespace-pre-wrap font-mono text-[0.75rem] text-muted-foreground">
                     {apercu.detail.formule}
                   </pre>
                 </>

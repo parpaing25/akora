@@ -1,3 +1,4 @@
+import * as React from "react";
 import { lazy, Suspense } from "react";
 import { Route, Routes } from "react-router-dom";
 import { Coquille } from "@/components/layout/Coquille";
@@ -107,6 +108,11 @@ function Attente() {
   );
 }
 
+/** Le repère `main` des pages qui vivent hors de la coquille. */
+function Seule({ children }: { children: React.ReactNode }) {
+  return <main className="contents">{children}</main>;
+}
+
 export default function App() {
   return (
     <Suspense fallback={<Attente />}>
@@ -118,11 +124,14 @@ export default function App() {
           droite — et l'en-tête du site n'a rien à y faire. Un menu « Panier »
           au-dessus d'un formulaire d'inscription invite à partir ailleurs.
         */}
-        <Route path="/connexion" element={<Connexion />} />
-        <Route path="/inscription" element={<Inscription />} />
-        <Route path="/mot-de-passe-oublie" element={<MotDePasseOublie />} />
-        <Route path="/verification-email" element={<VerificationEmail />} />
-        <Route path="/auth/retour" element={<RetourOAuth />} />
+        {/* ⚠ Hors de la coquille, ces pages n'avaient AUCUN repère `main` :
+            un lecteur d'écran n'y trouvait rien à atteindre. `display: contents`
+            pose le repère sans toucher à leur mise en page pleine hauteur. */}
+        <Route path="/connexion" element={<Seule><Connexion /></Seule>} />
+        <Route path="/inscription" element={<Seule><Inscription /></Seule>} />
+        <Route path="/mot-de-passe-oublie" element={<Seule><MotDePasseOublie /></Seule>} />
+        <Route path="/verification-email" element={<Seule><VerificationEmail /></Seule>} />
+        <Route path="/auth/retour" element={<Seule><RetourOAuth /></Seule>} />
 
         <Route element={<Coquille />}>
           <Route index element={<Accueil />} />

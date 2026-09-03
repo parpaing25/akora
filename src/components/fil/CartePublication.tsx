@@ -276,7 +276,7 @@ function PostDemande({ publication }: { publication: Publication }) {
           <p className="text-produit">Demande · {publication.localite_nom ?? "Madagascar"}</p>
           <p className="text-legende text-muted-foreground">{depuis(publication.publie_le)}</p>
         </div>
-        <span className="nombres shrink-0 rounded-full bg-muted px-2.5 py-1 text-[0.66rem] font-semibold uppercase tracking-wide text-muted-foreground">
+        <span className="nombres shrink-0 rounded-full bg-muted px-2.5 py-1 text-[0.75rem] font-semibold uppercase tracking-wide text-muted-foreground">
           Devis ouvert
         </span>
       </header>

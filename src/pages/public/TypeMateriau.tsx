@@ -205,7 +205,7 @@ export default function TypeMateriau() {
                     <th scope="row" className="px-4 py-3 text-left align-top">
                       <span className="block text-courant font-semibold">{f.libelle_court ?? f.nom}</span>
                       {f.note ? (
-                        <span className="block text-[0.72rem] text-muted-foreground">{f.note}</span>
+                        <span className="block text-[0.75rem] text-muted-foreground">{f.note}</span>
                       ) : null}
                     </th>
                     <td className="nombres px-4 py-3 align-top text-legende text-muted-foreground">
@@ -229,7 +229,7 @@ export default function TypeMateriau() {
                             {formaterAriary(f.prix_indicatif_min)} à{" "}
                             {formaterAriary(f.prix_indicatif_max ?? f.prix_indicatif_min)}
                           </span>
-                          <span className="block text-[0.66rem] text-muted-foreground">
+                          <span className="block text-[0.75rem] text-muted-foreground">
                             indicatif, relevé le{" "}
                             {f.prix_indicatif_le
                               ? new Date(f.prix_indicatif_le).toLocaleDateString("fr-FR")
@@ -241,7 +241,7 @@ export default function TypeMateriau() {
                       )}
                       <Link
                         to={`/prix/${f.slug}/madagascar`}
-                        className="lien-souligne mt-0.5 block text-[0.72rem]"
+                        className="lien-souligne mt-0.5 block text-[0.75rem]"
                       >
                         Prix du marché
                       </Link>
@@ -252,7 +252,7 @@ export default function TypeMateriau() {
                           <span className="nombres block text-produit text-primary">
                             {formaterAriary(estimation.parUnite)}
                           </span>
-                          <span className="block text-[0.72rem] text-muted-foreground">
+                          <span className="block text-[0.75rem] text-muted-foreground">
                             / {f.unite} rendue · {estimation.rotations} rotation
                             {estimation.rotations > 1 ? "s" : ""}
                           </span>
@@ -301,7 +301,7 @@ export default function TypeMateriau() {
                 </p>
                 <div className="mt-3 grid grid-cols-2 gap-2">
                   <div className="rounded-md border border-border p-2.5">
-                    <p className="text-[0.72rem] text-muted-foreground">
+                    <p className="text-[0.75rem] text-muted-foreground">
                       {f.prix_des != null ? "Dépôt dès" : "Indicatif"}
                     </p>
                     <p className="nombres text-produit">
@@ -313,7 +313,7 @@ export default function TypeMateriau() {
                     </p>
                   </div>
                   <div className="rounded-md border border-primary bg-primary-soft p-2.5">
-                    <p className="text-[0.72rem] text-muted-foreground">
+                    <p className="text-[0.75rem] text-muted-foreground">
                       Rendu dès · {QUANTITE_REFERENCE} pcs
                     </p>
                     <p className="nombres text-produit text-primary">

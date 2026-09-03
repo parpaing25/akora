@@ -129,7 +129,7 @@ export default function Paiement() {
           {c.mode_paiement === "en_ligne_acompte" ? "Acompte à régler maintenant" : "Montant total"}
         </p>
         <Progression className="mt-3" ton="accent" value={(etape / 3) * 100} />
-        <p className="mt-1 text-[0.72rem] opacity-80">Étape {etape} sur 3</p>
+        <p className="mt-1 text-[0.75rem] opacity-80">Étape {etape} sur 3</p>
       </header>
 
       <div className="p-4">

@@ -54,6 +54,23 @@ const ICONES: Record<string, JSX.Element> = {
   ),
 };
 
+/**
+ * ⚠ UN MOT PAR TUILE, CALCULÉ. À 390 px, quatre tuiles font 81 px de large :
+ *   à 12 px semi-gras, onze caractères tiennent sur une ligne. « Agglomérés
+ *   et préfabriqués béton » s'affichait « Agglomérés et… » à 11,5 px. Le nom
+ *   complet reste le nom accessible du lien ; l'œil, lui, lit un mot.
+ */
+const NOMS_COURTS: Record<string, string> = {
+  agglomeres: "Agglomérés",
+  briques: "Briques",
+  granulats: "Granulats",
+  liants: "Liants",
+  bois: "Bois",
+  couverture: "Couverture",
+  acier: "Acier",
+  "beton-pret": "Béton prêt",
+};
+
 const ICONE_DEFAUT = (
   <>
     <path d="m12 2 9 4.5-9 4.5-9-4.5Z" /><path d="m3 12 9 4.5 9-4.5" /><path d="m3 17 9 4.5 9-4.5" />
@@ -81,7 +98,9 @@ export function TuilesFamilles({ className }: { className?: string }) {
           <li key={famille.id} className="entree" style={{ animationDelay: `${60 * index}ms` }}>
             <Link
               to={`/materiaux/${famille.slug}`}
-              className="carte carte-cliquable flex min-h-[5.25rem] flex-col items-center justify-center gap-1.5 px-1 text-center text-[0.72rem] font-semibold leading-tight"
+              aria-label={famille.nom}
+              title={famille.nom}
+              className="carte carte-cliquable flex min-h-[5.25rem] flex-col items-center justify-center gap-1.5 px-1 text-center text-[0.75rem] font-semibold leading-tight"
             >
               <svg
                 viewBox="0 0 24 24"
@@ -95,7 +114,7 @@ export function TuilesFamilles({ className }: { className?: string }) {
               >
                 {ICONES[famille.slug] ?? ICONE_DEFAUT}
               </svg>
-              <span className="line-clamp-2">{famille.nom}</span>
+              <span className="line-clamp-2">{NOMS_COURTS[famille.slug] ?? famille.nom}</span>
             </Link>
           </li>
         ))}
