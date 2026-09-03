@@ -53,7 +53,10 @@ const DEMANDES: DemandePourDepot[] = [
 
 function html(Ecran: React.ComponentType): string {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity, enabled: false } } });
-  client.setQueryData(["mes-produits", FICHE.id], [{ id: "p1", statut: "actif" }, { id: "p2", statut: "en_attente_materiau" }]);
+  client.setQueryData(["mes-produits", FICHE.id], [
+    { id: "p1", statut: "actif", nom_affiche: "Hourdis 20×20×53", prix_unitaire: 4800, prix_promo: null, unite: "piece", stock_statut: "en_stock", prix_maj_le: "2026-09-01T10:00:00Z" },
+    { id: "p2", statut: "en_attente_materiau", nom_affiche: "Sable de rivière", prix_unitaire: 65000, prix_promo: null, unite: "m3", stock_statut: "sur_commande", prix_maj_le: "2026-08-20T10:00:00Z" },
+  ]);
   client.setQueryData(["documents", FICHE.id], []);
   client.setQueryData(["vehicules", FICHE.id], []);
   client.setQueryData(["commandes-pro", FICHE.id], COMMANDES);
@@ -93,6 +96,7 @@ describe("accessibilité des écrans fournisseur", () => {
   const ECRANS: [string, () => Promise<{ default: React.ComponentType }>, string][] = [
     ["Cockpit du dépôt", () => import("@/pages/pro/TableauDeBord"), "Rakoto J."],
     ["Clients", () => import("@/pages/pro/Clients"), "Hanta"],
+    ["Catalogue", () => import("@/pages/pro/Catalogue"), "Hourdis 20×20×53"],
   ];
   for (const [nom, charger, temoin] of ECRANS) {
     it(`${nom} : rendu chargé, aucune violation critique ni sérieuse`, async () => {

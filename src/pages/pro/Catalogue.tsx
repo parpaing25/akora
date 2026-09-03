@@ -83,7 +83,46 @@ export default function Catalogue() {
           />
         </div>
       ) : (
-        <Tableau conteneurClassName="mt-4">
+        <>
+          {/* ── Téléphone : une carte par produit (03/09/2026) ──────────────
+              Le tableau à six colonnes ne se lit pas à 390 px (règle mobile
+              n° 8). La carte dit la même chose dans l'ordre d'importance :
+              le nom, le prix en gros, le statut, puis les deux gestes. */}
+          <ul className="mt-4 space-y-2 sm:hidden">
+            {produits.data.map((produit) => (
+              <li key={produit.id} className="carte p-3.5">
+                <div className="flex items-start justify-between gap-3">
+                  <Link to={"/pro/catalogue/" + produit.id} className="min-w-0 font-semibold hover:underline">
+                    <span className="line-clamp-2">{produit.nom_affiche}</span>
+                  </Link>
+                  <PastilleProduit produit={produit} />
+                </div>
+                <p className="nombres mt-1.5">
+                  <span className="text-[1.125rem] font-bold">{formaterAriary(produit.prix_promo ?? produit.prix_unitaire)}</span>
+                  <span className="text-legende text-muted-foreground"> / {LIBELLE_UNITE[produit.unite]}</span>
+                </p>
+                <p className="nombres text-legende text-muted-foreground">
+                  {LIBELLE_STOCK[produit.stock_statut]} · prix mis à jour le {formaterDate(produit.prix_maj_le)}
+                </p>
+                <div className="mt-3 flex gap-2">
+                  <Bouton asChild variante="tertiaire" className="flex-1">
+                    <Link to={"/pro/catalogue/" + produit.id}>Modifier</Link>
+                  </Bouton>
+                  {produit.statut !== "en_attente_materiau" ? (
+                    <Bouton
+                      variante={produit.statut === "actif" ? "secondaire" : "principal"}
+                      className="flex-1"
+                      onClick={() => void basculer(produit)}
+                    >
+                      {produit.statut === "actif" ? "Retirer" : "Publier"}
+                    </Bouton>
+                  ) : null}
+                </div>
+              </li>
+            ))}
+          </ul>
+
+        <Tableau conteneurClassName="mt-4 hidden sm:block">
           <TableauTete>
             <tr>
               <th scope="col">Produit</th>
@@ -133,6 +172,7 @@ export default function Catalogue() {
             ))}
           </TableauCorps>
         </Tableau>
+        </>
       )}
     </>
   );
