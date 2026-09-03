@@ -23,6 +23,19 @@
   Header always set Referrer-Policy "strict-origin-when-cross-origin"
   Header always set Permissions-Policy "geolocation=(self), camera=(), microphone=(), payment=()"
 
+  # ── HSTS et CSP (03/09/2026) ─────────────────────────────────────────────
+  # Le relevé de sécurité n'a trouvé ni l'un ni l'autre. HSTS : un an, sous-
+  # domaines compris — akora.fonenako.mg ne se sert jamais en clair.
+  Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+  # CSP : chaque origine est CELLE QUE LE CODE APPELLE, relevée par grep dans
+  # src/ et .env — rien de plus large. Scripts : le bundle seul (index.html n'a
+  # aucun script en ligne). Styles : 'unsafe-inline' est requis par le <style>
+  # d'amorçage de index.html, par Tailwind et par Leaflet. Images : le site,
+  # les blobs d'aperçu avant envoi, le stockage Supabase (URL signées), les
+  # tuiles OpenStreetMap, l'avatar Google d'un compte OAuth. Connexions : le
+  # site (API PHP d'envoi) et Supabase, en https et en wss (Realtime).
+  Header always set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://lvhnqrnmkajhlohympcs.supabase.co https://tile.openstreetmap.org https://*.tile.openstreetmap.org https://lh3.googleusercontent.com; font-src 'self'; connect-src 'self' https://lvhnqrnmkajhlohympcs.supabase.co wss://lvhnqrnmkajhlohympcs.supabase.co; worker-src 'self'; manifest-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests"
+
   # Empreintes de contenu dans le nom : cache long et immuable.
   <FilesMatch "\.(js|css|woff2|webp|avif|png|jpg|jpeg|svg)$">
     Header set Cache-Control "public, max-age=31536000, immutable"
