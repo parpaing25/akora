@@ -97,9 +97,11 @@ function PostFournisseur({ publication }: { publication: Publication }) {
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
+            {/* ⚠ Le nom du dépôt est LA cible de la carte : 22 px de haut, il
+                se ratait au pouce. 44 px, sans changer la ligne. */}
             <Link
               to={`/fournisseurs/${publication.fournisseur_slug}`}
-              className="text-produit text-foreground"
+              className="inline-flex min-h-11 items-center text-produit text-foreground"
             >
               {publication.fournisseur_nom}
             </Link>

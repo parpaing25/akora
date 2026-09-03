@@ -89,7 +89,7 @@ export function EnTete() {
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur">
       <div className="container flex min-h-[3.5rem] items-center gap-3">
-        <Link to="/" className="flex shrink-0 items-center" aria-label="Akora, accueil">
+        <Link to="/" className="flex min-h-11 shrink-0 items-center" aria-label="Akora, accueil">
           <LogoAkora variante="logo" prioritaire className="h-9 w-auto" />
         </Link>
 
