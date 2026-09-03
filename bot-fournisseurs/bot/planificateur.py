@@ -183,6 +183,17 @@ class Planificateur:
                     return
             except ValueError:
                 pass
+
+        # 🔴 RÈGLE DU 03/09/2026 : cette recherche ouvre Chromium, comme la
+        #   tournée — même garde. La date n'est pas notée : les tâches du jour
+        #   ne repassent pas avant demain, elle partira à ce moment-là.
+        from . import session_claude
+        session = session_claude.active()
+        if session:
+            base.logguer(
+                f"Recherche automatique de sources reportée à demain — {session} "
+                "(règle du 03/09).", "info")
+            return
         base.ecrire_etat(CLE_PROSPECTION_SOURCES, date.today().isoformat())
 
         from . import collecteur as col

@@ -184,3 +184,31 @@ def test_le_dernier_creneau_creuse_plus_loin_si_l_objectif_manque(monkeypatch):
     p = _planificateur(appels)
     p._verifier(_a(17, 0))
     assert appels[0][1] == {"scrolls_max_par_source": 50, "posts_max_par_source": 80}
+
+
+def test_la_recherche_automatique_de_sources_attend_aussi_la_fin_de_la_session(monkeypatch):
+    """La tournée n'est pas la seule chose qui ouvre Chromium.
+
+    Le 03/09/2026 à 23 h 38, avec six sessions ouvertes, le bot frère Fonenako
+    a enchaîné une prospection de sources sous Chromium juste après sa
+    collecte : le garde ne couvrait que la tournée. La date n'est pas
+    consommée — la recherche partira avec les tâches du jour suivant."""
+    from bot import collecteur as col
+
+    cfg = _config(monkeypatch, prospection_auto_jours=1)
+    base.ecrire_etat(plan.CLE_PROSPECTION_SOURCES, "")
+    lances = []
+    monkeypatch.setattr(col.collecteur, "prospecter_sources",
+                        lambda *a, **k: lances.append(1) or {})
+    p = _planificateur([])
+
+    monkeypatch.setattr(session_claude, "active",
+                        lambda *_a, **_k: "1 session(s) Claude active(s) sur ce PC")
+    p._prospecter_sources(cfg)
+    assert lances == []
+    assert base.lire_etat(plan.CLE_PROSPECTION_SOURCES, "") == ""
+
+    monkeypatch.setattr(session_claude, "active", lambda *_a, **_k: None)
+    p._prospecter_sources(cfg)
+    assert lances == [1]
+    assert base.lire_etat(plan.CLE_PROSPECTION_SOURCES, "") != ""
