@@ -70,6 +70,24 @@ def par_libelle(lues, morceau):
 
 
 # ── La capture d'écran ─────────────────────────────────────────────────────
+def assert_cote_reconnue(offre, cote, slug_attendu):
+    """La cote est LUE — et le catalogue peut avoir grandi entre-temps.
+
+    ⚠ CES TESTS NE FIGENT PAS LA PAUVRETÉ DU CATALOGUE. Écrits le 02/09/2026,
+    ils affirmaient « materiau_slug is None » parce que le hourdis 20 × 20 × 53
+    n'existait pas encore. La nuit suivante, le bot l'a créé depuis cette
+    publication même — et trois tests sont tombés alors que le bot faisait
+    exactement ce qu'on lui demandait. L'invariant n'est pas « la référence
+    manque », c'est : **la cote entière est lue**, et elle désigne soit la
+    référence exacte, soit une référence à créer. Jamais une voisine.
+    """
+    if offre["materiau_slug"] is None:
+        assert offre["cote_lue"] == cote, "la cote doit remonter pour être créée"
+    else:
+        assert offre["materiau_slug"] == slug_attendu, (
+            f"cote {cote['valeur']} rangée en {offre['materiau_slug']}")
+
+
 def test_les_trois_produits_du_post_du_jour():
     lues = extraction.offres(POST_DU_JOUR, CFG)
     assert len(lues) == 3, [o["libelle_brut"] for o in lues]
@@ -77,10 +95,10 @@ def test_les_trois_produits_du_post_du_jour():
     hourdis = par_libelle(lues, "Hourdis 20x20x53")
     assert hourdis["prix"] == 4_800 and hourdis["unite"] == "piece"
     assert hourdis["type_slug"] == "hourdis"
-    # 🔴 Pas le hourdis 60 × 20 × 20 : la cote entière ne correspond à rien,
-    # c'est une référence à créer.
-    assert hourdis["materiau_slug"] is None
-    assert hourdis["cote_lue"] == {"genre": "bloc", "valeur": (20.0, 20.0, 53.0)}
+    # 🔴 Jamais le hourdis 60 × 20 × 20 : la cote entière décide, et si elle
+    # ne correspond à rien c'est une référence à créer.
+    assert_cote_reconnue(hourdis, {"genre": "bloc", "valeur": (20.0, 20.0, 53.0)},
+                         "hourdis-20x20x53")
 
     poutrelle = par_libelle(lues, "Poutrelles")
     assert poutrelle["prix"] == 67_000 and poutrelle["unite"] == "ml"
@@ -98,8 +116,9 @@ def test_une_fiche_produit_sur_trois_lignes_fait_une_offre():
     assert len(chiffrees) == 1
     offre = chiffrees[0]
     assert offre["prix"] == 4_800 and offre["unite"] == "piece"
-    assert offre["type_slug"] == "hourdis" and offre["materiau_slug"] is None
-    assert offre["cote_lue"] == {"genre": "bloc", "valeur": (20.0, 20.0, 53.0)}
+    assert offre["type_slug"] == "hourdis"
+    assert_cote_reconnue(offre, {"genre": "bloc", "valeur": (20.0, 20.0, 53.0)},
+                         "hourdis-20x20x53")
 
 
 def test_les_phrases_ne_font_plus_de_produits():
@@ -161,8 +180,34 @@ def test_un_diametre_inconnu_remonte_comme_reference_a_creer():
 
 def test_un_calibre_inconnu_remonte_comme_reference_a_creer():
     lues = extraction.offres("Gravillon 10/20 : 70 000 Ar/m3", CFG)
-    assert lues[0]["cote_lue"] == {"genre": "calibre", "valeur": (10.0, 20.0)}
-    assert lues[0]["unite"] == "m3"
+    assert lues[0]["unite"] == "m3" and lues[0]["prix"] == 70_000
+    assert_cote_reconnue(lues[0], {"genre": "calibre", "valeur": (10.0, 20.0)},
+                         "gravillon-10-20")
+
+
+def test_le_prix_ne_mange_plus_la_derniere_cote():
+    """🔴 03/09/2026, Béton ECO : « Parpaing 20x20x40 : 3 400 Ariary / pcs »
+    rangé en parpaing creux **10** à 3 400 Ar. Le motif de montant, glouton,
+    partait du « 40 » de la cote et emportait « 40 3 400 ariary » : la cote
+    entière disparaissait, et le repli « la dernière valeur est l'épaisseur »
+    rendait le premier parpaing de la liste."""
+    lues = extraction.offres("Parpaing 20x20x40 : 3 400 Ariary / pcs", CFG)
+    assert lues[0]["prix"] == 3400
+    assert lues[0]["materiau_slug"] == "parpaing-creux-20"
+    assert lues[0]["unite"] == "piece"
+    # …et la cote reste lisible pour la grammaire.
+    assert referentiel.grammaires.triples("parpaing 20x20x40 3 400 ariary") == [(20.0, 20.0, 40.0)]
+    # Un prix à quatre chiffres sans séparateur est toujours retiré.
+    assert referentiel.grammaires.triples("20x20x40:3200ar") == [(20.0, 20.0, 40.0)]
+    assert "3200" not in referentiel.grammaires.sans_les_montants("20x20x40:3200ar")
+
+
+def test_un_voyage_se_ramene_au_metre_cube():
+    """« 170000ar ny iray voyage 5m3 » : « ny iray » n'est pas l'unité."""
+    lues = extraction.offres("Remblai 170000ar ny iray voyage 5m3", CFG)
+    assert lues[0]["prix"] == 34_000 and lues[0]["unite"] == "m3"
+    assert extraction.vendu_au_voyage("Remblai 170000ar ny iray voyage 5m3") is True
+    assert extraction.vendu_au_voyage("Moellon 700ar/pcs") is False
 
 
 def test_un_lot_se_ramene_a_l_unite():
@@ -171,6 +216,10 @@ def test_un_lot_se_ramene_a_l_unite():
     2 x 3 cm, 8 m » au catalogue : un gravillon n'a pas de section."""
     lues = extraction.offres("2/ Gravillon : 560 000 Ar 8m3 livré", CFG)
     assert lues[0]["prix"] == 70_000 and lues[0]["unite"] == "m3"
+    # L'opération est écrite : sans elle, `prix_orphelins` signale un montant
+    # que la ligne n'écrit nulle part, et Andry ne sait pas d'où il sort.
+    assert lues[0]["libelle_brut"].endswith("Ar/m3")
+    assert "70" in lues[0]["libelle_brut"].split("→")[1]
     assert lues[0]["type_slug"] == "gravillon" and lues[0]["materiau_slug"] is None
     assert lues[0]["cote_lue"] is None
     lues = extraction.offres("Fasika 1 camion 8m3 : 320 000 Ar", CFG)

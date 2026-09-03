@@ -1069,19 +1069,35 @@ def ajouter_offre(prospect_id: str, publication_id: str | None, offre: dict) -> 
     empreinte = offre.get("materiau_slug") or offre.get("libelle_brut")
     with _verrou, connexion() as cx:
         jumelle = cx.execute(
-            "SELECT id, prix FROM offres WHERE prospect_id = ? "
+            "SELECT id, prix, libelle_brut, unite FROM offres WHERE prospect_id = ? "
             "AND COALESCE(materiau_slug, libelle_brut) = ? LIMIT 1",
             (prospect_id, empreinte),
         ).fetchone()
         if jumelle:
             if offre.get("prix") and offre["prix"] != jumelle["prix"]:
+                # 🔴 LE PRIX ET SON LIBELLÉ VIENNENT DE LA MÊME PUBLICATION,
+                #   TOUJOURS. Cette mise à jour ne touchait que `prix` : le
+                #   libellé restait celui du premier relevé, et l'offre
+                #   affichait « Hourdis 12x33x33 : 2500ar/pièce » en portant
+                #   2 800, « Remblai 170000ar » en portant 250 000
+                #   (03/09/2026, 14 offres sur 245). Un montant absent de son
+                #   propre libellé est exactement ce que `prix_orphelins`
+                #   traque avant l'observatoire des prix — et il naissait ici.
                 cx.execute(
-                    "UPDATE offres SET prix = ?, vu_le = ?, publie_le = ?, "
-                    "publication_id = ? WHERE id = ?",
-                    (offre["prix"], maintenant(), offre.get("publie_le") or None,
-                     publication_id, jumelle["id"]),
+                    "UPDATE offres SET prix = ?, libelle_brut = ?, unite = ?, "
+                    "vu_le = ?, publie_le = ?, publication_id = ? WHERE id = ?",
+                    (offre["prix"], offre.get("libelle_brut") or jumelle["libelle_brut"],
+                     offre.get("unite") or jumelle["unite"], maintenant(),
+                     offre.get("publie_le") or None, publication_id, jumelle["id"]),
                 )
             return None
+        # ⚠ N'ÉCRIRE QUE LES COLONNES QUE LA TABLE CONNAÎT. La lecture rend
+        #   aussi ce qui sert à DÉCIDER et non à stocker (`cote_lue`,
+        #   `type_sur`) : le collecteur les retire, mais un autre appelant
+        #   — `outils/reextraire.py` — ne le savait pas, et l'INSERT partait
+        #   avec une colonne inexistante. Le garde-fou se pose ici, au bord de
+        #   la base, pas seulement chez celui qui a pensé à nettoyer.
+        connues = {ligne["name"] for ligne in cx.execute("PRAGMA table_info(offres)")}
         donnees = {
             "prospect_id": prospect_id,
             "publication_id": publication_id,
@@ -1091,7 +1107,7 @@ def ajouter_offre(prospect_id: str, publication_id: str | None, offre: dict) -> 
             # site où le prix EST le produit, c'est un chiffre faux publié.
             "vu_le": maintenant(),
             "publie_le": offre.get("publie_le") or None,
-            **{c: v for c, v in offre.items() if c != "publie_le"},
+            **{c: v for c, v in offre.items() if c != "publie_le" and c in connues},
         }
         colonnes = ", ".join(donnees)
         trous = ", ".join("?" for _ in donnees)

@@ -597,10 +597,19 @@ def _choisir_format(type_slug: str, ligne_normalisee: str,
                 return exacts[0], 98
             if not exacts:
                 return None, 0
-            # Plusieurs références partagent cette cote (brique repressée et
-            # brique cuite pleine font toutes deux 22 × 11 × 6) : ce sont les
-            # mots qui trancheront, parmi elles seulement.
-            candidats = exacts
+            # Plusieurs références partagent cette cote — la brique repressée
+            # et la brique cuite pleine font toutes deux 22 × 11 × 6. Aucun
+            # chiffre ne les sépare : seuls les MOTS le peuvent, et il faut
+            # qu'ils désignent un vainqueur net. Sinon on ne tranche pas.
+            comptes = sorted(
+                ((m, sum(1 for mot in m["mots_distinctifs"]
+                         if len(mot) >= 3 and _mot_present_ou_abrege(mot, ligne_normalisee)))
+                 for m in exacts),
+                key=lambda couple: -couple[1],
+            )
+            if comptes[0][1] and comptes[0][1] > comptes[1][1]:
+                return comptes[0][0], 96
+            return None, 0
 
     # 1. Une dimension complète écrite telle quelle : « 40x20x15 ».
     dimension = re.search(r"\d+\s*x\s*\d+(?:\s*x\s*\d+)?", ligne_normalisee)
@@ -612,10 +621,16 @@ def _choisir_format(type_slug: str, ligne_normalisee: str,
                 return materiau, 98
         # Sinon la dernière valeur de la dimension est l'épaisseur : c'est la
         # convention des blocs (40x20x15 = un 15).
+        #
+        # ⚠ EXIGER QU'ELLE NE DÉSIGNE QU'UN SEUL FORMAT. Tous les parpaings
+        #   portent « 40 » dans leurs dimensions : sur « Parpaing 20x20x40 »,
+        #   dont l'épaisseur est écrite en TÊTE, ce repli rendait le premier
+        #   de la liste — le parpaing creux 10 (03/09/2026). Quand le chiffre
+        #   ne tranche pas, on ne tranche pas non plus.
         derniere = re.findall(r"\d+", compacte)[-1]
-        for materiau in candidats:
-            if derniere in materiau["reperes"]:
-                return materiau, 92
+        porteurs = [m for m in candidats if derniere in m["reperes"]]
+        if len(porteurs) == 1:
+            return porteurs[0], 92
 
     # 2. Le format dont TOUS les repères sont dans la ligne. « Gravillon 5/15 »
     # porte les deux chiffres du format : c'est une signature, pas un indice.

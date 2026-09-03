@@ -514,6 +514,43 @@ fiches à remplir à la main. Ce qui a changé :
   24 relevés de l'observatoire effacés, sauvegardés en JSON à côté.
   Vérifié avant : aucune commande, aucune ligne de compte, aucun retrait.
 
+### Le 03/09 au matin — ce que la première vraie tournée a appris
+
+La collecte de la nuit (849 publications, 67 dépôts, 209 prix) a servi de banc
+d'essai. Trois défauts en sont sortis, tous mesurés sur la base :
+
+- 🔴 **Le motif de montant mangeait la dernière cote.** Glouton, il partait du
+  « 40 » de « 20x20x40 » et emportait « 40 3 400 ariary » : la cote entière
+  disparaissait, et « Parpaing 20x20x40 : 3 400 Ar » finissait rangé en
+  parpaing creux **10** — le mauvais produit au prix d'un autre. Les milliers
+  se comptent désormais par blocs de trois chiffres, et un montant ne démarre
+  jamais juste après un `x`. Le repli « la dernière valeur est l'épaisseur »
+  exige en plus que le chiffre ne désigne qu'un seul format.
+- 🔴 **Le prix et son libellé pouvaient venir de deux publications.** Quand un
+  dépôt repostait, seul le prix était rafraîchi : l'offre affichait
+  « Hourdis 12x33x33 : 2500ar » en portant 2 800. 14 offres sur 245. Le
+  libellé, l'unité et la publication suivent maintenant le prix.
+- 🟠 **Un lot n'est pas un prix unitaire.** « 560 000 Ar 8m3 » vaut 70 000 Ar
+  le m³ ; « 170000ar ny iray voyage 5m3 » aussi (« ny iray » se lisait comme
+  l'unité « pièce »). La division est faite, et **écrite dans le libellé** —
+  sinon le montant n'apparaît nulle part et `prix_orphelins` le signale à
+  juste titre.
+
+Deux références partageant la même cote (brique repressée et brique cuite
+pleine font toutes deux 22 × 11 × 6) se départagent par les **mots** ; sans
+vainqueur net, on ne tranche pas.
+
+`outils/reextraire.py` a rejoué les 140 publications gardées :
+offres référencées **102 → 167**, publiables (référence + prix) **82 → 132**,
+prix orphelins **14 → 0**.
+
+⚠️ **Un test ne doit pas figer la pauvreté du catalogue.** Trois tests écrits
+le 02/09 affirmaient « materiau_slug is None » pour le hourdis 20 × 20 × 53 ;
+la nuit suivante le bot l'a créé depuis cette publication même, et ils sont
+tombés alors qu'il faisait exactement son travail. L'invariant est : la cote
+entière est lue, et elle désigne soit la référence exacte, soit une référence
+à créer — jamais une voisine (`assert_cote_reconnue`).
+
 ---
 
 ## Architecture

@@ -405,6 +405,22 @@ UNITES_QUANTITE = {"m3": "m3", "m2": "m2", "ml": "ml", "tonne": "tonne", "tonnes
                    "t": "tonne", "sac": "sac", "sacs": "sac"}
 QUANTITE_MAX_LOT = 40
 
+# Le mot qui dit qu'on vend un VOYAGE, pas une pièce. « Remblai 170000ar ny
+# iray voyage 5m3 » = 170 000 Ar le voyage de 5 m³, donc 34 000 Ar le m³ —
+# mais « ny iray » (« l'un ») se lisait comme l'unité « pièce » et le lot
+# n'était plus divisé (03/09/2026, Niry Gravillon).
+MOTS_LOT_TRANSPORT = ("voyage", "camion", "benne", "chargement", "remorque", "toby")
+
+
+def _millier(valeur: int) -> str:
+    """« 70 000 » — espace insécable fine, comme le reste d'Akora."""
+    return f"{valeur:,}".replace(",", " ")
+
+
+def vendu_au_voyage(ligne: str) -> bool:
+    reduit = referentiel.sans_accents(ligne or "")
+    return any(mot in reduit for mot in MOTS_LOT_TRANSPORT)
+
 
 def quantite_vendue(ligne: str) -> tuple[int, str] | None:
     """(N, unité) quand la ligne vend un lot de N unités — « 8m3 », « 3 sacs »."""
@@ -689,10 +705,18 @@ def offres(texte: str, cfg: dict) -> list[dict]:
         # mètre même si la ligne parle d'une feuille plus loin. Sinon, un LOT
         # (« 560 000 Ar 8m3 livré ») se ramène à l'unité : 70 000 Ar/m³.
         unite = unite_apres_prix(ligne)
-        if unite is None and montant is not None:
+        if montant is not None:
             lot = quantite_vendue(ligne)
-            if lot:
+            # Le lot l'emporte quand aucune unité n'est écrite, ou quand la
+            # ligne vend un VOYAGE et que le seul mot d'unité lu était « iray ».
+            if lot and (unite is None or (unite == "piece" and vendu_au_voyage(ligne))):
                 montant, unite = round(montant / lot[0]), lot[1]
+                # ⚠ LE DIRE DANS LE LIBELLÉ. Une division laisse un montant que
+                #   la ligne n'écrit nulle part : « 560 000 Ar 8m3 » portant
+                #   70 000. `prix_orphelins` le signale à juste titre — il ne
+                #   sait pas que c'est un calcul, et Andry non plus. On écrit
+                #   donc l'opération à côté du prix.
+                libelle = libelle + " → " + _millier(montant) + " Ar/" + lot[1]
         resultat.append({
             "libelle_brut": libelle[:180],
             "prix": montant,

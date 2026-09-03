@@ -46,7 +46,23 @@ DIAMETRE = re.compile(r"(?:(?<![a-z])(?:o|ø|diam(?:etre)?|dia|fer|ha|fe|t|ba)\s
 EPAISSEUR_TOLE = re.compile(r"(?<![\d.,])0\s*[.,]\s*(\d{2})(?![\d.,])|(?<![\d.,])(\d{2})\s*/\s*100(?![\d.,])")
 LONGUEUR_M = re.compile(r"(?<![\d.,])(\d{1,2}(?:[.,]\d)?)\s*m(?![a-z0-9²³])", re.IGNORECASE)
 DOSAGE = re.compile(r"(?<![\d.,])(1[5-9]0|[2-4][05]0)(?![\d.,])")
-MONTANT = re.compile(r"\d[\d\s.,  ]*\s*(?:ar|ariary|fmg)\b", re.IGNORECASE)
+# 🔴 UN MONTANT NE COMMENCE JAMAIS AU MILIEU D'UNE COTE. La forme naive
+# (`\d[\d\s.,]*\s*ar`) est gloutonne et traverse l'espace : sur la ligne
+# normalisee « parpaing 20x20x40 3 400 ariary / pcs » elle partait du « 40 »
+# de la cote et emportait « 40 3 400 ariary ». Il ne restait que « 20x20 »,
+# la cote entiere disparaissait, et « Parpaing 20x20x40 : 3 400 Ar » finissait
+# range en parpaing creux **10** a 3 400 Ar (03/09/2026, Beton ECO) — le
+# mauvais produit au prix d'un autre, exactement ce qui alimente
+# l'observatoire des prix.
+#
+# D'ou les deux verrous : on ne demarre pas juste apres un chiffre ou un
+# separateur de cote (`x`, `×`, `*`), et les milliers se comptent par blocs
+# de TROIS chiffres exactement — « 40 3 400 » n'en est pas un.
+MONTANT = re.compile(
+    r"(?<![\dx×*.,])(?:\d{1,3}(?:[\s.  ]\d{3})+|\d{2,9})"
+    r"(?:[.,]\d{1,2})?\s*(?:ar|ariary|fmg)\b",
+    re.IGNORECASE,
+)
 
 
 def _nombre(brut: str) -> float:
