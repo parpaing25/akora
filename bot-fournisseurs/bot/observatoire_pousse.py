@@ -34,6 +34,19 @@ import sys
 
 CHIFFRES = re.compile(r"\d+")
 DEVISES_MALGACHES = ("", "ar", "ariary", "mga", "fmg")
+
+
+def unite_ecrite(libelle: str | None) -> str | None:
+    """L'unité que le VENDEUR a écrite dans cette ligne, jamais une héritée.
+
+    Celle qui suit le montant d'abord (« 3 400 Ar / pcs »), sinon un mot
+    d'unité de la ligne (« 45 000 Ar le m3 »). `None` quand la ligne n'en
+    annonce aucune — et l'observatoire refuse alors le relevé.
+    """
+    from . import extraction, referentiel
+
+    libelle = libelle or ""
+    return extraction.unite_apres_prix(libelle) or referentiel.unite_dans(libelle)
 FACTEUR_VRAISEMBLANCE = 2.5
 MINIMUM_DEPOTS_POUR_MEDIANE = 2
 
@@ -79,8 +92,27 @@ def preparer(
             ecartees["slug_inconnu"] += 1
             continue
         ref_id, unite_ref = ref
+        # 🔴 L'UNITÉ DOIT ÊTRE ÉCRITE SUR LA LIGNE, PAS HÉRITÉE DU CATALOGUE.
+        #   Une offre qui n'annonce aucune unité reprend celle de sa référence
+        #   (`extraction.offres`) : elle devient donc indiscernable d'une offre
+        #   qui l'aurait écrite, et ce garde la laissait passer.
+        #
+        #   Mesuré le 03/09/2026 sur le site : le catalogue vend le moellon au
+        #   m³, les dépôts le vendent à la PIÈCE (250 à 800 Ar). Six lignes
+        #   « moellon : 400ar », sans unité, sont parties dans l'observatoire
+        #   PUBLIC à 400 Ar le m³ — un facteur 200 sous le prix réel. Même
+        #   mécanisme pour « Parpaing de 20 20 40 (95.000ar) », un prix de lot
+        #   publié comme prix à la pièce.
+        #
+        #   On exige donc que le vendeur ait écrit son unité, et qu'elle soit
+        #   celle de la référence. Ce qu'on perd : des prix vrais mais muets,
+        #   qui se rattrapent à la collecte suivante ou par un appel. Ce qu'on
+        #   évite : un chiffre faux publié sous le nom d'Akora.
+        #   Les DEUX doivent dire la même chose : l'unité portée par l'offre
+        #   (qu'une correction à la main fait autorité) et celle que le
+        #   vendeur a écrite dans sa ligne.
         unite = (o.get("unite") or "").strip() or None
-        if unite is not None and unite != unite_ref:
+        if unite != unite_ref or unite_ecrite(o.get("libelle_brut")) != unite_ref:
             ecartees["unite"] += 1
             continue
 
@@ -136,6 +168,47 @@ def offres_publiables() -> list[dict]:
         """)]
 
 
+def medianes_du_lot(offres: list[dict], catalogue: dict) -> dict:
+    """La médiane de CHAQUE matériau dans le lot qu'on s'apprête à pousser.
+
+    🔴 LE GARDE DE VRAISEMBLANCE ÉTAIT AVEUGLE SUR UNE TABLE VIDE. Il ne
+       comparait qu'à ce que l'observatoire porte DÉJÀ : au tout premier
+       relevé d'un matériau, il n'avait rien à opposer et laissait tout
+       passer. Le 03/09/2026, après la purge des relevés fautifs, trois
+       parpaings à 300, 350 et 400 Ar — des prix de brique creuse collés à un
+       parpaing — sont entrés dans l'observatoire public alors que le même
+       passage à blanc, une minute plus tôt, les avait signalés.
+
+       Le lot porte pourtant sa propre référence : quatre dépôts y annoncent
+       le parpaing 20 entre 3 200 et 3 800 Ar. On calcule donc la médiane du
+       lot, et on la fusionne avec celle du site — la plus fournie gagne.
+    """
+    from statistics import median
+
+    par_ref: dict[str, dict[str, int]] = {}
+    for o in offres:
+        ref = catalogue.get(o.get("materiau_slug") or "")
+        if not ref or not o.get("prix"):
+            continue
+        empreinte = empreinte_depot(o.get("telephone_cle"), o.get("cle"))
+        # Un dépôt, un prix : celui qui poste dix fois ne pèse pas dix fois.
+        par_ref.setdefault(ref[0], {})[empreinte] = int(o["prix"])
+    return {
+        ref_id: (int(median(prix.values())), len(prix))
+        for ref_id, prix in par_ref.items() if len(prix) >= MINIMUM_DEPOTS_POUR_MEDIANE
+    }
+
+
+def fusionner_medianes(du_site: dict, du_lot: dict) -> dict:
+    """Les deux sources de médiane ; à matériau donné, la mieux fournie gagne."""
+    fusion = dict(du_site)
+    for ref_id, (mediane, nb) in du_lot.items():
+        connu = fusion.get(ref_id)
+        if not connu or nb > connu[1]:
+            fusion[ref_id] = (mediane, nb)
+    return fusion
+
+
 def etat_du_site() -> tuple[dict, dict, dict]:
     """(catalogue, localites, medianes) lus sur le site — la source, pas un cache."""
     from . import akora
@@ -187,7 +260,11 @@ def pousser(valeurs: list[tuple]) -> int:
 def lancer(ecrire: bool = False) -> dict:
     """Le passage complet. Rendu sous forme de bilan, journalisé si écrit."""
     catalogue, localites, medianes = etat_du_site()
-    tri = preparer(offres_publiables(), catalogue, localites, medianes)
+    offres = offres_publiables()
+    # Le lot porte sa propre référence : sans elle, le premier relevé d'un
+    # matériau n'a rien à quoi se comparer et passe quoi qu'il vaille.
+    medianes = fusionner_medianes(medianes, medianes_du_lot(offres, catalogue))
+    tri = preparer(offres, catalogue, localites, medianes)
     if ecrire and tri["valeurs"]:
         pousser(tri["valeurs"])
         from . import base
