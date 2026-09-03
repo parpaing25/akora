@@ -63,7 +63,7 @@ sur seize pages du site, à 390 × 844 px (Playwright, `scratchpad/akora/mesure3
 | Pages qui débordent horizontalement | /prix (tableau de 640 px) | 0 |
 | Pages sans `h1` | /recherche | 0 |
 | Pages sans repère `main` | 4 (authentification) | 0 |
-| Écrans axe sans violation critique ni sérieuse | 22 | 27 (admin et espace pro audités CHARGÉS, cache react-query pré-rempli) |
+| Écrans axe sans violation critique ni sérieuse | 22 | 28 (admin et espace pro audités CHARGÉS, cache react-query pré-rempli) |
 
 Ce qui a été fait, et pourquoi c'est calculé et non choisi :
 
@@ -124,5 +124,9 @@ Ce qui a été fait, et pourquoi c'est calculé et non choisi :
 cd C:\Users\ANDRIANIRINA\Desktop\AKORA\akora
 npm run build && npx vite preview --port 4180
 python <scratchpad>/akora/mesure390.py     # 16 pages, cibles, polices, débordements
-npx vitest run -c vitest.a11y.config.ts    # 27 écrans axe
+npx vitest run -c vitest.a11y.config.ts --no-file-parallelism   # 28 écrans axe, un fichier à la fois
 ```
+
+⚠ Sur ce PC, jamais le build et le banc en même temps : les deux demandent plusieurs Go, et le
+premier à tomber est le build (esbuild « out of memory », `dist/` absent, la prod garde l'ancien
+bundle). `scripts/deployer.mjs` bride désormais esbuild et Node, et refuse un `dist/` incomplet.
