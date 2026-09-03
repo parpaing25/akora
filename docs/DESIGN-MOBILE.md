@@ -63,7 +63,7 @@ sur seize pages du site, à 390 × 844 px (Playwright, `scratchpad/akora/mesure3
 | Pages qui débordent horizontalement | /prix (tableau de 640 px) | 0 |
 | Pages sans `h1` | /recherche | 0 |
 | Pages sans repère `main` | 4 (authentification) | 0 |
-| Écrans axe sans violation critique ni sérieuse | 22 | 22 |
+| Écrans axe sans violation critique ni sérieuse | 22 | 27 (admin et espace pro audités CHARGÉS, cache react-query pré-rempli) |
 
 Ce qui a été fait, et pourquoi c'est calculé et non choisi :
 
@@ -94,14 +94,22 @@ Ce qui a été fait, et pourquoi c'est calculé et non choisi :
 | Texte courant / légende / minimum | 15 / 13 / 12 px | échelle AKORA-DESIGN §2 |
 | Titre de page (mobile) | 26 px | `text-[1.625rem]` de l'accueil |
 
+## Fait le 03/09, après le brief
+
+- **Inscription** : vitrine animée en trois cartes (camion, badge, anneau du séquestre),
+  sans un seul prix d'exemple (règle A2.8) ; le camion roule dans le panneau latérite.
+- **Espace pro** : cockpit du dépôt (`/pro` — commandes à traiter, vendu sur 30 jours,
+  demandes dans le rayon avec la distance, vues et abonnés) et page **Clients**
+  (`/pro/clients` — qui cherche près de vous, qui vous a déjà commandé, appel et WhatsApp).
+- **Mouvement** : la page qui arrive, le compteur du panier qui pop, la barre de la fiche
+  produit qui monte, l'onglet actif qui se souligne.
+
 ## Ce qui reste à dessiner puis à coder (dans l'ordre)
 
-1. **Fiche produit** : le bouton « Ajouter au panier » collé en bas, au-dessus de la barre.
-2. **Commander → Paiement** : un écran par étape, récapitulatif toujours visible.
-3. **Inscription** : vitrine animée (pourquoi Akora, en trois gestes) avant le formulaire.
-4. **Espace pro mobile** : tableau de bord d'un dépôt, catalogue, commandes, demandes
-   reçues, clients autour de lui.
-5. **États** : chaque écran a son état vide utile (une action) et son état d'erreur (une
+1. **Commander → Paiement** : un écran par étape, récapitulatif toujours visible.
+2. **Catalogue pro sur téléphone** : une carte par produit (photo, prix, statut, bascule),
+   le tableau seulement au-dessus de `sm`.
+3. **États** : chaque écran a son état vide utile (une action) et son état d'erreur (une
    sortie), jamais une page blanche.
 
 ## Comment vérifier
@@ -110,5 +118,5 @@ Ce qui a été fait, et pourquoi c'est calculé et non choisi :
 cd C:\Users\ANDRIANIRINA\Desktop\AKORA\akora
 npm run build && npx vite preview --port 4180
 python <scratchpad>/akora/mesure390.py     # 16 pages, cibles, polices, débordements
-npx vitest run -c vitest.a11y.config.ts    # 22 écrans axe
+npx vitest run -c vitest.a11y.config.ts    # 27 écrans axe
 ```
