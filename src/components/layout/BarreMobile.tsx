@@ -29,11 +29,13 @@ export function BarreMobile() {
     <nav
       aria-label="Navigation principale"
       /*
-       * `md:hidden`, pas `sm:hidden` : la nav du header n'apparaît qu'à
-       * partir de 768 px. Avec `sm:hidden`, la tranche 640-1023 px (tablettes)
-       * n'avait AUCUNE navigation — ni barre, ni menu (audit 01/09).
+       * `lg:hidden` (03/09/2026) : la nav de l'en-tête n'apparaît qu'à partir
+       * de 1024 px — en dessous, l'en-tête n'a pas la place de six liens
+       * (mesuré : 23 px de débordement à 768). La barre porte donc la
+       * navigation jusqu'à 1023 px ; au-delà, l'en-tête et le rail gauche.
+       * Aucune largeur ne reste sans navigation (audit 01/09, puis 03/09).
        */
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card pb-[env(safe-area-inset-bottom)] md:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card pb-[env(safe-area-inset-bottom)] lg:hidden"
     >
       <ul className="grid grid-cols-5">
         {ENTREES.map(({ to, libelle, Icone, exact }) => (

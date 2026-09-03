@@ -93,7 +93,13 @@ export function EnTete() {
           <LogoAkora variante="logo" prioritaire className="h-9 w-auto" />
         </Link>
 
-        <nav aria-label="Sections" className="hidden md:flex md:items-center md:gap-1">
+        {/* ⚠ CALCULÉ (03/09/2026). À 1024 px, 960 px sont disponibles : logo
+            120 + six liens 600 + icône 44 + panier, point et bouton 225 +
+            espaces 36 = 1 025. Ça déborde. Les liens de section ne viennent
+            donc qu'à partir de 1024 px, les secondaires (`desLg`) à partir de
+            1280 px ; entre 768 et 1023 px, la barre basse porte la navigation,
+            comme sur téléphone, et le rail gauche porte tout dès 1024 px. */}
+        <nav aria-label="Sections" className="hidden shrink-0 lg:flex lg:items-center lg:gap-1">
           {LIENS.map((l) => (
             <NavLink
               key={l.to}
@@ -101,7 +107,7 @@ export function EnTete() {
               className={({ isActive }) =>
                 cn(
                   "min-h-11 items-center rounded-md px-3 text-legende font-semibold",
-                  l.desLg ? "hidden lg:inline-flex" : "inline-flex",
+                  l.desLg ? "hidden xl:inline-flex" : "inline-flex",
                   isActive ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted",
                 )
               }
@@ -111,7 +117,23 @@ export function EnTete() {
           ))}
         </nav>
 
-        <form role="search" onSubmit={soumettre} className="ml-auto hidden max-w-md flex-1 sm:block">
+        {/* ⚠ `min-w-0` (03/09/2026) : sans lui, le champ garde sa largeur intrinsèque
+            et l'en-tête DÉBORDE de 162 px à 1024 px — six liens, le champ, le
+            point, le panier et deux boutons ne tiennent qu'à condition que le
+            champ rétrécisse. Mesuré entre 1024 et 1279 px. */}
+        {/* ⚠ CALCULÉ À 1024 px (03/09/2026) : logo 120 + six liens 540 + point 44
+            + panier 44 + deux boutons 236 + espaces = 1 044 px AVANT le champ.
+            Entre 768 et 1279 px, le champ devient donc une icône (44 px) et
+            « Se connecter » s'efface — il reste sur la page d'inscription et
+            dans le menu Compte. Dès 1280 px, tout revient. */}
+        <Link
+          to="/recherche"
+          aria-label="Rechercher"
+          className="ml-auto hidden cible-44 items-center justify-center rounded-md text-foreground hover:bg-muted md:inline-flex xl:hidden"
+        >
+          <Search className="size-5" aria-hidden="true" />
+        </Link>
+        <form role="search" onSubmit={soumettre} className="ml-auto hidden min-w-0 max-w-md flex-1 sm:block md:hidden xl:block">
           <label htmlFor="recherche-entete" className="sr-only">
             Rechercher un matériau ou un fournisseur
           </label>
@@ -131,7 +153,7 @@ export function EnTete() {
           </div>
         </form>
 
-        <div className="ml-auto flex items-center gap-1 sm:ml-0">
+        <div className="ml-auto flex shrink-0 items-center gap-1 sm:ml-0">
           <PointEnTete />
           <Link
             to="/panier"
@@ -157,7 +179,7 @@ export function EnTete() {
             </React.Suspense>
           ) : (
             <>
-              <Bouton variante="fantome" taille="compact" asChild className="hidden sm:inline-flex">
+              <Bouton variante="fantome" taille="compact" asChild className="hidden sm:inline-flex md:hidden xl:inline-flex">
                 <Link to="/connexion">Se connecter</Link>
               </Bouton>
               <Bouton taille="compact" asChild>

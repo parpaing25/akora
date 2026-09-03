@@ -1,12 +1,10 @@
 import * as React from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { MapPin, Search, ShieldCheck, ShoppingCart } from "lucide-react";
+import { MapPin, Search } from "lucide-react";
 import { Seo } from "@/components/Seo";
 import { useAuth } from "@/hooks/useAuth";
 import { usePointLivraison } from "@/lib/point-livraison";
-import { usePanier, totalProduits } from "@/lib/panier";
-import { formaterAriary } from "@/lib/format";
 import { chargerFil, TAILLE_PAGE, type FiltreFil } from "@/lib/donnees/fil";
 
 import { Squelette } from "@/components/ui/skeleton";
@@ -53,17 +51,6 @@ const FILTRES: [FiltreFil, string][] = [
   ["suivis", "Suivis"],
 ];
 
-const LIENS_NAVIGATION = [
-  { vers: "/", intitule: "Mon fil" },
-  { vers: "/materiaux", intitule: "Matériaux" },
-  { vers: "/fournisseurs", intitule: "Fournisseurs" },
-  { vers: "/transporteurs", intitule: "Transporteurs" },
-  { vers: "/prix", intitule: "Prix du marché" },
-  { vers: "/demandes/nouvelle", intitule: "Je cherche un matériau" },
-  { vers: "/compte/favoris", intitule: "Favoris" },
-  { vers: "/calculateurs", intitule: "Calculateurs" },
-  { vers: "/compte/commandes", intitule: "Mes commandes" },
-];
 
 /**
  * Raccourcis pour les écrans SANS colonnes latérales (< 1024 px) : sans eux,
@@ -121,50 +108,11 @@ export default function Accueil() {
         description="Le fil des dépôts de matériaux à Madagascar : stock du jour, baisses de prix, tournées de livraison. Comparez au prix rendu chantier, livraison comprise."
       />
 
-      {/*
-        Pleine largeur, et non le gabarit de 1400 px d'AKORA-DESIGN §9.
-        Écart demandé et assumé : un fil se lit en colonnes, et sur un écran
-        large les 1400 px laissaient deux bandes vides pendant que la colonne
-        centrale étouffait. Le cap de 2100 px reste, parce qu'au-delà une ligne
-        de texte devient illisible — on élargit les colonnes latérales, pas la
-        lecture.
-      */}
-      <div className="mx-auto grid w-full max-w-[2100px] items-start gap-5 px-4 py-4 lg:grid-cols-[260px_minmax(0,1fr)_340px] lg:px-6 2xl:grid-cols-[300px_minmax(0,1fr)_380px] 2xl:gap-6 2xl:px-8">
-        {/* ── Colonne gauche : navigation ─────────────────────────────── */}
-        <nav aria-label="Navigation du fil" className="hidden flex-col gap-4 lg:flex">
-          <ul className="carte p-2">
-            {LIENS_NAVIGATION.map((lien) => (
-              <li key={lien.vers}>
-                <Link
-                  to={lien.vers}
-                  aria-current={lien.vers === "/" ? "page" : undefined}
-                  className={
-                    "flex min-h-11 items-center gap-3 rounded-md px-3 text-courant " +
-                    (lien.vers === "/"
-                      ? "bg-primary-soft font-semibold text-primary-strong"
-                      : "hover:bg-muted")
-                  }
-                >
-                  {lien.intitule}
-                </Link>
-              </li>
-            ))}
-          </ul>
-
-          <div className="rounded-lg bg-foreground p-4 text-background">
-            <p className="mb-1.5 text-produit">Vous vendez des matériaux ?</p>
-            <p className="mb-3 text-legende leading-relaxed text-background/75">
-              Publiez votre stock dans le fil et recevez des commandes payées.
-            </p>
-            <Link
-              to="/devenir-fournisseur"
-              className="cible-44 flex items-center justify-center rounded-md bg-background text-courant font-bold text-foreground"
-            >
-              Devenir fournisseur
-            </Link>
-          </div>
-        </nav>
-
+      {/* ⭐ Les colonnes latérales sont dans la COQUILLE depuis le 03/09/2026 :
+          elles suivent le visiteur sur toutes les pages. Ici, seulement le
+          fil. Le `px-4` sous lg : la coquille ne pose la grille et ses marges
+          qu'à partir de 1024 px. */}
+      <div className="px-4 py-4 lg:px-0 lg:py-0">
         {/* ── Colonne centrale : le fil ───────────────────────────────── */}
         <div className="flex min-w-0 flex-col gap-4">
           {/*
@@ -305,37 +253,6 @@ export default function Accueil() {
           ) : null}
         </div>
 
-        {/* ── Colonne droite : panier et repères ──────────────────────── */}
-        <aside aria-label="Panier et repères" className="hidden flex-col gap-4 lg:flex">
-          <RecapPanier />
-
-          <div className="carte p-4">
-            <p className="text-produit">Livraison à {point ? point.libelle : "définir"}</p>
-            <p className="mb-3 mt-1 text-legende text-muted-foreground">
-              Le fil et les prix rendus sont calculés depuis ce point.
-            </p>
-            <button
-              type="button"
-              onClick={ouvrirTiroir}
-              className="cible-44 flex w-full items-center justify-center rounded-md border border-foreground text-courant font-semibold"
-            >
-              {point ? "Changer de point" : "Choisir où livrer"}
-            </button>
-          </div>
-
-          <div className="rounded-lg border border-primary/25 bg-primary-soft p-4">
-            <p className="mb-1 flex items-center gap-2 text-produit">
-              <ShieldCheck size={16} aria-hidden="true" />
-              Le badge veut dire quelque chose
-            </p>
-            <p className="mb-2.5 text-legende leading-relaxed text-muted-foreground">
-              NIF, STAT, RCS, identité du gérant et photo du dépôt contrôlés avant l'attribution.
-            </p>
-            <Link to="/verification" className="lien-souligne text-legende font-semibold">
-              Que veut dire vérifié ?
-            </Link>
-          </div>
-        </aside>
       </div>
 
       {tiroirMonte ? (
@@ -414,49 +331,3 @@ function FilVide({ filtre }: { filtre: FiltreFil }) {
 }
 
 /** Le panier, toujours visible sur grand écran : c'est la raison d'être du fil. */
-function RecapPanier() {
-  const lignes = usePanier((etat) => etat.lignes);
-  const montant = totalProduits(lignes);
-  const fournisseurs = new Set(lignes.map((ligne) => ligne.fournisseurId)).size;
-
-  if (lignes.length === 0) {
-    return (
-      <div className="carte p-4">
-        <p className="flex items-center gap-2 text-produit">
-          <ShoppingCart size={17} aria-hidden="true" /> Mon panier
-        </p>
-        <p className="mt-1 text-legende text-muted-foreground">Vide pour l'instant.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="carte p-4">
-      <div className="mb-2.5 flex items-baseline justify-between gap-2">
-        <p className="text-produit">Mon panier</p>
-        <p className="text-legende text-muted-foreground">
-          {fournisseurs} fournisseur{fournisseurs > 1 ? "s" : ""}
-        </p>
-      </div>
-      <dl aria-live="polite" className="space-y-2 text-legende">
-        <div className="flex justify-between gap-2">
-          <dt className="text-muted-foreground">Produits</dt>
-          <dd className="nombres">{formaterAriary(montant)}</dd>
-        </div>
-        <div className="flex justify-between gap-2 border-t border-border pt-2 text-courant font-bold">
-          <dt>Total produits</dt>
-          <dd className="nombres">{formaterAriary(montant)}</dd>
-        </div>
-      </dl>
-      <p className="mt-1 text-[0.75rem] text-muted-foreground">
-        La livraison s'ajoute au panier, une fois le point de chantier connu.
-      </p>
-      <Link
-        to="/panier"
-        className="cible-44 mt-3 flex items-center justify-center rounded-md bg-primary text-courant font-bold text-primary-foreground"
-      >
-        Voir mon panier
-      </Link>
-    </div>
-  );
-}

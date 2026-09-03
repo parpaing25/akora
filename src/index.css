@@ -418,10 +418,10 @@
   /* ── CALQUE GLOBAL DE DENSITÉ MOBILE ──────────────────────────────────
      Une seule couche, ici. Sur Fonenako, re-compacter page par page a coûté
      des semaines pour un résultat incohérent : on ne recommence pas. */
-  /* La barre mobile s'affiche jusqu'à 767 px (md) depuis l'audit du 01/09 :
-     le décalage du bas doit suivre la même borne, sinon elle masque le pied
-     des pages entre 640 et 767 px. */
-  @media (max-width: 767px) {
+  /* La barre mobile s'affiche jusqu'à 1023 px depuis le 03/09/2026 (l'en-tête
+     n'a la place de ses liens qu'à partir de 1024) : le décalage du bas suit
+     la même borne, sinon elle masque le pied des pages. */
+  @media (max-width: 1023px) {
     body {
       /* La barre de navigation fixe ne doit jamais masquer le bas de page. */
       padding-bottom: calc(var(--barre-mobile) + env(safe-area-inset-bottom, 0px));
@@ -501,5 +501,26 @@
 @media (pointer: coarse), (max-width: 767px) {
   .min-h-9 {
     min-height: 2.75rem;
+  }
+}
+
+/* ── Le conteneur des pages, dans la colonne centrale (03/09/2026) ──────────
+   Vingt pages s'enveloppent d'un `.container` (marges + 1400 px). Posées dans
+   la grille des rails, elles auraient DEUX marges et une largeur bornée en
+   plein milieu d'une colonne déjà bornée. Dès que la grille existe (1024 px),
+   le conteneur intérieur s'efface : la colonne fait la largeur, la grille
+   fait les marges. Hors @layer, comme la règle des 44 px : une couche
+   perdrait contre l'utilitaire. */
+@media (min-width: 1024px) {
+  .colonne-centrale .container {
+    padding-left: 0;
+    padding-right: 0;
+  }
+  /* ⚠ Une page qui borne ELLE-MÊME sa largeur (`max-w-3xl` : contact, à
+     propos, devenir fournisseur — des pages de texte) la garde : 1 128 px de
+     prose à 1920 px, c'est 130 caractères par ligne, illisible. Seule la borne
+     du conteneur (1400 px) s'efface. */
+  .colonne-centrale .container:not([class*="max-w-"]) {
+    max-width: none;
   }
 }
