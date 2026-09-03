@@ -30,8 +30,12 @@ def _offre(oid, slug="madrier-70x150-4m", prix=35000, garder=1, hors=0):
             "type_nom": "Madrier"}
 
 
-def _photo(pid, offre_id, garder=1):
-    return {"id": pid, "garder": garder, "offre_id": offre_id,
+def _photo(pid, offre_id=None, garder=1, offre_ids=None):
+    """Une photo et les produits qu'elle montre. Une photo peut en montrer
+    plusieurs depuis le 03/09/2026 : `offre_ids` est la forme complete."""
+    if offre_ids is None:
+        offre_ids = [offre_id] if offre_id is not None else []
+    return {"id": pid, "garder": garder, "offre_ids": list(offre_ids),
             "url_o2": "https://a/x.jpg"}
 
 
@@ -60,12 +64,29 @@ def test_sans_reference_le_produit_attend_l_atelier():
     assert etat["nb_pretes"] == 0 and len(etat["sans_reference"]) == 1
 
 
-def test_une_photo_attribuee_A_UNE_AUTRE_offre_ne_compte_pas():
-    """Le cas réel : cinq matériaux dans un post, les photos des cinq."""
+def test_une_photo_non_attribuee_a_cette_offre_la_ne_compte_pas():
+    """Le cas réel : cinq matériaux dans un post, les photos des cinq.
+
+    Une photo compte pour les produits qu'on lui a DÉSIGNÉS — un ou
+    plusieurs — jamais pour les autres. (Renommé le 03/09/2026 : l'ancien
+    titre, « attribuée À UNE AUTRE offre », énonçait l'exclusivité comme une
+    règle métier ; c'est le partage qui est la règle, voir le jumeau.)
+    """
     etat = tri.etat_des_offres(
         {"offres": [_offre(1), _offre(2)], "photos": [_photo(9, 1)]})
     assert etat["nb_pretes"] == 1
     assert [o["id"] for o in etat["sans_photo"]] == [2]
+
+
+def test_une_photo_peut_illustrer_deux_offres():
+    """Le jumeau : le tas de bois montre le 7×15 ET le 7×17. Les deux sont prêts.
+
+    Mesuré le 03/09/2026 : 9 produits, 5 photos chez « Fivarotan-kazo
+    Mirary ». Sans partage, quatre articles ne pouvaient jamais partir.
+    """
+    etat = tri.etat_des_offres(
+        {"offres": [_offre(1), _offre(2)], "photos": [_photo(9, offre_ids=[1, 2])]})
+    assert etat["nb_pretes"] == 2 and etat["sans_photo"] == []
 
 
 def test_une_offre_ecartee_ou_hors_catalogue_n_attend_plus_rien():

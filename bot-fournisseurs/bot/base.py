@@ -304,6 +304,35 @@ CREATE INDEX IF NOT EXISTS idx_journal_ts       ON journal(ts DESC);
 CREATE INDEX IF NOT EXISTS idx_vehicules_prosp  ON vehicules(prospect_id);
 CREATE INDEX IF NOT EXISTS idx_demandes_statut  ON demandes(statut, collecte_le DESC);
 CREATE INDEX IF NOT EXISTS idx_demandes_mat     ON demandes(materiau_slug);
+
+-- ⭐ UNE PHOTO PEUT MONTRER PLUSIEURS PRODUITS. C'est le cas réel, pas une
+--   commodité : la photo d'un tas de bois montre le madrier 7×15 ET le 7×17,
+--   la photo d'un tarif montre tous les articles du dépôt.
+--
+--   🔴 CE QUE LE MODÈLE D'AVANT COÛTAIT, mesuré le 03/09/2026 sur
+--   « Fivarotan-kazo Mirary » : 9 produits, 5 photos. `photos.offre_id` étant
+--   une colonne scalaire, une photo n'appartenait qu'à UN produit — et
+--   cliquer une vignette déjà prise la VOLAIT au produit voisin, qui
+--   redevenait incomplet en silence. Quatre des neuf articles ne pouvaient
+--   donc JAMAIS avoir d'image, et un produit sans photo ne part jamais sur le
+--   site (`inscription._produits_publiables`). Le dépôt était plafonné à cinq
+--   articles publiables par construction.
+--
+--   La cascade des DEUX côtés est le garde-fou : supprimer une offre retire
+--   ses liens et laisse la photo (et son `url_o2`) aux autres produits ;
+--   supprimer une photo retire les siens. Aucun appelant n'a à nettoyer —
+--   et il y a quatre chemins de suppression (l'écran, reextraire, la cascade
+--   par prospect, la suppression de photo), donc aucun nettoyage écrit chez
+--   l'un d'eux ne tiendrait.
+CREATE TABLE IF NOT EXISTS photos_offres (
+    photo_id INTEGER NOT NULL,
+    offre_id INTEGER NOT NULL,
+    pose_le  TEXT    NOT NULL,
+    PRIMARY KEY (photo_id, offre_id),
+    FOREIGN KEY (photo_id) REFERENCES photos(id) ON DELETE CASCADE,
+    FOREIGN KEY (offre_id) REFERENCES offres(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_photos_offres_offre ON photos_offres(offre_id);
 """
 
 # Colonnes ajoutées après coup. SQLite n'a pas d'`ADD COLUMN IF NOT EXISTS` :
@@ -325,6 +354,13 @@ COLONNES_AJOUTEES = {
     #   et de moellon. `offre_id` est le lien qui manquait — pose a la main,
     #   parce qu'aucune machine ne reconnait un madrier d'un chevron sur une
     #   photo de tas de bois.
+    #
+    #   ⚠ COLONNE GELEE depuis le 03/09/2026. Le lien vit desormais dans la
+    #   table `photos_offres` (une photo, N produits). Plus personne ne
+    #   l'ecrit : `modifier_photo` ne l'accepte plus, et `initialiser()` a
+    #   verse son contenu dans la table de liaison, une fois. Elle reste
+    #   declaree pour que la reprise trouve les bases anciennes, et pour ne
+    #   pas perdre la trace si la reprise devait etre rejouee a la main.
     "photos": [
         ("offre_id", "INTEGER"),
     ],
@@ -381,6 +417,9 @@ def connexion() -> sqlite3.Connection:
     return cx
 
 
+CLE_REPRISE_PHOTOS = "photos_offres_reprise"
+
+
 def initialiser() -> None:
     with _verrou, connexion() as cx:
         cx.executescript(SCHEMA)
@@ -392,6 +431,45 @@ def initialiser() -> None:
             for nom, definition in colonnes:
                 if nom not in existantes:
                     cx.execute(f"ALTER TABLE {table} ADD COLUMN {nom} {definition}")
+        _reprendre_les_liens_photos(cx)
+
+
+def _reprendre_les_liens_photos(cx) -> None:
+    """Verse `photos.offre_id` dans `photos_offres` — UNE SEULE FOIS.
+
+    ⚠ TROIS PRÉCAUTIONS, chacune pour une panne précise :
+
+    1. UNE SEULE FOIS, et le drapeau vit dans `etat`, pas dans « la table est
+       vide ». Rejouée à chaque démarrage, la reprise ferait RESSUSCITER au
+       redémarrage suivant un lien qu'on vient de détacher à la main. Et
+       « rejouer si la table est vide » a le même défaut : détacher le dernier
+       lien vide la table.
+    2. ELLE NE PEUT PAS TUER LE DÉMARRAGE. `initialiser()` s'exécute à
+       l'import de ce module : une exception ici emporterait le serveur, le
+       planificateur, chaque outil et la suite de tests entière. La jointure
+       écarte donc en silence ce qui ne va pas — une offre absente, une offre
+       d'un AUTRE dépôt — au lieu de lever.
+    3. PAS D'APPEL IMBRIQUÉ. `_verrou` n'est pas réentrant et l'appelant le
+       détient : `logguer`, `lire_etat` et `ecrire_etat` le reprendraient et
+       gèleraient le démarrage sans un mot. On travaille donc avec le curseur
+       déjà ouvert.
+    """
+    deja = cx.execute(
+        "SELECT valeur FROM etat WHERE cle = ?", (CLE_REPRISE_PHOTOS,)
+    ).fetchone()
+    if deja:
+        return
+    cx.execute(
+        "INSERT OR IGNORE INTO photos_offres (photo_id, offre_id, pose_le) "
+        "SELECT ph.id, o.id, ? FROM photos ph "
+        "  JOIN offres o ON o.id = ph.offre_id AND o.prospect_id = ph.prospect_id "
+        " WHERE ph.offre_id IS NOT NULL",
+        (maintenant(),),
+    )
+    cx.execute(
+        "INSERT OR REPLACE INTO etat (cle, valeur) VALUES (?, ?)",
+        (CLE_REPRISE_PHOTOS, maintenant()),
+    )
 
 
 def maintenant() -> str:
@@ -839,6 +917,21 @@ def prospect(pid: str) -> dict | None:
             "SELECT * FROM photos WHERE prospect_id = ? "
             "ORDER BY couverture DESC, ordre", (pid,)
         ).fetchall()]
+        # ⭐ LE CONTRAT DE FORME : UNE LIGNE PAR PHOTO, et ses produits dans
+        #   une liste. Surtout PAS un JOIN sur le SELECT ci-dessus — une photo
+        #   partagée par trois produits y apparaîtrait trois fois, et tout
+        #   l'aval (la bande de vignettes, le compteur, l'envoi o2switch) la
+        #   compterait trois fois. Une requête groupée de plus, jamais une par
+        #   photo : une fiche porte jusqu'à 35 photos.
+        liens: dict[int, list[int]] = {}
+        for lien in cx.execute(
+            "SELECT l.photo_id, l.offre_id FROM photos_offres l "
+            "  JOIN photos p ON p.id = l.photo_id "
+            " WHERE p.prospect_id = ? ORDER BY l.photo_id, l.offre_id", (pid,)
+        ).fetchall():
+            liens.setdefault(lien["photo_id"], []).append(lien["offre_id"])
+        for photo in fiche["photos"]:
+            photo["offre_ids"] = liens.get(photo["id"], [])
         fiche["publications"] = [dict(p) for p in cx.execute(
             "SELECT id, permalien, source_nom, publie_le, texte, dossier, nb_offres "
             "FROM publications WHERE prospect_id = ? ORDER BY collecte_le DESC", (pid,)
@@ -1257,8 +1350,76 @@ def ajouter_photo(prospect_id: str, publication_id: str | None, fichier: str,
         )
 
 
+def attacher_photo(photo_id: int, offre_id: int) -> bool:
+    """Cette photo montre AUSSI ce produit-là. Vrai si le lien est posé.
+
+    🔒 LE GARDE « MÊME DÉPÔT » EST DANS LA JOINTURE, pas dans un `if` de
+       l'appelant : il est donc impossible à contourner, quel que soit le
+       chemin. Sans lui, la photo d'un dépôt peut être rattachée au produit
+       d'un autre et partir en ligne sous son nom — la route PATCH l'acceptait
+       déjà, seule l'interface l'empêchait.
+
+    Rejoindre un produit n'en retire aucun autre : c'est tout l'objet de la
+    table de liaison. `INSERT OR IGNORE` rend l'appel idempotent — recliquer
+    ne casse rien.
+    """
+    with _verrou, connexion() as cx:
+        curseur = cx.execute(
+            "INSERT OR IGNORE INTO photos_offres (photo_id, offre_id, pose_le) "
+            "SELECT p.id, o.id, ? FROM photos p "
+            "  JOIN offres o ON o.prospect_id = p.prospect_id "
+            " WHERE p.id = ? AND o.id = ?",
+            (maintenant(), photo_id, offre_id),
+        )
+        # 0 quand le couple existe déjà OU quand le garde a refusé : on
+        # distingue les deux, sinon un refus passerait pour un doublon.
+        if curseur.rowcount:
+            return True
+        return bool(cx.execute(
+            "SELECT 1 FROM photos_offres WHERE photo_id = ? AND offre_id = ?",
+            (photo_id, offre_id),
+        ).fetchone())
+
+
+def detacher_photo(photo_id: int, offre_id: int) -> None:
+    """Cette photo ne montre plus CE produit-là — les autres la gardent.
+
+    ⚠ Le réflexe `DELETE ... WHERE photo_id = ?` retirerait la photo à tous
+      les produits d'un coup. Le couple entier est la clé.
+    """
+    with _verrou, connexion() as cx:
+        cx.execute(
+            "DELETE FROM photos_offres WHERE photo_id = ? AND offre_id = ?",
+            (photo_id, offre_id),
+        )
+
+
+def offres_de_la_photo(photo_id: int) -> list[int]:
+    with _verrou, connexion() as cx:
+        return [l["offre_id"] for l in cx.execute(
+            "SELECT offre_id FROM photos_offres WHERE photo_id = ? ORDER BY offre_id",
+            (photo_id,),
+        ).fetchall()]
+
+
+def photos_de_l_offre(offre_id: int) -> list[int]:
+    """L'inverse : les photos qui montrent ce produit. Sert au rejeu
+    (`outils/reextraire.py`) pour reporter les attributions sur les offres
+    recréées — la seule chose qu'aucune machine ne sait refaire."""
+    with _verrou, connexion() as cx:
+        return [l["photo_id"] for l in cx.execute(
+            "SELECT photo_id FROM photos_offres WHERE offre_id = ? ORDER BY photo_id",
+            (offre_id,),
+        ).fetchall()]
+
+
 def modifier_photo(photo_id: int, **champs) -> None:
-    autorises = {"garder", "couverture", "url_o2", "ordre", "offre_id"}
+    # ⚠ `offre_id` N'EST PLUS ACCEPTÉ ICI : c'était la ligne exacte du vol.
+    #   Le lien photo↔produit se pose par `attacher_photo` / `detacher_photo`,
+    #   qui savent qu'une photo en montre plusieurs. Laisser le champ passer
+    #   rouvrirait la porte de derrière — la liste blanche filtre en silence,
+    #   donc un appelant resté sur l'ancien code croirait avoir écrit.
+    autorises = {"garder", "couverture", "url_o2", "ordre"}
     champs = {c: v for c, v in champs.items() if c in autorises}
     if not champs:
         return
@@ -1275,23 +1436,13 @@ def definir_couverture(prospect_id: str, photo_id: int) -> None:
         cx.execute("UPDATE photos SET couverture = 1, garder = 1 WHERE id = ?", (photo_id,))
 
 
-def photos_par_produit(prospect_id: str) -> list[dict]:
-    """Les photos gardees, avec le produit que chacune montre — ou rien.
-
-    Sert a l'ecran de tri : c'est la seule vue qui met en face l'image et ce
-    qu'elle est censee illustrer. Le libelle et le prix viennent de l'offre,
-    pas d'une saisie a part : ce sont eux qui partiront sur le site.
-    """
-    with _verrou, connexion() as cx:
-        return [dict(l) for l in cx.execute(
-            "SELECT ph.id, ph.fichier, ph.url_o2, ph.garder, ph.couverture, "
-            "       ph.ordre, ph.offre_id, ph.publication_id, "
-            "       o.materiau_slug, o.materiau_nom, o.prix, o.unite, "
-            "       o.libelle_brut "
-            "  FROM photos ph LEFT JOIN offres o ON o.id = ph.offre_id "
-            " WHERE ph.prospect_id = ? AND ph.garder = 1 "
-            " ORDER BY ph.ordre, ph.id", (prospect_id,)
-        ).fetchall()]
+# ⚠ `photos_par_produit()` a été RETIRÉE le 03/09/2026. Elle faisait
+#   `LEFT JOIN offres o ON o.id = ph.offre_id` et se présentait comme « la
+#   seule vue qui met en face l'image et ce qu'elle est censée illustrer » —
+#   mais elle n'avait aucun appelant, aucun test, et branchée sur la table de
+#   liaison son JOIN rendrait TROIS lignes de même `ph.id` pour une photo
+#   partagée par trois produits. Un piège dormant parfait : le prochain
+#   lecteur l'aurait crue juste. `prospect()` porte déjà `offre_ids`.
 
 
 def photos_a_publier(prospect_id: str) -> list[dict]:

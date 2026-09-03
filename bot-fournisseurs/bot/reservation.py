@@ -190,6 +190,15 @@ def envoyer_ces_photos(fiche: dict, photos: list[dict]) -> dict[int, str]:
     adresses: dict[int, str] = {}
     court = fiche["id"][:8]
     for photo in photos:
+        # ⚠ LE SECOND BOUT DU MEME CHEMIN. Le garde `url_o2` ci-dessous lit le
+        #   DICT recu, jamais la base : si la liste porte deux fois la meme
+        #   photo — ce qu'une photo partagee entre plusieurs produits rend
+        #   possible chez tout appelant qui oublie de dedoublonner — elle
+        #   partirait deux fois sur o2switch. On tient donc la liste des
+        #   envoyees ici aussi : un garde-fou se pose a CHAQUE bout du chemin
+        #   qu'il protege, pas seulement chez l'appelant qui y a pense.
+        if photo["id"] in adresses:
+            continue
         if photo.get("url_o2"):
             adresses[photo["id"]] = photo["url_o2"]
             continue
@@ -214,6 +223,9 @@ def envoyer_ces_photos(fiche: dict, photos: list[dict]) -> dict[int, str]:
         # Enregistre apres CHAQUE photo : une coupure ne fait pas tout
         # recommencer, et un second passage ne reenvoie rien.
         base.modifier_photo(photo["id"], url_o2=url)
+        # Le dict recu est celui de la fiche en memoire : le muter fait
+        # profiter TOUS les produits qui partagent cette photo, sans relire.
+        photo["url_o2"] = url
         adresses[photo["id"]] = url
         time.sleep(float(cfg.get("pause_entre_envois_photos", 3.0)))
     return adresses

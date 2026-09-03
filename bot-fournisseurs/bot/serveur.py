@@ -741,8 +741,34 @@ def effacer_offre(oid: int):
 # -- API : photos ------------------------------------------------------------
 @app.patch("/api/photos/{photo_id}")
 def corriger_photo(photo_id: int, entree: ChampsEntree):
+    # ⚠ REFUSER `offre_id` EXPLICITEMENT, au lieu de l'ignorer. `modifier_photo`
+    #   filtre par liste blanche puis `return` sans rien faire : un onglet resté
+    #   ouvert sur l'ancien code recevrait `{"ok": true}` pour une écriture qui
+    #   n'a pas eu lieu, et l'opérateur croirait avoir attribué sa photo. Le
+    #   lien se pose maintenant par les deux routes ci-dessous.
+    if "offre_id" in entree.champs:
+        raise HTTPException(
+            400, "Le lien photo↔produit passe par POST/DELETE "
+                 "/api/photos/{id}/offres/{offre_id} — une photo peut "
+                 "désormais illustrer plusieurs produits.")
     base.modifier_photo(photo_id, **entree.champs)
     return {"ok": True}
+
+
+@app.post("/api/photos/{photo_id}/offres/{offre_id}")
+def attacher_photo(photo_id: int, offre_id: int):
+    """Cette photo montre AUSSI ce produit — sans la retirer aux autres."""
+    if not base.attacher_photo(photo_id, offre_id):
+        raise HTTPException(
+            409, "Photo et produit n'appartiennent pas au même dépôt.")
+    return {"ok": True, "offres": base.offres_de_la_photo(photo_id)}
+
+
+@app.delete("/api/photos/{photo_id}/offres/{offre_id}")
+def detacher_photo(photo_id: int, offre_id: int):
+    """Cette photo ne montre plus CE produit — les autres la gardent."""
+    base.detacher_photo(photo_id, offre_id)
+    return {"ok": True, "offres": base.offres_de_la_photo(photo_id)}
 
 
 @app.post("/api/prospects/{pid}/couverture/{photo_id}")

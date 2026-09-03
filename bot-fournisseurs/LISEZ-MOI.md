@@ -551,6 +551,47 @@ tombés alors qu'il faisait exactement son travail. L'invariant est : la cote
 entière est lue, et elle désigne soit la référence exacte, soit une référence
 à créer — jamais une voisine (`assert_cote_reconnue`).
 
+### Le 03/09 midi — une photo peut montrer plusieurs produits
+
+Demande d'Andry, capture à l'appui : « fais en sorte qu'on puisse choisir une
+photo déjà choisie sur un autre article ». Mesuré sur « Fivarotan-kazo
+Mirary » : **9 produits, 5 photos**. `photos.offre_id` étant une colonne, une
+photo n'appartenait qu'à un produit, et cliquer une vignette déjà prise la
+**volait** au voisin — quatre articles ne pouvaient jamais avoir d'image, donc
+jamais partir sur le site.
+
+- **Table de liaison `photos_offres`** (photo, produit, posé le), cascade des
+  deux côtés. La colonne `offre_id` est gelée : plus personne ne l'écrit,
+  `initialiser()` l'a versée dans la table **une seule fois** (drapeau dans
+  `etat` — pas « si la table est vide », sinon un lien détaché ressuscite).
+- **Le clic ajoute, il ne vole plus** : `POST /api/photos/{id}/offres/{oid}`
+  et `DELETE` du même ; `PATCH` refuse `offre_id` par un 400 explicite. Trois
+  états cumulables sur la vignette : choisie, partagée (le titre nomme les
+  autres produits, la pastille les compte), libre.
+- **Le garde « même dépôt » est dans la jointure SQL** de `attacher_photo`,
+  pas chez l'appelant : la photo d'un dépôt ne peut pas partir sous le nom
+  d'un autre. La route l'acceptait, seule l'interface l'empêchait.
+- **Une photo partagée ne part qu'une fois** sur o2switch (dédoublonnage aux
+  deux bouts : `televerser_les_photos` et `envoyer_ces_photos`), le fil ne
+  la répète pas, et le plafond de quatre photos est **par produit, jamais par
+  photo** : une photo de tarif illustre ses six articles.
+- **`photos_par_offre` lève** si une fiche n'a pas `offre_ids` au lieu de
+  rendre `{}` : ce silence-là faisait « aucun produit complet », et
+  `inscrire()` — que le planificateur appelle tout seul — finit par
+  redescendre en brouillon toute fiche sans produit actif. Une clé mal nommée
+  aurait dépublié des dépôts visibles sans personne devant l'écran.
+- **`outils/reextraire.py` reporte les attributions** sur les offres
+  recréées (clé naturelle publication + libellé) : avant, une exécution
+  effaçait 100 % du travail humain d'attribution, et il a tourné deux fois ce
+  matin. **`outils/remise_a_zero.py` déduit ses tables de `sqlite_master`**
+  au lieu d'une liste tenue à la main.
+- Au passage : le pré-tri des photos par famille cherchait les fichiers dans
+  `data/prospects/<prospect>/` alors qu'ils vivent dans le dossier de la
+  publication — 403 photos, 0 classée, sans une ligne de journal.
+
+Le compteur du bloc Photos change de question : « n/m **produits illustrés** »
+au lieu de « photos attribuées », qui mentait dans les deux sens.
+
 ---
 
 ## Architecture

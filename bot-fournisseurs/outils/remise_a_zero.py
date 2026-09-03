@@ -35,17 +35,39 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from bot.config import BASE, DOSSIER_DONNEES, DOSSIER_PROSPECTS  # noqa: E402
 
-TABLES_COLLECTE = ("prospects", "publications", "offres", "photos", "vehicules",
-                   "evenements", "demandes", "materiaux_absents", "candidats_sources",
-                   "journal")
+# Ce qui N'EST PAS de la collecte, et survit : la configuration de la veille,
+# la liste rouge (un refus est définitif), la session Facebook et les drapeaux.
+# Tout le reste est de la collecte, et se DÉDUIT de la base elle-même.
+#
+# 🔴 POURQUOI ON NE TIENT PLUS DE LISTE À LA MAIN. Le 03/09/2026, la table
+#   `photos_offres` (une photo → plusieurs produits) est arrivée. Une liste
+#   écrite ici l'aurait oubliée — et une remise à zéro avec `foreign_keys`
+#   coupé et les compteurs remis à 1 aurait recollé les liens de l'ancien
+#   corpus aux produits neufs, numéro pour numéro. À l'inverse, la NOMMER dans
+#   une liste casserait l'outil sur toute base que le nouveau code n'a pas
+#   encore ouverte (une archive restaurée, la base d'avant remise en place
+#   pour comparer) : « no such table », levé avant la sauvegarde. La déduction
+#   depuis `sqlite_master` évite les deux.
+TABLES_GARDEES = frozenset({"sources", "refuses", "etat"})
 CLES_ETAT_A_OUBLIER = ("planificateur_dernier_creneau", "planificateur_dernieres_taches",
                        "derniere_prospection_sources")
+
+
+def tables_de_collecte(cx: sqlite3.Connection) -> list[str]:
+    """Toutes les tables de la base, moins celles qui ne sont pas de la collecte."""
+    return sorted(
+        ligne[0] for ligne in cx.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table' "
+            "AND name NOT LIKE 'sqlite_%'")
+        if ligne[0] not in TABLES_GARDEES
+    )
 
 
 def principal() -> int:
     ecrire = "--ecrire" in sys.argv
     cx = sqlite3.connect(f"file:{BASE}?mode=ro", uri=True)
-    comptes = {t: cx.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0] for t in TABLES_COLLECTE}
+    a_vider = tables_de_collecte(cx)
+    comptes = {t: cx.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0] for t in a_vider}
     sources = cx.execute("SELECT COUNT(*) FROM sources").fetchone()[0]
     refuses = cx.execute("SELECT COUNT(*) FROM refuses").fetchone()[0]
     cx.close()
@@ -74,7 +96,7 @@ def principal() -> int:
     cx = sqlite3.connect(BASE, timeout=30)
     with cx:
         cx.execute("PRAGMA foreign_keys = OFF")
-        for t in TABLES_COLLECTE:
+        for t in tables_de_collecte(cx):
             cx.execute(f"DELETE FROM {t}")
         cx.execute("UPDATE sources SET nb_trouves = 0, derniere_collecte = NULL")
         for cle in CLES_ETAT_A_OUBLIER:

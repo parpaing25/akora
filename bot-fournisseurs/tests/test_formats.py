@@ -224,7 +224,7 @@ def test_un_produit_exige_reference_prix_ET_photo():
     assert inscription._produits_publiables(sans_photo) == []
 
     avec_photo = {"nom": "D", "offres": [offre],
-                  "photos": [{"id": 1, "garder": 1, "offre_id": 7,
+                  "photos": [{"id": 1, "garder": 1, "offre_ids": [7],
                               "url_o2": "https://a/x.jpg"}]}
     assert len(inscription._produits_publiables(avec_photo)) == 1
 

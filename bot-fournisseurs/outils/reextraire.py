@@ -90,6 +90,25 @@ def principal() -> None:
         compte["publications"] += 1
         compte["ecartees_a_la_main"] += len(ecartees)
 
+    # ⭐ LES ATTRIBUTIONS DE PHOTOS SURVIVENT AU REJEU. Cet outil supprime les
+    #   offres et les recrée, et `offres.id` est AUTOINCREMENT : les
+    #   identifiants ne reviennent jamais (deux renumérotations le 03/09/2026,
+    #   1..336 puis 682..1026). Le lien photo↔produit portant l'identifiant de
+    #   l'offre, il partait avec elle par la cascade : UNE SEULE EXÉCUTION
+    #   EFFAÇAIT 100 % DU TRAVAIL HUMAIN D'ATTRIBUTION — la seule chose
+    #   qu'aucune machine ne sait refaire. On relève donc, avant de supprimer,
+    #   quelle photo montrait quelle offre, par sa clé naturelle
+    #   (publication, libellé), et on recolle après la recréation.
+    from bot import base as socle
+    liens_anciens: dict = {}
+    for o in anciennes:
+        if not o["garder"]:
+            continue
+        photos = socle.photos_de_l_offre(o["id"])
+        if photos:
+            liens_anciens[(o["publication_id"], (o["libelle_brut"] or "").strip())] = photos
+    a_reporter = sum(len(v) for v in liens_anciens.values())
+
     avec_prix_avant = sum(1 for o in anciennes if o["prix"])
     avec_prix_apres = sum(1 for _, _, o in a_creer if o.get("prix"))
     ref_apres = sum(1 for _, _, o in a_creer if o.get("materiau_slug"))
@@ -106,6 +125,8 @@ def principal() -> None:
     print(f"  {'PUBLIABLES (réf + prix)':22} {pub_avant:>7} {pub_apres:>7}")
     print(f"\n  offres remplacées : {len(a_supprimer)}"
           f" · écartées à la main, respectées : {compte['ecartees_a_la_main']}")
+    print(f"  attributions de photos à reporter : {a_reporter} "
+          f"(sur {len(liens_anciens)} offre(s))")
 
     if not ecrire:
         print("\nÀ blanc : rien n'a été écrit. Relancer avec --ecrire.")
@@ -116,14 +137,40 @@ def principal() -> None:
     shutil.copy2(BASE, sauvegarde)
     print(f"\nSauvegarde : {sauvegarde.name}")
 
-    from bot import base as socle
-    n = 0
+    n, recollees = 0, 0
     for oid in a_supprimer:
         socle.supprimer_offre(oid)
     for prospect_id, publication_id, offre in a_creer:
-        if socle.ajouter_offre(prospect_id, publication_id, offre):
+        nid = socle.ajouter_offre(prospect_id, publication_id, offre)
+        if nid:
             n += 1
-    print(f"{len(a_supprimer)} offre(s) supprimée(s), {n} créée(s).")
+        photos = liens_anciens.get((publication_id, (offre.get("libelle_brut") or "").strip()))
+        if not photos:
+            continue
+        # `ajouter_offre` rend None quand une jumelle existe déjà chez ce
+        # dépôt : le lien va alors sur la jumelle, pas dans le vide.
+        if nid is None:
+            nid = _jumelle(socle, prospect_id, offre)
+        for photo_id in photos:
+            if nid and socle.attacher_photo(photo_id, nid):
+                recollees += 1
+    print(f"{len(a_supprimer)} offre(s) supprimée(s), {n} créée(s), "
+          f"{recollees}/{a_reporter} attribution(s) de photo reportée(s).")
+    if recollees < a_reporter:
+        print(f"⚠ {a_reporter - recollees} attribution(s) NON reportée(s) : le libellé "
+              "de leur offre a changé avec l'extraction. À refaire à la main dans "
+              "le panneau du dépôt — la sauvegarde ci-dessus dit lesquelles.")
+
+
+def _jumelle(socle, prospect_id: str, offre: dict) -> int | None:
+    """L'offre déjà en base que `ajouter_offre` a jugée identique (même règle)."""
+    empreinte = offre.get("materiau_slug") or offre.get("libelle_brut")
+    with socle._verrou, socle.connexion() as cx:
+        ligne = cx.execute(
+            "SELECT id FROM offres WHERE prospect_id = ? "
+            "AND COALESCE(materiau_slug, libelle_brut) = ? LIMIT 1",
+            (prospect_id, empreinte)).fetchone()
+        return ligne["id"] if ligne else None
 
 
 if __name__ == "__main__":

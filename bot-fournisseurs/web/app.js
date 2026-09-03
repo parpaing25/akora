@@ -854,8 +854,13 @@ function manquesDeLOffre(offre, prospect) {
   const manques = [];
   if (!offre.materiau_slug) manques.push({ texte: "format à préciser", couleur: "jaune" });
   if (!offre.prix) manques.push({ texte: "prix à demander", couleur: "rouge" });
+  // Doit rester IDENTIQUE à `bot/tri.manques_de_l_offre` : si l'écran juge
+  // qu'il manque une photo là où le bot juge le produit prêt, l'opérateur
+  // reclique une autre photo pour faire disparaître le badge — et il défait
+  // un travail juste.
   const aUnePhoto = (prospect.photos || []).some(
-    (f) => f.garder && String(f.offre_id) === String(offre.id));
+    (f) => f.garder && (f.offre_ids || []).some(
+      (id) => String(id) === String(offre.id)));
   if (!aUnePhoto) manques.push({ texte: "photo à désigner", couleur: "bleu" });
   if (!manques.length) manques.push({ texte: "prêt", couleur: "vert" });
   return manques;
@@ -869,10 +874,23 @@ function manquesDeLOffre(offre, prospect) {
  * poser 1 700 vignettes dans la page (48 produits x 35 photos chez un seul
  * depot).
  *
- * Une photo deja prise par un AUTRE produit reste cliquable mais se voit :
- * elle porte le nom de celui qui la tient. Rien n'interdit de la reprendre —
- * c'est parfois la meme image qui montre deux formats du meme bois — mais on
- * ne le fait plus sans le savoir. */
+ * ⭐ UNE PHOTO PEUT MONTRER PLUSIEURS PRODUITS, et le clic AJOUTE — il ne
+ * vole plus. C'est le cas reel : le meme tas de bois montre le madrier 7x15
+ * et le 7x17, la photo d'un tarif montre tous les articles.
+ *
+ * 🔴 CE QUE L'ANCIEN GESTE COUTAIT, mesure le 03/09/2026 sur
+ * « Fivarotan-kazo Mirary » : 9 produits, 5 photos. Cliquer une vignette deja
+ * prise ecrivait `offre_id = <cette offre>` et la RETIRAIT au produit voisin,
+ * qui redevenait incomplet en silence. Quatre des neuf articles ne pouvaient
+ * donc jamais avoir d'image — et un produit sans photo ne part jamais sur le
+ * site.
+ *
+ * TROIS ETATS, CUMULABLES, la ou il y en avait deux exclusifs :
+ *   · `choisie`  — elle montre CE produit ;
+ *   · `partagee` — elle en montre d'AUTRES aussi (le titre les nomme tous) ;
+ *   · nue        — libre.
+ * « choisie » et « partagee » se portent ensemble : c'est le cas normal, et
+ * c'est ce qu'il faut voir AVANT de cliquer. */
 function bandePhotos(offre, prospect) {
   const toutes = (prospect.photos || []).filter((f) => f.garder);
   if (!toutes.length) return "";
@@ -888,25 +906,37 @@ function bandePhotos(offre, prospect) {
     !f.famille || !offre.famille_slug ? 1 : (f.famille === offre.famille_slug ? 0 : 2);
   memePost.sort((a, b) => rangFamille(a) - rangFamille(b));
   autres.sort((a, b) => rangFamille(a) - rangFamille(b));
-  const nomDe = (photoId) => {
-    const autre = prospect.offres.find(
-      (x) => String(x.id) !== String(offre.id)
-        && toutes.some((f) => String(f.id) === String(photoId)
-                             && String(f.offre_id) === String(x.id)));
-    return autre ? (autre.materiau_nom || "un autre produit") : "";
-  };
+  // Le nom des AUTRES produits que chaque photo montre. Construit une fois
+  // par offre : c'etait un `find` imbrique dans un `some`, donc O(offres x
+  // photos) par vignette — sur une fiche a 48 produits et 35 photos, la bande
+  // se redessinait en dizaines de milliers de comparaisons.
+  const parId = new Map((prospect.offres || []).map((o) => [String(o.id), o]));
+  const autresNoms = (f) => (f.offre_ids || [])
+    .filter((id) => String(id) !== String(offre.id))
+    .map((id) => {
+      const o = parId.get(String(id));
+      return o ? (o.materiau_nom || o.type_nom || "un autre produit") : "";
+    })
+    .filter(Boolean);
 
   const vignette = (f) => {
-    const mienne = String(f.offre_id) === String(offre.id);
-    const prise = !mienne && f.offre_id ? nomDe(f.id) : "";
+    const mienne = (f.offre_ids || []).some((id) => String(id) === String(offre.id));
+    const autres = autresNoms(f);
+    const titre = mienne
+      ? (autres.length
+          ? "Retirer de ce produit — elle resterait sur " + echapper(autres.join(", "))
+          : "Retirer cette photo du produit")
+      : (autres.length
+          ? "Ajouter à ce produit — elle montre déjà " + echapper(autres.join(", "))
+          : "Cette photo montre ce produit");
     return `
-    <button class="vignette ${mienne ? "choisie" : ""} ${prise ? "prise" : ""}"
+    <button class="vignette ${mienne ? "choisie" : ""} ${autres.length ? "partagee" : ""}"
             data-photo-pour="${offre.id}" data-photo-id="${f.id}"
-            title="${mienne ? "Retirer cette photo du produit"
-                            : prise ? "Déjà sur « " + echapper(prise) + " »"
-                                    : "Cette photo montre ce produit"}">
+            data-photo-mienne="${mienne ? 1 : 0}"
+            title="${titre}">
       <img src="/photo/${f.publication_id}/${encodeURIComponent(f.fichier)}"
            alt="" loading="lazy">
+      ${autres.length ? `<span class="part">${autres.length + (mienne ? 1 : 0)}</span>` : ""}
     </button>`;
   };
 
@@ -993,26 +1023,43 @@ function blocPhotos(p) {
   if (!p.photos.length) return "";
   const choix = (p.offres || []).filter((o) => o.garder);
 
-  const attribuees = p.photos.filter((f) => f.garder && f.offre_id).length;
+  // ⚠ CE QU'ON MESURE A CHANGÉ, et c'est le fond du compteur. « x/y photos
+  //   attribuées » mentait dans les deux sens : une photo partagée par cinq
+  //   produits affichait « 1/12 » en jaune alors que tout était prêt, et le
+  //   badge passait au vert quand toutes les photos étaient placées même si
+  //   des produits n'en avaient aucune. La question utile n'est pas « toutes
+  //   les photos sont-elles casées » mais « tous les produits ont-ils la
+  //   leur » — c'est celle-là qui décide si le dépôt peut partir sur le site.
+  const illustres = choix.filter((o) => p.photos.some(
+    (f) => f.garder && (f.offre_ids || []).some((id) => String(id) === String(o.id)))).length;
   const gardees = p.photos.filter((f) => f.garder).length;
 
   return `
   <div class="bloc">
     <h3>Photos <span class="badge gris">${p.photos.length}</span>
-      <span class="badge ${attribuees === gardees && gardees ? "vert" : "jaune"}">
-        ${attribuees}/${gardees} attribuée(s)</span></h3>
+      <span class="badge ${illustres === choix.length && choix.length ? "vert" : "jaune"}">
+        ${illustres}/${choix.length} produit(s) illustré(s)</span></h3>
     <p class="bloc-aide">
       Cliquez une photo pour en faire la couverture ; le ✓ l'écarte. <strong>Le
       choix « quelle photo montre quel produit » se fait plus haut</strong>, sous
       chaque produit relevé — c'est là qu'on voit l'article et son image côte à
-      côte. Une photo sans produit reste sur la fiche du dépôt, pas sur un article.
+      côte. Une <strong>même photo peut illustrer plusieurs produits</strong> : le
+      tas de bois montre le madrier 7×15 et le 7×17. Une photo sans produit reste
+      sur la fiche du dépôt, pas sur un article.
     </p>
     <div class="miniatures larges">
       ${p.photos.map((f) => {
-        const o = choix.find((x) => String(x.id) === String(f.offre_id));
-        const etiquette = o
-          ? `<strong>${echapper(o.materiau_nom || "produit")}</strong>`
-            + (o.prix ? ` · ${prixAr(o.prix)} ${UNITES[o.unite] || ""}` : " · sans prix")
+        // Une photo peut illustrer plusieurs produits : les nommer TOUS.
+        // N'en montrer qu'un, alors que ce bloc existe pour vérifier avant
+        // transfert que la photo dit la même chose que l'étiquette, ferait
+        // exactement le contraire de ce qu'il promet.
+        const siens = (f.offre_ids || [])
+          .map((id) => choix.find((x) => String(x.id) === String(id)))
+          .filter(Boolean);
+        const etiquette = siens.length
+          ? siens.map((o) => `<strong>${echapper(o.materiau_nom || "produit")}</strong>`
+              + (o.prix ? ` · ${prixAr(o.prix)} ${UNITES[o.unite] || ""}` : " · sans prix")
+            ).join("<br>")
           : '<span class="discret">aucun produit</span>';
         return `
         <div class="mini ${f.couverture ? "couverture" : ""} ${f.garder ? "" : "ecartee"}" data-photo="${f.id}">
@@ -1148,20 +1195,21 @@ function brancherPanneau() {
   });
 
   // Choisir la photo d'un produit, depuis la ligne du produit. Recliquer la
-  // meme la retire : c'est le geste inverse, au meme endroit.
+  // meme la retire DE CE PRODUIT-LA : c'est le geste inverse, au meme endroit.
+  //
+  // ⭐ LE CLIC AJOUTE, IL NE VOLE PLUS. Une photo peut illustrer plusieurs
+  //   produits — c'est tout l'objet de la table `photos_offres`. Le retrait
+  //   ne porte que sur CE couple : les autres produits gardent la leur.
   $$("[data-photo-pour]").forEach((bouton) => {
     bouton.addEventListener("click", async (e) => {
       e.preventDefault();
       e.stopPropagation();
       const photoId = bouton.dataset.photoId;
-      const photo = (p.photos || []).find((f) => String(f.id) === String(photoId));
-      const dejaSienne = photo
-        && String(photo.offre_id) === String(bouton.dataset.photoPour);
+      const offreId = bouton.dataset.photoPour;
+      const mienne = bouton.dataset.photoMienne === "1";
       try {
-        await api("/api/photos/" + photoId, {
-          method: "PATCH",
-          corps: { champs: { offre_id: dejaSienne ? null : Number(bouton.dataset.photoPour) } },
-        });
+        await api(`/api/photos/${photoId}/offres/${offreId}`,
+                  { method: mienne ? "DELETE" : "POST" });
         await ouvrirPanneau(p.id);
       } catch (err) {
         toast(err.message, "erreur");

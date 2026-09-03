@@ -163,14 +163,22 @@ def _garantir_colonne() -> None:
 
 
 def photos_a_classer(nombre: int) -> list[dict]:
-    """Les photos gardées, jamais classées, jamais déjà rattachées à une offre."""
+    """Les photos gardées, jamais classées — rattachées ou non à un produit.
+
+    ⚠ Le filtre `offre_id IS NULL` a été retiré le 03/09/2026 : le lien vit
+      maintenant dans `photos_offres`, et la colonne gelée ne s'écrit plus —
+      le filtre aurait laissé passer tout le monde. Et une photo déjà
+      attribuée à un produit peut en illustrer d'autres : sa famille sert
+      encore à trier la bande de vignettes des autres lignes.
+    """
     from . import base
     _garantir_colonne()
     with base.connexion() as cx:
         return [dict(l) for l in cx.execute(
-            "SELECT id, prospect_id, fichier FROM photos "
-            "WHERE garder = 1 AND famille IS NULL AND offre_id IS NULL "
-            "ORDER BY id LIMIT ?", (nombre,),
+            "SELECT ph.id, ph.prospect_id, ph.fichier, pub.dossier "
+            "  FROM photos ph LEFT JOIN publications pub ON pub.id = ph.publication_id "
+            " WHERE ph.garder = 1 AND ph.famille IS NULL "
+            " ORDER BY ph.id LIMIT ?", (nombre,),
         )]
 
 
@@ -181,7 +189,15 @@ def lancer(nombre: int = 40, ecrire: bool = False, appel=None) -> dict:
     lignes = photos_a_classer(nombre)
     chemins, presentes = [], []
     for ligne in lignes:
-        chemin = Path(DOSSIER_PROSPECTS) / ligne["prospect_id"] / ligne["fichier"]
+        # 🔴 LES PHOTOS VIVENT DANS LE DOSSIER DE LA PUBLICATION, pas dans
+        #   `data/prospects/<prospect_id>/` — c'est le chemin qu'utilisent
+        #   `reservation.envoyer_ces_photos` et la route `/photo` du serveur.
+        #   Mesuré le 03/09/2026 : 403 photos, colonne `famille` créée, NULLE
+        #   403 fois. Ce pré-tri n'avait JAMAIS trouvé un seul fichier, et ne
+        #   loguait rien : il tournait chaque jour pour classer zéro photo.
+        if not ligne.get("dossier"):
+            continue
+        chemin = Path(DOSSIER_PROSPECTS).parent / ligne["dossier"] / ligne["fichier"]
         if chemin.exists():
             chemins.append(chemin)
             presentes.append(ligne)

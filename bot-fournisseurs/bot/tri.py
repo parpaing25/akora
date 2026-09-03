@@ -38,11 +38,33 @@ MANQUE_PHOTO = "photo"
 
 
 def photos_par_offre(fiche: dict) -> dict[int, list[dict]]:
-    """{identifiant d'offre: [photos qui la montrent]}. Gardées seulement."""
+    """{identifiant d'offre: [photos qui la montrent]}. Gardées seulement.
+
+    Une photo peut en montrer PLUSIEURS : elle apparaît alors dans plusieurs
+    seaux, et c'est le MÊME objet qui y est rangé — `televerser_les_photos`
+    dédoublonne par identifiant avant d'envoyer quoi que ce soit.
+
+    🔴 CETTE FONCTION EST LE GARDE DE PUBLICATION : `etat_des_offres` →
+       `_produits_publiables` → `pretes`. Son échec était totalement
+       silencieux — un `.get()` sur une clé disparue rendait `{}` sans un mot,
+       donc « aucun produit complet », donc plus rien ne partait. Pire :
+       `inscrire()` finit par `aligner_statut_sur_les_produits`, qui fait
+       REDESCENDRE EN BROUILLON toute fiche sans produit actif, et le
+       planificateur l'appelle tout seul jusqu'à 25 dépôts par tournée. Une
+       clé mal nommée dépublierait donc des dépôts déjà visibles, sans
+       personne devant l'écran. On lève, franchement, plutôt que se taire.
+    """
     par_offre: dict[int, list[dict]] = {}
     for photo in fiche.get("photos", []):
-        if photo.get("garder") and photo.get("offre_id"):
-            par_offre.setdefault(int(photo["offre_id"]), []).append(photo)
+        if "offre_ids" not in photo:
+            raise KeyError(
+                "photo sans « offre_ids » : cette fiche vient d'un chemin qui "
+                "n'a pas été porté sur la table photos_offres. Refuser plutôt "
+                "que rendre {} — ce silence-là dépublie des dépôts.")
+        if not photo.get("garder"):
+            continue
+        for offre_id in photo["offre_ids"] or []:
+            par_offre.setdefault(int(offre_id), []).append(photo)
     return par_offre
 
 

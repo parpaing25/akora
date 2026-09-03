@@ -815,7 +815,17 @@ input[type="checkbox"] { accent-color: var(--laterite); }
 .vignette:hover img { opacity: 1; }
 .vignette.choisie { border-color: var(--laterite); }
 .vignette.choisie img { opacity: 1; }
-.vignette.prise::after { content: "•"; position: absolute; top: -2px; right: 2px; color: var(--bleu); font-size: 16px; line-height: 1; text-shadow: 0 0 3px #fff; }
+/* « choisie » et « partagee » se CUMULENT : une photo qui montre ce produit
+   ET d'autres porte les deux. Le compte se lit sans survoler — c'est ce qu'il
+   faut voir AVANT de cliquer, pas dans une infobulle. */
+.vignette.partagee { border-color: var(--bleu); }
+.vignette.partagee.choisie { border-color: var(--laterite); }
+.vignette .part {
+  position: absolute; top: -5px; right: -5px; min-width: 16px; height: 16px;
+  padding: 0 3px; border-radius: 999px; background: var(--bleu); color: #fff;
+  font-size: 10px; font-weight: 700; line-height: 16px; text-align: center;
+  box-shadow: 0 0 0 2px #fff; font-variant-numeric: tabular-nums;
+}
 .autres-photos { display: inline-block; }
 .autres-photos > summary { cursor: pointer; font-size: 11.5px; color: var(--bleu-fort); padding: 2px 8px; border: 1px dashed var(--bordure); border-radius: 999px; list-style: none; white-space: nowrap; }
 .autres-photos > summary::-webkit-details-marker { display: none; }

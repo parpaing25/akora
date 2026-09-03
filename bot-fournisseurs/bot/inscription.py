@@ -188,11 +188,17 @@ def _produits_publiables(fiche: dict) -> list[dict]:
        de materiaux, la photo dit la qualite du bois, la coupe de la brique,
        la propriete du sable — ce que le prix ne dit jamais.
 
-       Elle doit en plus etre ATTRIBUEE a ce produit-la (`photos.offre_id`).
-       Une photo prise dans le tas de la publication ne vaut rien : le
-       01/09/2026, « Sable fin : 45 000 Ar le m3 » est parti dans le fil sous
-       deux photos de gravillon et de moellon, parce qu'un post qui annonce
-       cinq materiaux porte les photos des cinq.
+       Elle doit en plus etre ATTRIBUEE a ce produit-la (table
+       `photos_offres`). Une photo prise dans le tas de la publication ne
+       vaut rien : le 01/09/2026, « Sable fin : 45 000 Ar le m3 » est parti
+       dans le fil sous deux photos de gravillon et de moellon, parce qu'un
+       post qui annonce cinq materiaux porte les photos des cinq.
+
+       ⭐ Attribuee a ce produit-la — et elle peut l'etre a PLUSIEURS : le
+       tas de bois montre le 7x15 et le 7x17, la photo d'un tarif montre tous
+       les articles. Depuis le 03/09/2026 le lien est une table de liaison,
+       plus une colonne : avant, 9 produits et 5 photos chez « Fivarotan-kazo
+       Mirary » condamnaient quatre articles a ne jamais partir.
 
     Consequence assumee : au 01/09/2026 le corpus ne rend AUCUN produit
     transferable, alors que 14 offres avaient reference et prix. C'est la
@@ -752,9 +758,17 @@ def televerser_les_photos(fiche: dict, offres: list[dict]) -> dict[int, list[str
 
     par_offre = tri.photos_par_offre(fiche)
     vises = {int(o["id"]) for o in offres if o.get("id") is not None}
-    a_envoyer = [photo
-                 for identifiant, photos in par_offre.items() if identifiant in vises
-                 for photo in photos if not photo.get("url_o2")]
+    # ⭐ UNE PHOTO PARTAGEE NE PART QU'UNE FOIS. Depuis que `photos_par_offre`
+    #   range le MEME objet dans plusieurs seaux, la double comprehension
+    #   l'aplatit en N exemplaires : sans ce dedoublonnage, une photo qui
+    #   illustre trois produits serait compressee et POSTEE trois fois sur
+    #   o2switch (`envoyer_ces_photos` ne relit pas la base entre deux, donc
+    #   son garde `if photo.get("url_o2")` ne voit rien venir).
+    a_envoyer = list({
+        photo["id"]: photo
+        for identifiant, photos in par_offre.items() if identifiant in vises
+        for photo in photos if not photo.get("url_o2")
+    }.values())
     if a_envoyer:
         base.logguer(
             f"« {fiche.get('nom')} » : envoi de {len(a_envoyer)} photo(s) de "
@@ -775,12 +789,26 @@ def photos_par_offre(fiche: dict) -> dict[int, list[str]]:
     """
     par_offre: dict[int, list[str]] = {}
     for photo in fiche.get("photos", []):
-        if not (photo.get("garder") and photo.get("url_o2") and photo.get("offre_id")):
+        if "offre_ids" not in photo:
+            # Même refus franc que dans `tri.photos_par_offre` : celle-là
+            # decide ce que l'ECRAN affiche, celle-ci ce qui part REELLEMENT
+            # sur le site. Corriger l'une sans l'autre reproduit l'incident
+            # du 01/09 sur « Hazo Rn3 » : 6 photos attribuees, 2 produits
+            # prets a l'ecran, et zero `url_o2` envoye.
+            raise KeyError(
+                "photo sans « offre_ids » : fiche non portee sur photos_offres")
+        if not (photo.get("garder") and photo.get("url_o2")):
             continue
-        par_offre.setdefault(int(photo["offre_id"]), []).append(photo["url_o2"])
+        for offre_id in photo["offre_ids"] or []:
+            par_offre.setdefault(int(offre_id), []).append(photo["url_o2"])
     # La base borne les photos d'un produit : on coupe ici plutot que de
     # laisser Postgres refuser toute l'inscription pour une image de trop.
-    return {oid: urls[:4] for oid, urls in par_offre.items()}
+    #
+    # ⚠ LE PLAFOND EST PAR PRODUIT, JAMAIS PAR PHOTO. Une photo de tarif peut
+    #   illustrer six articles : les six la recoivent. Un `LIMIT 4` pose par
+    #   reflexe sur la table de liaison couperait le cinquieme et le sixieme —
+    #   exactement le cas reel qui motive le partage.
+    return {oid: list(dict.fromkeys(urls))[:4] for oid, urls in par_offre.items()}
 
 
 def _photos_qui_montrent(fiche: dict, publiables: list[dict]) -> list[str]:
@@ -806,13 +834,20 @@ def _photos_qui_montrent(fiche: dict, publiables: list[dict]) -> list[str]:
     # Une photo ATTRIBUEE a la main a un produit annonce ici ne se discute
     # pas : c'est un humain qui a dit ce qu'elle montre.
     attribuees = photos_par_offre(fiche)
+    # ⚠ LE GARDE ETAIT MORT. Ecrit `... for url in attribuees.get(int(offre["id"]), [])
+    #   if offre.get("id") is not None`, le `if` porte sur la boucle la plus
+    #   interne et s'evalue APRES le `int(offre["id"])` : un identifiant a None
+    #   levait un TypeError au lieu d'etre ignore. Il est remonte ici.
     explicites = [
-        url for offre in publiables
+        url for offre in publiables if offre.get("id") is not None
         for url in attribuees.get(int(offre["id"]), [])
-        if offre.get("id") is not None
     ]
     if explicites:
-        return explicites[:4]
+        # ⭐ DEDOUBLONNER AVANT DE COUPER A QUATRE. Une photo partagee par
+        #   quatre produits publiables remplirait a elle seule les quatre
+        #   places du post, et la photo propre du cinquieme n'entrerait
+        #   jamais. `dict.fromkeys` garde l'ordre d'apparition.
+        return list(dict.fromkeys(explicites))[:4]
 
     gardees = [o for o in fiche.get("offres", []) if o.get("garder")]
     par_publication: dict[str, int] = {}
