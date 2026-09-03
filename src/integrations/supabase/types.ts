@@ -3278,6 +3278,17 @@ export type Database = {
         }
         Returns: string
       }
+      activite_admin: {
+        Args: { _limite?: number }
+        Returns: {
+          acteur: string
+          action: string
+          entite: string
+          entite_id: string
+          id: number
+          quand: string
+        }[]
+      }
       annuaire_fournisseurs: {
         Args: {
           _famille?: string
@@ -3364,6 +3375,14 @@ export type Database = {
         }
         Returns: string
       }
+      definir_role_admin: {
+        Args: {
+          _actif: boolean
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: string[]
+      }
       demandes_pour_mon_depot: {
         Args: never
         Returns: {
@@ -3407,6 +3426,7 @@ export type Database = {
         Args: { _reference: string; _retrait_id: string }
         Returns: undefined
       }
+      exiger_admin: { Args: never; Returns: undefined }
       fermer_demande: { Args: { _demande_id: string }; Returns: undefined }
       fiche_reservee: { Args: { _jeton: string }; Returns: Json }
       generer_code_otp: { Args: never; Returns: string }
@@ -3417,6 +3437,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_super_admin: { Args: never; Returns: boolean }
       journaliser: {
         Args: {
           _action: string
@@ -3428,6 +3449,23 @@ export type Database = {
         Returns: undefined
       }
       liberer_sequestre: { Args: { _paiement_id: string }; Returns: number }
+      lister_utilisateurs_admin: {
+        Args: { _limite?: number; _q?: string }
+        Returns: {
+          cree_le: string
+          derniere_connexion: string
+          email: string
+          email_verifie: boolean
+          fournisseur: string
+          fournisseur_statut: string
+          id: string
+          nom_complet: string
+          roles: string[]
+          telephone: string
+          type_client: string
+          ville: string
+        }[]
+      }
       ma_demande: { Args: never; Returns: Json }
       moderer_avis: {
         Args: {
@@ -3548,6 +3586,16 @@ export type Database = {
       revendiquer_fiche: { Args: { _jeton: string }; Returns: string }
       revoquer_sessions: { Args: { _user_id: string }; Returns: boolean }
       sans_accent: { Args: { texte: string }; Returns: string }
+      series_admin: {
+        Args: { _jours?: number }
+        Returns: {
+          commandes: number
+          inscriptions: number
+          jour: string
+          volume: number
+          vues: number
+        }[]
+      }
       statuer_document: {
         Args: {
           _document_id: string
@@ -3556,6 +3604,7 @@ export type Database = {
         }
         Returns: Database["public"]["Enums"]["niveau_verification"]
       }
+      tableau_de_bord_admin: { Args: never; Returns: Json }
       taux_commission: { Args: { _categorie_id: string }; Returns: number }
       transition_commande_valide: {
         Args: {
@@ -3586,7 +3635,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "acheteur" | "fournisseur" | "admin"
+      app_role: "acheteur" | "fournisseur" | "admin" | "super_admin"
       mode_paiement: "en_ligne_integral" | "en_ligne_acompte" | "a_la_livraison"
       niveau_verification: "non_verifie" | "en_cours" | "verifie" | "partenaire"
       operateur_paiement: "mvola" | "orange_money" | "airtel_money"
@@ -3786,7 +3835,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["acheteur", "fournisseur", "admin"],
+      app_role: ["acheteur", "fournisseur", "admin", "super_admin"],
       mode_paiement: [
         "en_ligne_integral",
         "en_ligne_acompte",

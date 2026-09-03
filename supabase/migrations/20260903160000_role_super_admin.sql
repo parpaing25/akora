@@ -1,0 +1,16 @@
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Le rôle super_admin (03/09/2026)
+--
+-- Sur Fonenako, la console distingue « admin » (traite les files) de
+-- « super_admin » (gouverne les comptes et les rôles : seul lui peut retirer
+-- un rôle ou supprimer un utilisateur). Akora reprend la même hiérarchie.
+--
+-- ⚠ UNE VALEUR D'ÉNUMÉRATION NE PEUT PAS SERVIR DANS LA TRANSACTION QUI LA
+--   CRÉE. Cette migration ne fait donc QUE l'ajouter ; tout ce qui s'en sert
+--   (fonctions, attribution) vit dans la migration suivante.
+--
+-- Convention : un super_admin détient AUSSI la ligne « admin ». Les gardes
+-- existantes (`RouteProtegee role="admin"`, 79 policies sur has_role admin)
+-- restent vraies pour lui sans qu'on les réécrive une par une.
+-- ═══════════════════════════════════════════════════════════════════════════
+alter type public.app_role add value if not exists 'super_admin';

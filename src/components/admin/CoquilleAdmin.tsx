@@ -2,8 +2,17 @@ import { NavLink, Outlet } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Seo } from "@/components/Seo";
 
+/**
+ * ⭐ LE TABLEAU DE BORD EN PREMIER (03/09/2026), transposé de la console
+ *   superadmin de Fonenako : les files avec leur nombre, la plateforme en
+ *   chiffres, trente jours, l'activité. Puis les comptes et les statistiques,
+ *   nouveaux ; puis les files de traitement existantes.
+ */
 const ENTREES = [
-  { to: "/admin", libelle: "Vérifications", exact: true },
+  { to: "/admin", libelle: "Tableau de bord", exact: true },
+  { to: "/admin/utilisateurs", libelle: "Utilisateurs" },
+  { to: "/admin/statistiques", libelle: "Statistiques" },
+  { to: "/admin/verifications", libelle: "Vérifications" },
   { to: "/admin/materiaux", libelle: "Matériaux demandés" },
   { to: "/admin/paiements", libelle: "Paiements" },
   { to: "/admin/litiges", libelle: "Litiges" },

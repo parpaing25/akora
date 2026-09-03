@@ -54,6 +54,9 @@ const CompteSecurite = lazy(() => import("@/pages/compte/Securite"));
 const CoquilleAdmin = lazy(() =>
   import("@/components/admin/CoquilleAdmin").then((m) => ({ default: m.CoquilleAdmin })),
 );
+const AdminTableauDeBord = lazy(() => import("@/pages/admin/TableauDeBord"));
+const AdminUtilisateurs = lazy(() => import("@/pages/admin/Utilisateurs"));
+const AdminStatistiques = lazy(() => import("@/pages/admin/Statistiques"));
 const AdminVerifications = lazy(() => import("@/pages/admin/Verifications"));
 const AdminMateriaux = lazy(() => import("@/pages/admin/MateriauxDemandes"));
 const AdminPaiements = lazy(() => import("@/pages/admin/PaiementsAdmin"));
@@ -224,7 +227,9 @@ export default function App() {
               </RouteProtegee>
             }
           >
-            <Route index element={<AdminVerifications />} />
+            <Route index element={<AdminTableauDeBord />} />
+            <Route path="utilisateurs" element={<AdminUtilisateurs />} />
+            <Route path="statistiques" element={<AdminStatistiques />} />
             <Route path="verifications" element={<AdminVerifications />} />
             <Route path="materiaux" element={<AdminMateriaux />} />
             <Route path="paiements" element={<AdminPaiements />} />
