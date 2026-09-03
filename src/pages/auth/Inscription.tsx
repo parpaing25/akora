@@ -13,7 +13,8 @@ import { useGrandEcran } from "@/hooks/useGrandEcran";
 import { envoyerCode } from "@/lib/donnees/otp";
 import { DialogueCode } from "@/components/auth/DialogueCode";
 import { BoutonGoogle, SeparateurOu } from "@/components/auth/BoutonGoogle";
-import { PanneauMarque, BandeauMarque } from "@/components/auth/PanneauMarque";
+import { PanneauMarque, BandeauMarque, ETAPES } from "@/components/auth/PanneauMarque";
+import { VitrineAkora } from "@/components/auth/VitrineAkora";
 import { ChampMotDePasse } from "@/components/auth/ChampMotDePasse";
 import { ChampTelephone } from "@/components/auth/ChampTelephone";
 import { Seo } from "@/components/Seo";
@@ -328,6 +329,11 @@ export default function Inscription() {
           />
 
           <div className="flex-1 space-y-3 px-5 py-5">
+            {/* ⭐ LA VITRINE (03/09/2026) : trois promesses qu'on fait glisser
+                du pouce, chacune avec son geste — le camion, le badge,
+                l'anneau du séquestre. Avant le bouton Google : on dit ce
+                qu'un compte apporte avant de demander d'en créer un. */}
+            <VitrineAkora etapes={ETAPES} className="mb-1" />
             <BoutonGoogle retour={retour ?? "/compte"} intitule="S'inscrire avec Google" />
             <SeparateurOu />
             {choixProfil(true)}

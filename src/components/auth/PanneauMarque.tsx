@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { LogoAkora } from "@/components/marque/LogoAkora";
+import { IllustrationCamion } from "@/components/motion/IllustrationCamion";
 
 /**
  * Le panneau latérite des pages d'authentification.
@@ -14,7 +15,7 @@ import { LogoAkora } from "@/components/marque/LogoAkora";
  * argumentaire au-dessus des champs.
  */
 
-const ETAPES: [string, string][] = [
+export const ETAPES: [string, string][] = [
   ["Comparez au prix rendu", "Matériau + livraison calculée depuis votre adresse de chantier."],
   ["Commandez chez un fournisseur vérifié", "NIF, STAT, RCS et dépôt contrôlés par Akora."],
   [
@@ -49,6 +50,12 @@ export function PanneauMarque({
 
       {avecEtapes ? (
         <ol className="my-10 space-y-4">
+          {/* ⭐ Le camion roule pendant qu'on lit les trois promesses : le
+              geste du produit, sur la page où l'on décide de le rejoindre.
+              Sans chiffre — un prix d'exemple serait un mensonge (A2.8). */}
+          <li aria-hidden="true" className="mb-2">
+            <IllustrationCamion categorie="camion" anime couleur="rgba(255,255,255,0.92)" className="h-16 w-auto" />
+          </li>
           {ETAPES.map(([titreEtape, aide], index) => (
             <li key={titreEtape} className="flex gap-3.5">
               <span className="nombres flex size-6 shrink-0 items-center justify-center rounded-full bg-black/15 text-[0.78rem] font-bold">

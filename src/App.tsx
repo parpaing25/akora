@@ -73,6 +73,7 @@ const PrixMarche = lazy(() => import("@/pages/public/PrixMarche"));
 const ObservatoirePrix = lazy(() => import("@/pages/public/ObservatoirePrix"));
 const Transporteurs = lazy(() => import("@/pages/public/Transporteurs"));
 const ProDemandes = lazy(() => import("@/pages/pro/Demandes"));
+const ProClients = lazy(() => import("@/pages/pro/Clients"));
 const Guides = lazy(() => import("@/pages/contenu/Guides"));
 const PageVerification = lazy(() => import("@/pages/contenu/Verification"));
 const DevenirFournisseur = lazy(() => import("@/pages/contenu/DevenirFournisseur"));
@@ -207,6 +208,7 @@ export default function App() {
             <Route path="verification" element={<ProVerification />} />
             <Route path="publier" element={<ProPublier />} />
             <Route path="demandes" element={<ProDemandes />} />
+            <Route path="clients" element={<ProClients />} />
             <Route path="catalogue" element={<ProCatalogue />} />
             <Route path="catalogue/nouveau" element={<ProProduitEditeur />} />
             <Route path="catalogue/:id" element={<ProProduitEditeur />} />

@@ -104,7 +104,9 @@ export default function TableauDeBord() {
         <h2 id="titre-plateforme" className="text-section">
           La plateforme
         </h2>
-        <dl className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        {/* ⚠ Une liste, pas un <dl> : un <dt>/<dd> enveloppé dans un lien
+            n'est pas une définition valide (axe : definition-list, dlitem). */}
+        <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           <Chiffre Icone={Users} libelle="Comptes" valeur={formaterNombre(c.utilisateurs)} detail={`+${formaterNombre(c.utilisateurs_7j)} sur 7 j · ${formaterNombre(c.actifs_7j)} actifs`} vers="/admin/utilisateurs" />
           <Chiffre Icone={Landmark} libelle="Dépôts actifs" valeur={formaterNombre(f.actif ?? 0)} detail={`${formaterNombre(f.en_attente ?? 0)} en attente · ${formaterNombre(f.brouillon ?? 0)} brouillons · ${formaterNombre(c.fournisseurs_verifies)} vérifiés`} vers="/fournisseurs" />
           <Chiffre Icone={Boxes} libelle="Produits en ligne" valeur={formaterNombre(c.produits_actifs)} detail={`sur ${formaterNombre(c.produits_total)} au catalogue`} />
@@ -113,7 +115,7 @@ export default function TableauDeBord() {
           <Chiffre Icone={Landmark} libelle="Observatoire" valeur={formaterNombre(c.releves_prix)} detail="relevés de prix" vers="/prix" />
           <Chiffre Icone={Boxes} libelle="Vues de produits, 7 j" valeur={formaterNombre(c.vues_7j)} detail={`${formaterNombre(c.avis_en_attente)} avis à modérer`} />
           <Chiffre Icone={Users} libelle="Commandes, par statut" valeur={formaterNombre(Object.values(c.commandes ?? {}).reduce((s, n) => s + n, 0))} detail={resumerStatuts(c.commandes)} />
-        </dl>
+        </ul>
       </section>
 
       {/* ── Trente jours ────────────────────────────────────────────────── */}
@@ -206,22 +208,24 @@ function Chiffre({
 }) {
   const contenu = (
     <>
-      <dt className="flex items-center justify-between gap-2 text-legende text-muted-foreground">
+      <span className="flex items-center justify-between gap-2 text-legende text-muted-foreground">
         {libelle}
         <Icone className="size-4 shrink-0" aria-hidden="true" />
-      </dt>
-      <dd className="mt-1">
-        <span className="nombres block text-[1.5rem] font-bold leading-tight">{valeur}</span>
-        <span className="nombres block text-legende text-muted-foreground">{detail}</span>
-      </dd>
+      </span>
+      <span className="nombres mt-1 block text-[1.5rem] font-bold leading-tight">{valeur}</span>
+      <span className="nombres block text-legende text-muted-foreground">{detail}</span>
     </>
   );
-  return vers ? (
-    <Link to={vers} className="carte carte-cliquable block p-3.5">
-      {contenu}
-    </Link>
-  ) : (
-    <div className="carte p-3.5">{contenu}</div>
+  return (
+    <li>
+      {vers ? (
+        <Link to={vers} className="carte carte-cliquable block p-3.5">
+          {contenu}
+        </Link>
+      ) : (
+        <div className="carte p-3.5">{contenu}</div>
+      )}
+    </li>
   );
 }
 
