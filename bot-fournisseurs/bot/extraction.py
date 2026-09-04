@@ -762,7 +762,50 @@ def offres(texte: str, cfg: dict) -> list[dict]:
                     "materiau_slug", "materiau_nom", "type_slug", "type_nom",
                     "famille_slug", "certitude", "ambigu", "hors_catalogue")},
             })
-    return resultat
+    return _ecarter_les_references_d_une_autre_unite(resultat)
+
+
+def _ecarter_les_references_d_une_autre_unite(lues: list[dict]) -> list[dict]:
+    """Une référence dont l'unité contredit la ligne n'est PAS cette référence.
+
+    🔴 CE QUE ÇA ÉVITE, MESURÉ LE 04/09/2026 SUR LE CORPUS. 14 offres portaient
+       une référence dont l'unité n'était pas la leur, 12 avec un prix, toutes
+       gardées — donc toutes prêtes à devenir un produit :
+
+         « Gravillon 5/15 : 485 000 Ar / camion »  -> gravillon-5-15, AU M³
+         « Remblai 250 000 Ar le voyage de 5 m³ »  -> tout-venant,    AU M³
+         « Moellon 20/20 = 350 Ar/p »              -> moellon,        AU M³
+
+       Le gravillon serait publié à 485 000 Ar le m³ au lieu de 55 000 : neuf
+       fois trop, dans un observatoire des prix dont c'est toute la raison
+       d'être. Et le moellon, vendu à la pièce par 9 dépôts, hériterait du
+       poids d'un mètre cube — un mètre cube par pierre, sur un site qui
+       chiffre la livraison au poids.
+
+    L'atelier des formats sait déjà dire « unités incompatibles » : l'offre y
+    retourne avec son TYPE, qui reste acquis. Ce n'est pas une perte, c'est le
+    signal qu'une référence manque au catalogue — ici « moellon à la pièce ».
+
+    🔒 On ne convertit RIEN. Passer du camion au m³ demanderait de connaître
+       le camion ; c'est exactement la conversion qu'on ne devine jamais.
+    """
+    catalogue = referentiel.charger()["materiaux"]
+    for offre_lue in lues:
+        slug = offre_lue.get("materiau_slug")
+        lue = offre_lue.get("unite")
+        if not slug or not lue:
+            continue
+        attendue = (catalogue.get(slug) or {}).get("unite")
+        if not attendue or lue == attendue:
+            continue
+        offre_lue.update(
+            materiau_slug=None, materiau_nom=None, ambigu=1,
+            certitude=min(int(offre_lue.get("certitude") or 0), 40),
+            # Filtrée à l'écriture (`base.ajouter_offre` ne garde que les
+            # colonnes réelles) : elle sert au journal de la collecte.
+            unite_incompatible=f"{lue} ≠ {attendue}",
+        )
+    return lues
 
 
 # ── Identité du vendeur ────────────────────────────────────────────────────

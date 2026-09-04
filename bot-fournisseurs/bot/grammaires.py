@@ -352,7 +352,28 @@ def lire_cote(type_slug: str, ligne: str) -> dict | None:
     propre = sans_les_montants(ligne or "").lower().replace("×", "x")
     if type_slug in BLOCS:
         lus = triples(propre)
-        return {"genre": "bloc", "valeur": lus[0]} if len(lus) == 1 else None
+        if len(lus) == 1:
+            return {"genre": "bloc", "valeur": lus[0]}
+        if lus:
+            return None            # deux cotes complètes : la ligne cite deux formats
+        # 🔴 LA NOTATION COURTE « ÉPAISSEUR/LONGUEUR », la plus répandue des
+        #   dépôts malgaches : « Parpaing 10/40 », « 15/40 », « 20/40 ». La
+        #   hauteur (20 cm) est si standard qu'elle ne s'écrit pas. Mesuré le
+        #   04/09/2026 : 63 % des offres (200 sur 317) attendaient un format à
+        #   la main, et le parpaing en tête — le bot lisait « 20x20x40 » mais
+        #   restait muet devant « 20/40 », que le même dépôt écrit deux lignes
+        #   plus bas.
+        #
+        #   Rien n'est deviné : la paire est comparée aux cotes du CATALOGUE,
+        #   à leur place (la plus petite est l'épaisseur, la plus grande la
+        #   longueur), et il faut qu'elle n'y désigne qu'une seule référence.
+        courts = {(_nombre(m.group(1)), _nombre(m.group(2)))
+                  for m in CALIBRE.finditer(propre)}
+        if len(courts) == 1:
+            epaisseur, longueur = courts.pop()
+            if epaisseur < longueur:
+                return {"genre": "bloc_court", "valeur": (epaisseur, longueur)}
+        return None
     if type_slug == "fer-a-beton":
         trouves = {int(m.group(1)) for m in DIAMETRE.finditer(propre)}
         return {"genre": "diametre", "valeur": trouves.pop()} if len(trouves) == 1 else None
@@ -394,6 +415,12 @@ def projet_de_reference(type_slug: str, type_nom: str, cote: dict,
     genre, valeur = cote["genre"], cote["valeur"]
     if genre == "bloc":
         return projet_bloc(type_slug, type_nom, valeur, par_type)
+    if genre == "bloc_court":
+        # Deux cotes sur trois : la hauteur n'est pas écrite. On sait
+        # RECONNAÎTRE une référence existante avec ça, jamais en composer une
+        # neuve — inventer la hauteur, c'est inventer le volume, donc le poids.
+        return _refus("la hauteur n'est pas écrite : « épaisseur/longueur » "
+                      "reconnaît une référence, elle n'en crée pas")
     if type_slug == "fer-a-beton" and genre == "diametre":
         return projet_fer(type_slug, type_nom, int(valeur), par_type)
     if type_slug == "gravillon" and genre == "calibre":
@@ -419,6 +446,15 @@ def format_existant(cote: dict, par_type: list[dict]) -> dict | None:
         attributs = fiche.get("attributs") or {}
         if genre == "bloc" and fiche.get("cotes_bloc") == tuple(valeur):
             retenus.append(fiche)
+        elif genre == "bloc_court":
+            # « 10/40 » = épaisseur 10, longueur 40. On compare AUX PLACES :
+            # sans cela « 20/40 » retiendrait aussi le parpaing 10 (10 × 20 ×
+            # 40), dont la HAUTEUR vaut 20 — deux références pour une cote, et
+            # le mauvais produit une fois sur deux.
+            cotes = fiche.get("cotes_bloc")
+            if (cotes and len(cotes) == 3
+                    and cotes[0] == valeur[0] and cotes[2] == valeur[1]):
+                retenus.append(fiche)
         elif genre == "diametre" and str(attributs.get("diametre_mm")) == str(int(valeur)):
             retenus.append(fiche)
         elif genre == "calibre" and str(attributs.get("calibre") or "").replace(",", ".") == \

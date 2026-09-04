@@ -811,8 +811,12 @@ input[type="checkbox"] { accent-color: var(--laterite); }
 .photos-offre { grid-column: 1 / -1; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
 .photos-offre > .discret { font-size: 11.5px; color: var(--beton-doux); }
 .vignette { padding: 0; border: 2px solid transparent; border-radius: var(--rayon-petit); background: none; cursor: pointer; line-height: 0; position: relative; }
-.vignette img { width: 54px; height: 42px; object-fit: cover; border-radius: calc(var(--rayon-petit) - 1px); display: block; opacity: .72; transition: opacity .12s; }
+/* 🔴 GRANDES, PARCE QU'ON JUGE UN PRODUIT DESSUS. À 54 × 42 px on ne
+   distinguait pas un parpaing 10 d'un parpaing 20, et il fallait ouvrir la
+   publication pour choisir la photo d'un article (Andry, 04/09/2026). */
+.vignette img { width: 96px; height: 74px; object-fit: cover; border-radius: calc(var(--rayon-petit) - 1px); display: block; opacity: .72; transition: opacity .12s, transform .12s; }
 .vignette:hover img { opacity: 1; }
+@media (max-width: 720px) { .vignette img { width: 78px; height: 60px; } }
 .vignette.choisie { border-color: var(--laterite); }
 .vignette.choisie img { opacity: 1; }
 /* « choisie » et « partagee » se CUMULENT : une photo qui montre ce produit
@@ -829,7 +833,7 @@ input[type="checkbox"] { accent-color: var(--laterite); }
 .autres-photos { display: inline-block; }
 .autres-photos > summary { cursor: pointer; font-size: 11.5px; color: var(--bleu-fort); padding: 2px 8px; border: 1px dashed var(--bordure); border-radius: 999px; list-style: none; white-space: nowrap; }
 .autres-photos > summary::-webkit-details-marker { display: none; }
-.autres-photos .bande { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; max-height: 168px; overflow-y: auto; }
+.autres-photos .bande { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; max-height: 250px; overflow-y: auto; }
 .propose { font-size: 11.5px; color: var(--bleu-fort); margin-top: 2px; }
 .brut.avec-proposition { border-left: 3px solid var(--bleu); padding-left: 8px; }
 
