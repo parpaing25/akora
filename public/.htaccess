@@ -1,21 +1,44 @@
 # ── Akora — SPA statique sur mutualisé Apache (o2switch) ─────────────────
-# Pas de SSR : toute route inconnue retombe sur index.html.
+# Pas de SSR : toute route CONNUE absente du disque retombe sur index.html.
+# Une route dont le premier segment n'existe pas rend un VRAI 404 (audit S-01).
+# La liste des préfixes est contrôlée au build par scripts/verifier-htaccess.mjs.
 
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
 
+  # Un seul hôte (audit S-02, 05/09/2026) : www → apex, en une redirection, déjà en https.
+  RewriteCond %{HTTP_HOST} ^www\.akora\.fonenako\.mg$ [NC]
+  RewriteRule ^(.*)$ https://akora.fonenako.mg/$1 [R=301,L]
+
   # HTTPS obligatoire.
   RewriteCond %{HTTPS} !=on
-  RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
+  RewriteRule ^(.*)$ https://akora.fonenako.mg/$1 [R=301,L]
+
+  # Mode maintenance : créer le fichier vide MAINTENANCE à la racine (le supprimer = retour).
+  RewriteCond %{DOCUMENT_ROOT}/MAINTENANCE -f
+  RewriteCond %{REQUEST_URI} !^/maintenance\.html$
+  RewriteCond %{REQUEST_URI} !^/(akora-logo\.png|favicon\.ico)$
+  RewriteRule ^ /maintenance.html [R=503,L]
 
   # Les fichiers, dossiers et l'API PHP réels sont servis tels quels.
   RewriteCond %{REQUEST_FILENAME} -f [OR]
   RewriteCond %{REQUEST_FILENAME} -d
   RewriteRule ^ - [L]
 
+  # Vrai 404 quand le PREMIER segment n'est aucune route de src/App.tsx.
+  # Les identifiants inexistants SOUS une route connue (/fournisseurs/xyz)
+  # restent en 200 : le SPA affiche « introuvable » avec noindex.
+  RewriteCond %{REQUEST_URI} !^/$
+  RewriteCond %{REQUEST_URI} !^/(materiaux|fournisseurs|recherche|panier|commander|commande|paiement|demandes|calculateurs|prix|transporteurs|guides|verification|verification-email|devenir-fournisseur|depot-reserve|a-propos|contact|faq|accessibilite|conditions-utilisation|politique-confidentialite|mentions-legales|connexion|inscription|mot-de-passe-oublie|auth|compte|pro|admin)(/|$)
+  RewriteRule ^ - [R=404,L]
+
   RewriteRule ^ index.html [L]
 </IfModule>
+
+# Le corps du 404 est l'application : elle dessine sa page « introuvable ».
+ErrorDocument 404 /index.html
+ErrorDocument 503 /maintenance.html
 
 <IfModule mod_headers.c>
   Header always set X-Content-Type-Options "nosniff"
@@ -24,8 +47,8 @@
   Header always set Permissions-Policy "geolocation=(self), camera=(), microphone=(), payment=()"
 
   # ── HSTS et CSP (03/09/2026) ─────────────────────────────────────────────
-  # Le relevé de sécurité n'a trouvé ni l'un ni l'autre. HSTS : un an, sous-
-  # domaines compris — akora.fonenako.mg ne se sert jamais en clair.
+  # `preload` volontairement absent : il ne se soumet que pour le domaine
+  # enregistrable (fonenako.mg) entier, décision hors périmètre d'Akora.
   Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
   # CSP : chaque origine est CELLE QUE LE CODE APPELLE, relevée par grep dans
   # src/ et .env — rien de plus large. Scripts : le bundle seul (index.html n'a
@@ -34,16 +57,28 @@
   # les blobs d'aperçu avant envoi, le stockage Supabase (URL signées), les
   # tuiles OpenStreetMap, l'avatar Google d'un compte OAuth. Connexions : le
   # site (API PHP d'envoi) et Supabase, en https et en wss (Realtime).
-  Header always set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://lvhnqrnmkajhlohympcs.supabase.co https://tile.openstreetmap.org https://*.tile.openstreetmap.org https://lh3.googleusercontent.com; font-src 'self'; connect-src 'self' https://lvhnqrnmkajhlohympcs.supabase.co wss://lvhnqrnmkajhlohympcs.supabase.co; worker-src 'self'; manifest-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests"
+  Header always set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://lvhnqrnmkajhlohympcs.supabase.co https://tile.openstreetmap.org https://*.tile.openstreetmap.org https://lh3.googleusercontent.com; font-src 'self'; connect-src 'self' https://lvhnqrnmkajhlohympcs.supabase.co wss://lvhnqrnmkajhlohympcs.supabase.co https://*.ingest.de.sentry.io; worker-src 'self'; manifest-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests"
+  # Essai SANS 'unsafe-inline' sur les styles, en observation seule (audit X-06) :
+  # si la console ne rapporte aucune violation pendant deux semaines, basculer
+  # la vraie CSP. Le hash est celui du <style> d'index.html : le recalculer à
+  # chaque modification de ce bloc (openssl dgst -sha256 -binary | base64).
+  Header always set Content-Security-Policy-Report-Only "style-src 'self' 'sha256-VQkWkFx4c9NACysQ0LEkPSmm6G1TmAP+bU/7KvIKSZQ='; style-src-attr 'unsafe-inline'"
 
   # Empreintes de contenu dans le nom : cache long et immuable.
   <FilesMatch "\.(js|css|woff2|webp|avif|png|jpg|jpeg|svg)$">
     Header set Cache-Control "public, max-age=31536000, immutable"
   </FilesMatch>
-  # L'enveloppe HTML et le service worker ne sont jamais mis en cache.
-  <FilesMatch "^(index\.html|sw\.js|manifest\.webmanifest)$">
+  # Les photos téléversées n'ont PAS d'empreinte dans le nom : un jour, pas un an.
+  <If "%{REQUEST_URI} =~ m#^/uploads/#">
+    Header set Cache-Control "public, max-age=86400, stale-while-revalidate=604800"
+  </If>
+  # L'enveloppe HTML, le service worker, les fichiers de politique : jamais en cache long.
+  <FilesMatch "^(index\.html|maintenance\.html|sw\.js|manifest\.webmanifest|robots\.txt|sitemap\.xml|security\.txt|llms\.txt)$">
     Header set Cache-Control "no-cache, must-revalidate"
   </FilesMatch>
+  <If "%{REQUEST_URI} == '/maintenance.html'">
+    Header set Retry-After "600"
+  </If>
 </IfModule>
 
 <IfModule mod_mime.c>
@@ -52,10 +87,10 @@
   AddType application/manifest+json .webmanifest
   AddType image/x-icon .ico
   AddType font/woff2 .woff2
+  AddType text/plain .txt
+  AddCharset utf-8 .txt .xml .webmanifest
 </IfModule>
 
 <IfModule mod_deflate.c>
-  AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json image/svg+xml
+  AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json image/svg+xml text/plain application/xml
 </IfModule>
-
-ErrorDocument 404 /index.html

@@ -1,4 +1,5 @@
 import * as React from "react";
+import { emettre } from "@/lib/evenements";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -90,6 +91,7 @@ export default function Paiement() {
     setEnCours(true);
     try {
       await enregistrerReference(initiation.paiement_id, reference);
+      emettre("paiement_reference_saisie");
       setEtape(3);
       toast.success("Référence enregistrée", { description: "Un administrateur va la vérifier." });
     } catch (erreur) {

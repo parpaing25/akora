@@ -16,8 +16,11 @@ export function LogoAkora({
   sombre = false,
   className,
   prioritaire = false,
+  alt = "Akora",
 }: {
   variante?: "mark" | "logo";
+  /** `""` quand le mot « AKORA » est écrit juste à côté (axe : image-redundant-alt). */
+  alt?: string;
   /** `true` sur fond latérite ou béton : la version blanche prend le relais. */
   sombre?: boolean;
   className?: string;
@@ -35,12 +38,14 @@ export function LogoAkora({
   return (
     <img
       src={fichier}
-      alt="Akora"
+      alt={alt}
       width={estLogo ? 132 : 32}
       height={estLogo ? 40 : 32}
       loading={prioritaire ? "eager" : "lazy"}
       decoding={prioritaire ? "sync" : "async"}
-      className={cn(estLogo ? "h-10 w-auto" : "size-8", className)}
+      // Ratio explicite : avec `w-auto` seul, Lighthouse comptait l'image comme non
+      // dimensionnée et lui attribuait le décalage du pied de page (CLS 0,161, 05/09/2026).
+      className={cn(estLogo ? "aspect-[33/10] h-10 w-auto" : "size-8", className)}
     />
   );
 }

@@ -239,6 +239,7 @@ export default function Livraison() {
               </label>
               <Curseur
                 id="distance-apercu"
+                etiquette="Distance de livraison"
                 className="mt-1"
                 min={1}
                 max={Math.max(10, Math.round(fiche.rayon_max_km))}

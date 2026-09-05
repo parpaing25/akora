@@ -81,12 +81,12 @@ export default function Connexion() {
 
   const liens = (
     <div className="mt-4 flex flex-col gap-1 text-courant">
-      <Link to="/mot-de-passe-oublie" className="lien-souligne">
+      <Link to="/mot-de-passe-oublie" className="lien-souligne inline-block py-2.5">
         Mot de passe oublié
       </Link>
       <span className="text-muted-foreground">
         Pas encore de compte ?{" "}
-        <Link to="/inscription" className="lien-souligne font-semibold">
+        <Link to="/inscription" className="lien-souligne inline-block py-2.5 font-semibold">
           Créer un compte
         </Link>
       </span>
@@ -106,7 +106,7 @@ export default function Connexion() {
             <div className="min-w-0 bg-card px-12 pb-9 pt-8">
               <p className="mb-6 text-right text-courant text-muted-foreground">
                 Pas de compte ?{" "}
-                <Link to="/inscription" className="lien-souligne font-semibold">
+                <Link to="/inscription" className="lien-souligne inline-block py-2.5 font-semibold">
                   Créer un compte
                 </Link>
               </p>

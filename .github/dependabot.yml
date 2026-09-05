@@ -1,0 +1,16 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule: { interval: weekly, day: monday }
+    open-pull-requests-limit: 5
+    groups:
+      radix: { patterns: ["@radix-ui/*"] }
+      dev: { dependency-type: development }
+    ignore:
+      # Cycle webauthn dans auth-js → page blanche Firefox sous 2.108.2 (règle Fonenako)
+      - dependency-name: "@supabase/supabase-js"
+        versions: ["<2.108.2"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: monthly }

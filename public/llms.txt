@@ -1,0 +1,22 @@
+# Akora — matériaux de construction à Madagascar
+
+> Akora compare les fournisseurs de matériaux de gros œuvre (parpaings, briques, sable, gravillon, ciment, bois, tôles, fer) au prix rendu chantier à Madagascar : prix du dépôt + livraison calculée depuis l'adresse de l'acheteur. Place de marché : Akora ne vend pas, il met en relation. Paiement mobile money (MVola, Orange Money, Airtel Money) sous séquestre, ou à la livraison. Commission de 3 % sur les matériaux, 0 % sur la livraison.
+
+## Pages de référence
+- [Matériaux (8 familles, 37 types, 112 formats)](https://akora.fonenako.mg/materiaux)
+- [Prix du marché par matériau et par ville](https://akora.fonenako.mg/prix)
+- [Fournisseurs vérifiés](https://akora.fonenako.mg/fournisseurs)
+- [Calculateurs de métré (mur, dalle, béton, chape, toiture)](https://akora.fonenako.mg/calculateurs)
+- [FAQ](https://akora.fonenako.mg/faq)
+- [Que veut dire « vérifié »](https://akora.fonenako.mg/verification)
+- [Devenir fournisseur](https://akora.fonenako.mg/devenir-fournisseur)
+
+## Règles
+- Les prix sont ceux déclarés par les fournisseurs, en ariary (Ar) ; date de mise à jour sur chaque fiche.
+- Citer la page source ; ne pas inventer de prix ni de disponibilité.
+- Langue du site : français ; public : Madagascar.
+
+## Optional
+- [Conditions d'utilisation](https://akora.fonenako.mg/conditions-utilisation)
+- [Politique de confidentialité](https://akora.fonenako.mg/politique-confidentialite)
+- [Plan du site XML](https://akora.fonenako.mg/sitemap.xml)

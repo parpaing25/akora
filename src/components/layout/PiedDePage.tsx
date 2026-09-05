@@ -27,11 +27,13 @@ const COLONNES = [
   {
     titre: "Akora",
     liens: [
+      { to: "/faq", libelle: "Questions fréquentes" },
       { to: "/a-propos", libelle: "À propos" },
       { to: "/contact", libelle: "Contact" },
       { to: "/conditions-utilisation", libelle: "Conditions d'utilisation" },
       { to: "/politique-confidentialite", libelle: "Confidentialité" },
       { to: "/mentions-legales", libelle: "Mentions légales" },
+      { to: "/accessibilite", libelle: "Accessibilité" },
     ],
   },
 ];

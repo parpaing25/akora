@@ -37,7 +37,7 @@ Deno.serve(async (requete: Request) => {
 
   // Plafond par IP, en plus du plafond par adresse tenu en base : sans lui, on
   // pourrait arroser mille adresses depuis un seul poste.
-  if (!(await quotaOk(client, "mdp_code", adresse(requete), 30))) {
+  if (!(await quotaOk(client, "mdp_code", adresse(requete), 30, true))) {
     return reponse(429, { erreur: "Trop de demandes. Réessayez dans une heure." });
   }
 

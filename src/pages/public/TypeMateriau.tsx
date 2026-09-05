@@ -47,7 +47,8 @@ export default function TypeMateriau() {
       liste
         .filter((f) => f.offre_fournisseur_id && f.prix_des != null)
         .map((f) => ({
-          fournisseurId: `${f.offre_fournisseur_id}::${f.id}`,
+          fournisseurId: String(f.offre_fournisseur_id),
+          cle: `${f.offre_fournisseur_id}::${f.id}`,
           rayonMaxKm: Number(f.offre_rayon_max_km ?? 0),
           coefSinuosite: f.offre_coef_sinuosite,
           depart:

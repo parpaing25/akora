@@ -57,18 +57,31 @@ export async function utilisateurAppelant(requete: Request): Promise<string | nu
 }
 
 /** Plafond horaire, appliqué en base et non dans le navigateur. */
+/**
+ * Plafond glissant par heure (rpc consommer_quota, réservée à service_role).
+ *
+ * `strict` décide du comportement quand le compteur est INDISPONIBLE :
+ *   · false (défaut) : on laisse passer et on journalise — un quota en panne ne
+ *     doit pas bloquer une vente (commande-creer, paiement-initier) ;
+ *   · true : on refuse — un code ou un courriel sans plafond est une porte
+ *     ouverte au moment même où la base est fragile (audit X-03, 05/09/2026).
+ */
 export async function quotaOk(
   client: SupabaseClient,
   cle: string,
   sujet: string,
   plafond: number,
+  strict = false,
 ): Promise<boolean> {
   const { data, error } = await client.rpc("consommer_quota", {
     _cle: cle,
     _sujet: sujet,
     _plafond: plafond,
   });
-  if (error) return true; // Un quota indisponible ne doit pas bloquer une vente.
+  if (error) {
+    console.error(`quota ${cle} indisponible (${strict ? "REFUS" : "laissé passer"}) : ${error.message}`);
+    return !strict;
+  }
   return data !== false;
 }
 

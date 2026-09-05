@@ -1,0 +1,6 @@
+Contact: mailto:contact@akora.fonenako.mg
+Expires: 2027-09-05T00:00:00.000Z
+Preferred-Languages: fr, mg, en
+Canonical: https://akora.fonenako.mg/.well-known/security.txt
+Policy: https://akora.fonenako.mg/mentions-legales
+Acknowledgments: https://akora.fonenako.mg/a-propos

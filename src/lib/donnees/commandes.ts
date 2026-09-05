@@ -42,8 +42,49 @@ export interface DemandeCommande {
 export interface CommandeCreee {
   id: string;
   numero: string;
+  /** Secret remis une fois : seule preuve de propriété d'une commande passée sans compte (F-01). */
+  jeton_suivi: string;
   fournisseur: string;
   montant_total: number;
+}
+
+export interface CommandeInvitee {
+  commande: LigneCommande;
+  lignes: LigneDeCommande[];
+  paiements: LignePaiement[];
+}
+
+/** Lecture par jeton (commande passée sans compte). `null` si le couple ne correspond pas. */
+export async function lireCommandeInvitee(numero: string, jeton: string): Promise<CommandeInvitee | null> {
+  const { data, error } = await supabase.rpc("lire_commande_invitee" as never, { _numero: numero, _jeton: jeton } as never);
+  if (error) throw error;
+  return (data as unknown as CommandeInvitee | null) ?? null;
+}
+
+export async function confirmerLivraisonInvitee(numero: string, jeton: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc("confirmer_livraison_invitee" as never, { _numero: numero, _jeton: jeton } as never);
+  if (error) throw error;
+  return Boolean(data);
+}
+
+/** Les commandes passées sans compte, gardées dans CE navigateur pour les retrouver. */
+const CLE_INVITE = "akora-commandes-invite";
+export interface CommandeMemorisee { numero: string; jeton: string; le: string }
+export function memoriserCommandeInvitee(c: { numero: string; jeton_suivi: string }): void {
+  try {
+    const liste = JSON.parse(localStorage.getItem(CLE_INVITE) ?? "[]") as CommandeMemorisee[];
+    liste.unshift({ numero: c.numero, jeton: c.jeton_suivi, le: new Date().toISOString() });
+    localStorage.setItem(CLE_INVITE, JSON.stringify(liste.slice(0, 20)));
+  } catch {
+    // stockage indisponible : le lien reste dans l'URL et le courriel
+  }
+}
+export function commandesInvitees(): CommandeMemorisee[] {
+  try {
+    return JSON.parse(localStorage.getItem(CLE_INVITE) ?? "[]") as CommandeMemorisee[];
+  } catch {
+    return [];
+  }
 }
 
 export function creerCommandes(demande: DemandeCommande): Promise<{ commandes: CommandeCreee[] }> {

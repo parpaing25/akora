@@ -5,6 +5,7 @@ import { ChevronRight, Minus, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Seo, filAriane } from "@/components/Seo";
 import { compterVue, lireProduit } from "@/lib/donnees/vitrine";
+import { emettre } from "@/lib/evenements";
 import { listerPaliers } from "@/lib/donnees/produits";
 import { prixUnitaireApplicable, prochainPalier } from "@/lib/paliers";
 import { usePanier, type LignePanier } from "@/lib/panier";
@@ -58,7 +59,10 @@ export default function ProduitFiche() {
 
   // Compteur de vues : agrégé par jour côté base, une seule fois par montage.
   React.useEffect(() => {
-    if (p?.id) void compterVue(p.id as string);
+    if (p?.id) {
+      void compterVue(p.id as string);
+      emettre("voir_produit");
+    }
   }, [p?.id]);
 
   const ligneBase: Omit<LignePanier, "quantite"> | null = p ? versLignePanier(p, paliers.data ?? []) : null;

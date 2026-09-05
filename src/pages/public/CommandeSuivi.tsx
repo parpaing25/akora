@@ -1,14 +1,17 @@
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Printer, MessageCircle, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { Seo } from "@/components/Seo";
 import {
   confirmerLivraison,
+  confirmerLivraisonInvitee,
+  lireCommandeInvitee,
   lireCommandeParNumero,
   listerLignes,
   listerPaiements,
 } from "@/lib/donnees/commandes";
+import { useAuth } from "@/hooks/useAuth";
 import { formaterAriary, formaterDateHeure, formaterTelephone } from "@/lib/format";
 import { LIBELLE_COMMANDE, LIBELLE_PAIEMENT, LIBELLE_UNITE } from "@/lib/types-metier";
 import { ENV } from "@/lib/env";
@@ -33,30 +36,45 @@ const TONS: Record<string, "succes" | "info" | "attention" | "danger" | "neutre"
 /** Suivi et reçu d'une commande. Imprimable tel quel (`@media print`). */
 export default function CommandeSuivi() {
   const { numero } = useParams<{ numero: string }>();
+  const [params] = useSearchParams();
+  const jeton = params.get("j");
+  const { session } = useAuth();
+  // Sans session ET avec jeton : lecture par jeton (commande passée sans compte,
+  // audit F-01). Avec session : RLS, comme avant.
+  const parJeton = !session && Boolean(jeton);
   const client = useQueryClient();
+
+  const invitee = useQuery({
+    queryKey: ["commande-invitee", numero, jeton],
+    queryFn: () => lireCommandeInvitee(numero as string, jeton as string),
+    enabled: Boolean(numero) && parJeton,
+    staleTime: 30_000,
+  });
 
   const commande = useQuery({
     queryKey: ["commande", numero],
     queryFn: () => lireCommandeParNumero(numero as string),
-    enabled: Boolean(numero),
+    enabled: Boolean(numero) && !parJeton,
     staleTime: 30_000,
   });
 
   const lignes = useQuery({
     queryKey: ["lignes-commande", commande.data?.id],
     queryFn: () => listerLignes(commande.data?.id as string),
-    enabled: Boolean(commande.data?.id),
+    enabled: Boolean(commande.data?.id) && !parJeton,
   });
 
   const paiements = useQuery({
     queryKey: ["paiements-commande", commande.data?.id],
     queryFn: () => listerPaiements(commande.data?.id as string),
-    enabled: Boolean(commande.data?.id),
+    enabled: Boolean(commande.data?.id) && !parJeton,
   });
 
-  const c = commande.data;
+  const c = parJeton ? (invitee.data?.commande ?? null) : commande.data;
+  const lignesData = parJeton ? (invitee.data?.lignes ?? []) : (lignes.data ?? []);
+  const paiementsData = parJeton ? (invitee.data?.paiements ?? []) : (paiements.data ?? []);
 
-  if (commande.isPending) {
+  if (parJeton ? invitee.isPending : commande.isPending) {
     return (
       <div className="container max-w-3xl space-y-3 py-8" aria-busy="true">
         <Squelette className="h-8 w-1/2" />
@@ -70,11 +88,18 @@ export default function CommandeSuivi() {
       <div className="container max-w-3xl py-10">
         <Seo titre="Commande introuvable" chemin={"/commande/" + numero} indexable={false} />
         <EtatVide
+          niveauTitre="h1"
           titre="Commande introuvable"
-          phrase="Le numéro est peut-être erroné, ou cette commande ne vous appartient pas."
+          phrase={
+            session
+              ? "Le numéro est peut-être erroné, ou cette commande ne vous appartient pas."
+              : "Pour revoir une commande passée sans compte, ouvrez le lien affiché juste après la commande (il est aussi dans votre panier, rubrique « Vos dernières commandes »). Avec un compte, retrouvez-la dans « Mes commandes »."
+          }
           action={
             <Bouton asChild variante="secondaire">
-              <Link to="/compte/commandes">Mes commandes</Link>
+              <Link to={session ? "/compte/commandes" : "/connexion"} state={{ retour: "/commande/" + numero }}>
+                {session ? "Mes commandes" : "Se connecter"}
+              </Link>
             </Bouton>
           }
         />
@@ -87,8 +112,14 @@ export default function CommandeSuivi() {
 
   const confirmer = async () => {
     try {
-      await confirmerLivraison(c.id);
-      await client.invalidateQueries({ queryKey: ["commande", numero] });
+      if (parJeton) {
+        const ok = await confirmerLivraisonInvitee(numero as string, jeton as string);
+        if (!ok) throw new Error("La commande n'est pas encore marquée livrée par le fournisseur.");
+        await client.invalidateQueries({ queryKey: ["commande-invitee", numero, jeton] });
+      } else {
+        await confirmerLivraison(c.id);
+        await client.invalidateQueries({ queryKey: ["commande", numero] });
+      }
       toast.success("Réception confirmée", { description: "Le fournisseur peut désormais être payé." });
     } catch (erreur) {
       toast.error("Confirmation impossible", { description: (erreur as Error).message });
@@ -138,7 +169,7 @@ export default function CommandeSuivi() {
               </tr>
             </thead>
             <tbody className="[&_td]:px-2 [&_td]:py-2 [&_tr]:border-t [&_tr]:border-border">
-              {(lignes.data ?? []).map((l) => (
+              {lignesData.map((l) => (
                 <tr key={l.id}>
                   <td>{l.designation_snapshot}</td>
                   <td data-nombre="">
@@ -197,11 +228,11 @@ export default function CommandeSuivi() {
         </dl>
       </Carte>
 
-      {(paiements.data ?? []).length > 0 ? (
+      {paiementsData.length > 0 ? (
         <Carte className="mt-4 p-4">
           <h2 className="text-produit">Paiements</h2>
           <ul className="mt-2 divide-y divide-border text-legende">
-            {(paiements.data ?? []).map((p) => (
+            {paiementsData.map((p) => (
               <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
                 <span>
                   <span className="nombres font-semibold">{formaterAriary(Number(p.montant))}</span>{" "}
@@ -229,18 +260,32 @@ export default function CommandeSuivi() {
             J'ai bien reçu ma commande
           </Bouton>
         ) : null}
-        {["payee", "en_preparation", "en_livraison", "livree"].includes(c.statut) ? (
+        {!parJeton && ["payee", "en_preparation", "en_livraison", "livree"].includes(c.statut) ? (
           <OuvrirLitige
             commandeId={c.id}
             onOuvert={() => void client.invalidateQueries({ queryKey: ["commande", numero] })}
           />
         ) : null}
-        <Bouton asChild variante="secondaire">
-          <Link to="/compte/commandes">Mes commandes</Link>
-        </Bouton>
+        {parJeton ? (
+          <Bouton asChild variante="secondaire">
+            <Link to="/inscription">Créer un compte</Link>
+          </Bouton>
+        ) : (
+          <Bouton asChild variante="secondaire">
+            <Link to="/compte/commandes">Mes commandes</Link>
+          </Bouton>
+        )}
       </div>
 
-      {c.statut === "cloturee" ? (
+      {parJeton ? (
+        <p className="mt-3 rounded-md bg-muted px-3 py-2.5 text-legende text-muted-foreground print:hidden">
+          Gardez ce lien : c'est votre preuve de commande. Pour déposer un avis ou ouvrir un litige,{" "}
+          <Link to="/inscription" className="lien-souligne">créez un compte</Link> avec le même numéro de
+          téléphone.
+        </p>
+      ) : null}
+
+      {c.statut === "cloturee" && !parJeton ? (
         <DeposerAvis
           commandeId={c.id}
           fournisseurId={c.fournisseur_id}

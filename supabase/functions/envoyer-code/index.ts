@@ -1,4 +1,4 @@
-import { clientAdmin, enTetesCors, reponse } from "../_commun.ts";
+import { adresse, clientAdmin, enTetesCors, quotaOk, reponse } from "../_commun.ts";
 import { envoyer, gabaritCode } from "../_courriel.ts";
 
 /**
@@ -32,6 +32,12 @@ Deno.serve(async (requete: Request) => {
   }
 
   const client = clientAdmin();
+
+  // Plafond par adresse IP, en plus des deux garde-fous par e-mail de la base :
+  // dix envois par heure, refus si le compteur est indisponible (audit X-03, 06/09/2026).
+  if (!(await quotaOk(client, "envoyer_code", adresse(requete), 10, true))) {
+    return reponse(429, { erreur: "Trop de demandes de code depuis cette connexion. Réessayez dans une heure." });
+  }
 
   const { data: code, error } = await client.rpc("creer_code_verification", {
     _user_id: corps.userId,

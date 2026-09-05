@@ -3,6 +3,8 @@ import { Link, useSearchParams } from "react-router-dom";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { MapPin, Search } from "lucide-react";
 import { Seo } from "@/components/Seo";
+import { ORGANISATION, SITE_WEB } from "@/lib/seo/jsonld";
+import { emettre } from "@/lib/evenements";
 import { useAuth } from "@/hooks/useAuth";
 import { usePointLivraison } from "@/lib/point-livraison";
 import { chargerFil, TAILLE_PAGE, type FiltreFil } from "@/lib/donnees/fil";
@@ -100,12 +102,17 @@ export default function Accueil() {
 
   const publications = React.useMemo(() => fil.data?.pages.flat() ?? [], [fil.data]);
 
+  React.useEffect(() => {
+    emettre("voir_accueil");
+  }, []);
+
   return (
     <>
       <Seo
-        titre="Akora"
+        titre="Matériaux de construction au prix rendu chantier"
         chemin="/"
         description="Le fil des dépôts de matériaux à Madagascar : stock du jour, baisses de prix, tournées de livraison. Comparez au prix rendu chantier, livraison comprise."
+        donneesStructurees={[ORGANISATION, SITE_WEB]}
       />
 
       {/* ⭐ Les colonnes latérales sont dans la COQUILLE depuis le 03/09/2026 :
@@ -137,7 +144,7 @@ export default function Accueil() {
             >
               <MapPin size={24} className={point ? "shrink-0 text-primary" : "shrink-0"} aria-hidden="true" />
               <span className="min-w-0 flex-1 truncate">{point ? point.libelle : "Mon chantier"}</span>
-              <span className="shrink-0 text-legende font-semibold opacity-85">
+              <span className="shrink-0 text-legende font-semibold">
                 {point ? "Changer" : "Choisir"}
               </span>
             </button>

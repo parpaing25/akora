@@ -1,4 +1,5 @@
 import * as React from "react";
+import { emettre } from "@/lib/evenements";
 import { Link, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Search, SlidersHorizontal } from "lucide-react";
@@ -74,6 +75,16 @@ export default function Recherche() {
     enabled: q.trim().length >= 2,
     staleTime: 5 * 60_000,
   });
+
+  // Entonnoir (audit R-02) : les recherches sans résultat sont les matériaux à ajouter au catalogue.
+  const compter = (d: unknown): number =>
+    Array.isArray(d) ? d.length : Array.isArray((d as { lignes?: unknown[] } | null)?.lignes) ? (d as { lignes: unknown[] }).lignes.length : 0;
+  const nbResultats = compter(produits.data) + compter(fournisseurs.data) + compter(catalogue.data);
+  const recherchePrete = q.trim().length >= 2 && !produits.isPending && !fournisseurs.isPending && !catalogue.isPending;
+  React.useEffect(() => {
+    if (recherchePrete) emettre("recherche", { q: q.trim().slice(0, 60), nb_resultats: nbResultats });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q, recherchePrete]);
 
   const distance = (lat: unknown, lng: unknown, coef: unknown) =>
     point && lat != null && lng != null

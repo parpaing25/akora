@@ -82,6 +82,8 @@ const Contact = lazy(() => import("@/pages/contenu/Contact"));
 const Conditions = lazy(() => import("@/pages/contenu/Conditions"));
 const Confidentialite = lazy(() => import("@/pages/contenu/Confidentialite"));
 const MentionsLegales = lazy(() => import("@/pages/contenu/MentionsLegales"));
+const FAQ = lazy(() => import("@/pages/contenu/FAQ"));
+const Accessibilite = lazy(() => import("@/pages/contenu/Accessibilite"));
 
 // ── Vitrine publique, comparateur, panier et commande (etapes 4, 6, 7) ───
 const Materiaux = lazy(() => import("@/pages/public/Materiaux"));
@@ -175,6 +177,8 @@ export default function App() {
           */}
           <Route path="depot-reserve/:jeton" element={<DepotReserve />} />
           <Route path="a-propos" element={<APropos />} />
+          <Route path="faq" element={<FAQ />} />
+          <Route path="accessibilite" element={<Accessibilite />} />
           <Route path="contact" element={<Contact />} />
           <Route path="conditions-utilisation" element={<Conditions />} />
           <Route path="politique-confidentialite" element={<Confidentialite />} />

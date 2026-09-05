@@ -1,0 +1,55 @@
+name: Test de restauration (mensuel)
+# Une sauvegarde n'existe que si on l'a restaurée. Le 1er du mois, la dernière
+# archive est déchiffrée et rechargée dans un Postgres jetable ; on compte.
+on:
+  schedule:
+    - cron: "0 3 1 * *"          # 06:00 Antananarivo
+  workflow_dispatch:
+
+jobs:
+  restaurer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: test
+        ports: ["5432:5432"]
+        options: --health-cmd pg_isready --health-interval 5s --health-retries 20
+    steps:
+      - name: Outils
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client-16 age jq unzip
+      - name: Dernière archive
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          id=$(gh api "repos/${{ github.repository }}/actions/artifacts?per_page=100" \
+               --jq '[.artifacts[] | select(.name|startswith("akora-")) | select(.expired==false)] | sort_by(.created_at) | last | .id')
+          [ -n "$id" ] && [ "$id" != "null" ] || { echo "aucune archive akora-* disponible"; exit 1; }
+          gh api "repos/${{ github.repository }}/actions/artifacts/$id/zip" > archive.zip
+          unzip -o archive.zip && ls -la *.age
+      - name: Déchiffrer et restaurer (schéma public)
+        env:
+          AGE_PASSPHRASE: ${{ secrets.SAUVEGARDE_PASSPHRASE }}
+          PGPASSWORD: test
+        run: |
+          set -euo pipefail
+          f=$(ls *.age | head -1)
+          printf '%s\n' "$AGE_PASSPHRASE" | script -qec "age -d -o restauree.dump '$f'" /dev/null >/dev/null
+          [ -s restauree.dump ] || { echo "déchiffrement échoué"; exit 1; }
+          psql -h localhost -U postgres -v ON_ERROR_STOP=0 -c "create role anon; create role authenticated; create role service_role; create role supabase_admin; create role authenticator;" || true
+          psql -h localhost -U postgres -c "create extension if not exists pgcrypto; create extension if not exists \"uuid-ossp\";"
+          # auth.* dépend d'extensions Supabase absentes ici : le test porte sur public.
+          pg_restore -h localhost -U postgres -d postgres --no-owner --no-privileges --schema=public restauree.dump || true
+      - name: Compter ce qui doit être là (invariants, pas des valeurs figées)
+        env:
+          PGPASSWORD: test
+        run: |
+          set -euo pipefail
+          n=$(psql -h localhost -U postgres -tAc "select count(*) from information_schema.tables where table_schema='public' and table_type='BASE TABLE'")
+          f=$(psql -h localhost -U postgres -tAc "select count(*) from public.fournisseurs")
+          p=$(psql -h localhost -U postgres -tAc "select count(*) from public.produits")
+          echo "tables=$n fournisseurs=$f produits=$p"
+          [ "$n" -ge 45 ] && [ "$f" -ge 1 ] && [ "$p" -ge 1 ] || { echo "restauration incomplète"; exit 1; }

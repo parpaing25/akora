@@ -39,7 +39,7 @@ Deno.serve(async (requete: Request) => {
 
   const client = clientAdmin();
 
-  if (!(await quotaOk(client, "mdp_reinit", adresse(requete), 60))) {
+  if (!(await quotaOk(client, "mdp_reinit", adresse(requete), 60, true))) {
     return reponse(429, { erreur: "Trop de tentatives. Réessayez dans une heure." });
   }
 

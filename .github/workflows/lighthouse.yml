@@ -1,0 +1,46 @@
+name: Lighthouse (prod, hebdo)
+# Budgets de performance sur trois pages, chaque lundi. Agent utilisateur
+# réaliste OBLIGATOIRE : o2switch sert une page de blocage 429 au headless nu (O-02).
+on:
+  schedule:
+    - cron: "0 3 * * 1"
+  workflow_dispatch:
+
+jobs:
+  mesurer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm i -g lighthouse@12
+      - name: Mesure mobile simulée
+        run: |
+          set -euo pipefail
+          for u in / /materiaux/bois/madrier/madrier-70x150-4m /fournisseurs/hourdis-mg/hourdis-tc-20; do
+            n=$(echo "$u" | tr '/' '_')
+            lighthouse "https://akora.fonenako.mg$u" --quiet --output=json --output-path="lh$n.json" \
+              --form-factor=mobile --screenEmulation.mobile --throttling-method=simulate \
+              --emulated-user-agent="Mozilla/5.0 (Linux; Android 12; SM-A125F) AppleWebKit/537.36 Chrome/128 Mobile Safari/537.36 AkoraLighthouse" \
+              --chrome-flags="--headless=new --no-sandbox"
+          done
+      - name: Budgets (LCP ≤ 3 s, CLS ≤ 0,1, TBT ≤ 300 ms, perf ≥ 80) et vraie page
+        run: |
+          node -e '
+            const fs = require("fs"); let ko = 0;
+            for (const f of fs.readdirSync(".").filter((f) => f.startsWith("lh") && f.endsWith(".json"))) {
+              const r = JSON.parse(fs.readFileSync(f)); const a = r.audits;
+              if (!(a["document-title"] && r.finalDisplayedUrl.includes("akora.fonenako.mg"))) { console.error(f, "page inattendue"); ko++; continue; }
+              const lcp = a["largest-contentful-paint"].numericValue, cls = a["cumulative-layout-shift"].numericValue, tbt = a["total-blocking-time"].numericValue;
+              const perf = r.categories.performance.score * 100;
+              console.log(f, { perf, lcp: Math.round(lcp), cls, tbt: Math.round(tbt) });
+              if (lcp > 3000 || cls > 0.1 || tbt > 300 || perf < 80) ko++;
+            }
+            if (ko) { console.error(`${ko} page(s) hors budget`); process.exit(1); }'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lighthouse-${{ github.run_id }}
+          path: "lh*.json"
+          retention-days: 90

@@ -37,7 +37,11 @@ export function VitrineAkora({
 
   return (
     <section aria-label="Ce qu'un compte Akora apporte" className={cn("-mx-5", className)}>
-      <ul className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <ul
+        tabIndex={0}
+        aria-label="Ce qu'Akora apporte"
+        className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
         {etapes.map(([titre, aide], index) => (
           <li
             key={titre}

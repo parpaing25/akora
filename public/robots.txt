@@ -10,4 +10,22 @@ Disallow: /commander
 Disallow: /paiement
 Disallow: /recherche
 
+# Moteurs de reponse IA : autorises sur les pages publiques (GEO, 05/09/2026).
+User-agent: GPTBot
+User-agent: ChatGPT-User
+User-agent: ClaudeBot
+User-agent: anthropic-ai
+User-agent: PerplexityBot
+User-agent: Google-Extended
+User-agent: Applebot-Extended
+User-agent: CCBot
+Allow: /
+Disallow: /compte
+Disallow: /pro
+Disallow: /admin
+Disallow: /panier
+Disallow: /commander
+Disallow: /paiement
+Disallow: /recherche
+
 Sitemap: https://akora.fonenako.mg/sitemap.xml

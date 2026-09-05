@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Search } from "lucide-react";
 import { Seo } from "@/components/Seo";
+import { listeElements } from "@/lib/seo/jsonld";
 import { listerDepots, type TriAnnuaire } from "@/lib/donnees/annuaire";
 import { listerFamilles } from "@/lib/donnees/categories";
 import { usePointLivraison } from "@/lib/point-livraison";
@@ -94,6 +95,10 @@ export default function Fournisseurs() {
         titre="Fournisseurs de matériaux"
         chemin="/fournisseurs"
         description="L'annuaire des dépôts, briqueteries, carrières et scieries de Madagascar : ce qu'ils vendent, à partir de combien, et jusqu'où ils livrent."
+        donneesStructurees={listeElements(
+          "Fournisseurs de matériaux de construction à Madagascar",
+          (depots.data ?? []).slice(0, 50).map((d) => ({ nom: String(d.raison_sociale), chemin: `/fournisseurs/${d.slug}` })),
+        )}
       />
 
       <div className="carte p-4 sm:p-5">

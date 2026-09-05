@@ -2,6 +2,7 @@ import { Outlet, useLocation } from "react-router-dom";
 import * as React from "react";
 import { EnTete } from "./EnTete";
 import { BandeauVerification } from "./BandeauVerification";
+import { BandeauIncident } from "./BandeauIncident";
 import { BarreMobile } from "./BarreMobile";
 import { PiedDePage } from "./PiedDePage";
 import { RailGauche, RailDroit } from "./Rails";
@@ -34,6 +35,7 @@ export function Coquille() {
       </a>
       <EnTete />
       <BandeauVerification />
+      <BandeauIncident />
       <main id="contenu" tabIndex={-1} className="flex-1">
         {/* ⭐ LES DEUX RAILS SUR TOUTES LES PAGES (03/09/2026, demande d'Andry).
             Ils vivaient dans l'accueil seul : un clic sur une famille les

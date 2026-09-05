@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { getThumbUrl } from "@/components/produit/ImageProduit";
 import { Heart, Truck } from "lucide-react";
 import type { Publication } from "@/lib/donnees/fil";
 import { BoutonSuivre } from "@/components/fil/BoutonSuivre";
@@ -136,7 +137,12 @@ function PostFournisseur({ publication }: { publication: Publication }) {
               className="block cursor-zoom-in"
             >
               <img
-                src={url}
+                src={getThumbUrl(url) ?? url}
+                srcSet={getThumbUrl(url) !== url ? `${getThumbUrl(url)} 480w, ${url} 1200w` : undefined}
+                sizes={publication.photos.length > 1 ? "(min-width: 1024px) 300px, 50vw" : "(min-width: 1024px) 600px, 100vw"}
+                onError={(e) => {
+                  if (e.currentTarget.src !== url) e.currentTarget.src = url;
+                }}
                 alt=""
                 loading="lazy"
                 decoding="async"

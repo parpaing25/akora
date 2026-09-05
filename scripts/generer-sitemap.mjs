@@ -36,11 +36,15 @@ const ENTREES = [
   { chemin: "/calculateurs", priorite: 0.8, frequence: "monthly" },
   { chemin: "/verification", priorite: 0.7, frequence: "monthly" },
   { chemin: "/devenir-fournisseur", priorite: 0.8, frequence: "monthly" },
-  { chemin: "/a-propos", priorite: 0.4, frequence: "monthly" },
-  { chemin: "/contact", priorite: 0.4, frequence: "monthly" },
-  { chemin: "/conditions-utilisation", priorite: 0.3, frequence: "monthly" },
-  { chemin: "/politique-confidentialite", priorite: 0.3, frequence: "monthly" },
-  { chemin: "/mentions-legales", priorite: 0.3, frequence: "monthly" },
+  { chemin: "/a-propos", priorite: 0.4, frequence: "monthly", maj: "2026-09-06" },
+  { chemin: "/contact", priorite: 0.4, frequence: "monthly", maj: "2026-09-06" },
+  // Pages construites par l'audit du 05/09/2026 (docs/audit-2026-09-05/04-pages-construites).
+  { chemin: "/faq", priorite: 0.7, frequence: "monthly", maj: "2026-09-06" },
+  { chemin: "/accessibilite", priorite: 0.3, frequence: "yearly", maj: "2026-09-06" },
+  // `maj` = la date « mis à jour le » affichée par PageTexte : la seule vraie.
+  { chemin: "/conditions-utilisation", priorite: 0.3, frequence: "yearly", maj: "2026-08-22" },
+  { chemin: "/politique-confidentialite", priorite: 0.3, frequence: "yearly", maj: "2026-09-06" },
+  { chemin: "/mentions-legales", priorite: 0.3, frequence: "yearly", maj: "2026-09-06" },
   { chemin: "/guides/choisir-son-sable", priorite: 0.7, frequence: "monthly" },
   { chemin: "/guides/combien-de-parpaings", priorite: 0.7, frequence: "monthly" },
   { chemin: "/guides/reception-livraison", priorite: 0.7, frequence: "monthly" },
@@ -51,6 +55,14 @@ const ENTREES = [
   { chemin: "/calculateurs/chape-enduit", priorite: 0.7, frequence: "monthly" },
   { chemin: "/calculateurs/toiture", priorite: 0.7, frequence: "monthly" },
 ];
+
+/** AAAA-MM-JJ ou null. Jamais une date inventée : Google ignore un lastmod qui
+ *  vaut « maintenant » partout, et finit par ignorer le reste. */
+function jour(valeur) {
+  if (!valeur) return null;
+  const d = new Date(valeur);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
+}
 
 /**
  * Les URL du référentiel, lues dans les vues publiques avec la clé anon.
@@ -76,10 +88,12 @@ async function entreesReferentiel() {
     return reponse.json();
   };
   try {
-    const [types, formats, fournisseurs] = await Promise.all([
+    const [types, formats, fournisseurs, produits] = await Promise.all([
       lire("types_vitrine?select=slug,famille_slug"),
-      lire("formats_vitrine?select=slug,type_slug,famille_slug"),
-      lire("fournisseurs_publics?select=slug&limit=500"),
+      lire("formats_vitrine?select=slug,type_slug,famille_slug,prix_indicatif_le"),
+      lire("fournisseurs_publics?select=slug,created_at&limit=500"),
+      // 40 fiches aujourd'hui ; la limite PostgREST par défaut est 1000 : au-delà, paginer.
+      lire("produits_publics?select=slug,fournisseur_slug,prix_maj_le,created_at&limit=1000"),
     ]);
     const entrees = [];
     const familles = new Set(types.map((t) => t.famille_slug));
@@ -95,10 +109,21 @@ async function entreesReferentiel() {
       });
       // La page prix nationale de chaque format existe toujours (repli
       // fourchette indicative) : indexable des le premier jour.
-      entrees.push({ chemin: `/prix/${fo.slug}/madagascar`, priorite: 0.6, frequence: "daily" });
+      // La page prix bouge quand le prix indicatif bouge : c'est SA date.
+      entrees.push({ chemin: `/prix/${fo.slug}/madagascar`, priorite: 0.6, frequence: "daily", maj: jour(fo.prix_indicatif_le) });
     }
     for (const f of fournisseurs)
-      entrees.push({ chemin: `/fournisseurs/${f.slug}`, priorite: 0.6, frequence: "weekly" });
+      entrees.push({ chemin: `/fournisseurs/${f.slug}`, priorite: 0.6, frequence: "weekly", maj: jour(f.created_at) });
+    // Les fiches produit : la page qui convertit, et la seule à porter le JSON-LD Product (audit S-04).
+    for (const p of produits) {
+      if (!p.slug || !p.fournisseur_slug) continue;
+      entrees.push({
+        chemin: `/fournisseurs/${p.fournisseur_slug}/${p.slug}`,
+        priorite: 0.7,
+        frequence: "weekly",
+        maj: jour(p.prix_maj_le ?? p.created_at),
+      });
+    }
     return entrees;
   } catch (erreur) {
     console.warn(`sitemap : referentiel injoignable (${erreur.message}) — sitemap statique seul.`);
@@ -113,6 +138,7 @@ const urls = toutes
   .map(
     (e) =>
       `  <url>\n    <loc>${SITE}${e.chemin === "/" ? "/" : e.chemin}</loc>\n` +
+      (e.maj ? `    <lastmod>${e.maj}</lastmod>\n` : "") +
       `    <changefreq>${e.frequence}</changefreq>\n` +
       `    <priority>${e.priorite}</priority>\n  </url>`,
   )
@@ -125,5 +151,5 @@ const xml =
 const destination = join(racine, "public", "sitemap.xml");
 writeFileSync(destination, xml, "utf8");
 console.log(
-  `sitemap.xml : ${toutes.length} URL ecrites (${ENTREES.length} statiques + ${dynamiques.length} referentiel) — ${SITE}.`,
+  `sitemap.xml : ${toutes.length} URL ecrites (${ENTREES.length} statiques + ${dynamiques.length} referentiel, dont ${toutes.filter((e) => e.maj).length} avec lastmod) — ${SITE}.`,
 );

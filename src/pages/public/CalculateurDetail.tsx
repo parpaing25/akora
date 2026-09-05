@@ -317,6 +317,7 @@ export default function CalculateurDetail() {
           </p>
           <Curseur
             id="marge"
+            etiquette="Marge pour les chutes et la casse"
             className="mt-1"
             min={0}
             max={20}

@@ -365,6 +365,7 @@ export type Database = {
           email_contact: string | null
           fournisseur_id: string
           id: string
+          jeton_suivi: string
           lat: number | null
           livraison_estimable: boolean
           livree_le: string | null
@@ -395,6 +396,7 @@ export type Database = {
           email_contact?: string | null
           fournisseur_id: string
           id?: string
+          jeton_suivi?: string
           lat?: number | null
           livraison_estimable?: boolean
           livree_le?: string | null
@@ -425,6 +427,7 @@ export type Database = {
           email_contact?: string | null
           fournisseur_id?: string
           id?: string
+          jeton_suivi?: string
           lat?: number | null
           livraison_estimable?: boolean
           livree_le?: string | null
@@ -857,6 +860,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      evenements: {
+        Row: {
+          created_at: string
+          id: number
+          nom: string
+          page: string | null
+          proprietes: Json
+          session_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          nom: string
+          page?: string | null
+          proprietes?: Json
+          session_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          nom?: string
+          page?: string | null
+          proprietes?: Json
+          session_id?: string
+        }
+        Relationships: []
       }
       favoris: {
         Row: {
@@ -2851,6 +2881,39 @@ export type Database = {
           },
         ]
       }
+      vitals: {
+        Row: {
+          appareil: string | null
+          connexion: string | null
+          created_at: string
+          id: number
+          nom: string
+          note: string | null
+          page: string
+          valeur: number
+        }
+        Insert: {
+          appareil?: string | null
+          connexion?: string | null
+          created_at?: string
+          id?: number
+          nom: string
+          note?: string | null
+          page: string
+          valeur: number
+        }
+        Update: {
+          appareil?: string | null
+          connexion?: string | null
+          created_at?: string
+          id?: number
+          nom?: string
+          note?: string | null
+          page?: string
+          valeur?: number
+        }
+        Relationships: []
+      }
       vues_produit_jour: {
         Row: {
           jour: string
@@ -3212,6 +3275,30 @@ export type Database = {
           },
         ]
       }
+      rapport_entonnoir_7j: {
+        Row: {
+          n: number | null
+          nom: string | null
+          sessions: number | null
+        }
+        Relationships: []
+      }
+      rapport_recherches_vides_7j: {
+        Row: {
+          n: number | null
+          recherche: string | null
+        }
+        Relationships: []
+      }
+      rapport_vitals_7j: {
+        Row: {
+          n: number | null
+          nom: string | null
+          p75: number | null
+          page: string | null
+        }
+        Relationships: []
+      }
       transporteurs_publics: {
         Row: {
           couverture_url: string | null
@@ -3337,6 +3424,10 @@ export type Database = {
         Args: { _commande_id: string }
         Returns: undefined
       }
+      confirmer_livraison_invitee: {
+        Args: { _jeton: string; _numero: string }
+        Returns: boolean
+      }
       confirmer_paiement_manuel: {
         Args: { _accepte: boolean; _motif?: string; _paiement_id: string }
         Returns: Database["public"]["Enums"]["statut_paiement"]
@@ -3413,8 +3504,28 @@ export type Database = {
         }
         Returns: number
       }
+      enregistrer_evenement: {
+        Args: {
+          _nom: string
+          _page: string
+          _proprietes: Json
+          _session_id: string
+        }
+        Returns: undefined
+      }
       enregistrer_reference_paiement: {
         Args: { _paiement_id: string; _reference: string }
+        Returns: undefined
+      }
+      enregistrer_vital: {
+        Args: {
+          _appareil: string
+          _connexion: string
+          _nom: string
+          _note: string
+          _page: string
+          _valeur: number
+        }
         Returns: undefined
       }
       est_appel_systeme: { Args: never; Returns: boolean }
@@ -3449,6 +3560,10 @@ export type Database = {
         Returns: undefined
       }
       liberer_sequestre: { Args: { _paiement_id: string }; Returns: number }
+      lire_commande_invitee: {
+        Args: { _jeton: string; _numero: string }
+        Returns: Json
+      }
       lister_utilisateurs_admin: {
         Args: { _limite?: number; _q?: string }
         Returns: {

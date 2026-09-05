@@ -10,15 +10,19 @@ export function EtatVide({
   phrase,
   action,
   className,
+  niveauTitre = "p",
 }: {
   titre: string;
   phrase: string;
   action?: React.ReactNode;
   className?: string;
+  /** `h1` quand l'état vide est le seul contenu de la page (404, commande introuvable, panier vide). */
+  niveauTitre?: "h1" | "h2" | "p";
 }) {
+  const Titre = niveauTitre;
   return (
     <div className={cn("rounded-lg border border-dashed border-border bg-card/60 px-4 py-8 text-center", className)}>
-      <p className="text-[0.9375rem] font-semibold text-foreground">{titre}</p>
+      <Titre className="text-[0.9375rem] font-semibold text-foreground">{titre}</Titre>
       <p className="mx-auto mt-1 max-w-prose text-legende text-muted-foreground">{phrase}</p>
       {action && <div className="mt-4 flex justify-center">{action}</div>}
     </div>

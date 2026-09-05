@@ -8,6 +8,7 @@ import { Carte } from "@/components/ui/card";
 import { Champ } from "@/components/ui/champ";
 import { Saisie } from "@/components/ui/input";
 import { Bouton } from "@/components/ui/button";
+import { GestionSecondFacteur } from "@/components/auth/SecondFacteur";
 import {
   Confirmation,
   ConfirmationAnnuler,
@@ -26,7 +27,7 @@ import {
  * donc ses données, et rien d'autre.
  */
 export default function Securite() {
-  const { utilisateur, deconnexion } = useAuth();
+  const { utilisateur, deconnexion, aRole } = useAuth();
   const [nouveau, setNouveau] = React.useState("");
   const [enCours, setEnCours] = React.useState(false);
 
@@ -79,17 +80,24 @@ export default function Securite() {
   };
 
   const supprimer = async () => {
-    const { error } = await supabase
-      .from("profiles")
-      .delete()
-      .eq("id", utilisateur?.id ?? "")
-      .select("id");
+    // Suppression RÉELLE via la fonction compte-supprimer (auth.admin.deleteUser) :
+    // effacer la ligne profiles laissait l'utilisateur GoTrue en place (audit F-06, 06/09/2026).
+    const { data, error } = await supabase.functions.invoke("compte-supprimer", { body: {} });
     if (error) {
-      toast.error("Suppression impossible", { description: error.message });
+      const detail = await (error as { context?: Response }).context?.json?.().catch(() => null);
+      toast.error("Suppression impossible", {
+        description: (detail as { erreur?: string } | null)?.erreur ?? error.message,
+      });
+      return;
+    }
+    if (!(data as { ok?: boolean } | null)?.ok) {
+      toast.error("Suppression impossible");
       return;
     }
     await deconnexion();
-    toast.success("Compte supprimé");
+    toast.success("Compte supprimé", {
+      description: "Vos données personnelles sont effacées. Les montants de vos commandes passées sont conservés sans votre nom.",
+    });
   };
 
   return (
@@ -117,6 +125,8 @@ export default function Securite() {
         </div>
       </Carte>
 
+      <GestionSecondFacteur estAdmin={aRole("admin")} />
+
       <Carte className="mt-4 p-4">
         <h3 className="text-produit">Mes données</h3>
         <p className="mt-1 text-legende text-muted-foreground">
@@ -130,8 +140,10 @@ export default function Securite() {
       <Carte className="mt-4 border-destructive/30 p-4">
         <h3 className="text-produit text-destructive-strong">Supprimer mon compte</h3>
         <p className="mt-1 text-legende text-muted-foreground">
-          Votre profil, vos adresses et vos favoris sont effacés. Vos commandes passées sont
-          conservées sans lien vers vous : la comptabilité du fournisseur l'exige.
+          Votre profil, vos adresses, favoris, avis et notifications sont effacés définitivement, et
+          votre identifiant de connexion avec eux. Vos commandes terminées sont conservées sans votre
+          nom ni votre numéro : la comptabilité du fournisseur l'exige. Un dépôt, un litige ou une
+          commande en cours bloque la suppression tant qu'il n'est pas clos.
         </p>
         <Confirmation>
           <ConfirmationDeclencheur asChild>
