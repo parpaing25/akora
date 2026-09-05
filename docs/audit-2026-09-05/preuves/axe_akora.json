@@ -1,0 +1,134 @@
+{
+ "/": [
+  {
+   "id": "color-contrast",
+   "impact": "serious",
+   "aide": "Elements must meet minimum color contrast ratio thresholds",
+   "n": 12,
+   "ex": [
+    ".hover\\:bg-primary\\/90.disabled\\:shadow-none[href$=\"inscript ::   Element has insufficient color contrast of 2.56 (foreground color: #29313d, background c",
+    ".opacity-85 ::   Element has insufficient color contrast of 4.14 (foreground color: #f5e4dd, background c"
+   ]
+  }
+ ],
+ "/materiaux": [
+  {
+   "id": "color-contrast",
+   "impact": "serious",
+   "aide": "Elements must meet minimum color contrast ratio thresholds",
+   "n": 2,
+   "ex": [
+    "a[href$=\"inscription\"] ::   Element has insufficient color contrast of 2.56 (foreground color: #29313d, background c",
+    ".flex-wrap > .bg-primary.shadow.hover\\:bg-primary\\/90 ::   Element has insufficient color contrast of 2.56 (foreground color: #29313d, background c"
+   ]
+  }
+ ],
+ "/fournisseurs/hourdis-mg": [
+  {
+   "id": "color-contrast",
+   "impact": "serious",
+   "aide": "Elements must meet minimum color contrast ratio thresholds",
+   "n": 3,
+   "ex": [
+    ".disabled\\:shadow-none.disabled\\:bg-muted[href$=\"inscription ::   Element has insufficient color contrast of 2.56 (foreground color: #29313d, background c",
+    ".disabled\\:shadow-none.disabled\\:bg-muted[href$=\"connexion\"] ::   Element has insufficient color contrast of 2.56 (foreground color: #29313d, background c"
+   ]
+  }
+ ],
+ "/fournisseurs/hourdis-mg/hourdis-tc-20": [
+  {
+   "id": "color-contrast",
+   "impact": "serious",
+   "aide": "Elements must meet minimum color contrast ratio thresholds",
+   "n": 2,
+   "ex": [
+    "a[href$=\"inscription\"] ::   Element has insufficient color contrast of 2.56 (foreground color: #29313d, background c",
+    ".justify-between.flex-wrap.gap-2 > .bg-primary.shadow.hover\\ ::   Element has insufficient color contrast of 2.56 (foreground color: #29313d, background c"
+   ]
+  }
+ ],
+ "/prix": [
+  {
+   "id": "color-contrast",
+   "impact": "serious",
+   "aide": "Elements must meet minimum color contrast ratio thresholds",
+   "n": 1,
+   "ex": [
+    ".bg-primary ::   Element has insufficient color contrast of 2.56 (foreground color: #29313d, background c"
+   ]
+  }
+ ],
+ "/calculateurs/mur-parpaings": [
+  {
+   "id": "aria-input-field-name",
+   "impact": "serious",
+   "aide": "ARIA input fields must have an accessible name",
+   "n": 1,
+   "ex": [
+    ".size-6 ::   aria-label attribute does not exist or is empty"
+   ]
+  },
+  {
+   "id": "color-contrast",
+   "impact": "serious",
+   "aide": "Elements must meet minimum color contrast ratio thresholds",
+   "n": 1,
+   "ex": [
+    ".hover\\:bg-primary\\/90 ::   Element has insufficient color contrast of 2.56 (foreground color: #29313d, background c"
+   ]
+  }
+ ],
+ "/connexion": [],
+ "/inscription": [
+  {
+   "id": "color-contrast",
+   "impact": "serious",
+   "aide": "Elements must meet minimum color contrast ratio thresholds",
+   "n": 2,
+   "ex": [
+    ".mb-1\\.5 ::   Element has insufficient color contrast of 3.56 (foreground color: #eed2c6, background c",
+    ".text-primary-foreground\\/85 ::   Element has insufficient color contrast of 4.14 (foreground color: #f5e4dd, background c"
+   ]
+  },
+  {
+   "id": "image-redundant-alt",
+   "impact": "minor",
+   "aide": "Alternative text of images should not be repeated as text",
+   "n": 1,
+   "ex": [
+    "img ::   Element contains <img> element with alt text that duplicates existing text"
+   ]
+  },
+  {
+   "id": "scrollable-region-focusable",
+   "impact": "serious",
+   "aide": "Scrollable region must have keyboard access",
+   "n": 1,
+   "ex": [
+    "ul ::   Element should have focusable content"
+   ]
+  }
+ ],
+ "/panier": [
+  {
+   "id": "color-contrast",
+   "impact": "serious",
+   "aide": "Elements must meet minimum color contrast ratio thresholds",
+   "n": 1,
+   "ex": [
+    "a[href$=\"inscription\"] ::   Element has insufficient color contrast of 2.56 (foreground color: #29313d, background c"
+   ]
+  }
+ ],
+ "/contact": [
+  {
+   "id": "color-contrast",
+   "impact": "serious",
+   "aide": "Elements must meet minimum color contrast ratio thresholds",
+   "n": 1,
+   "ex": [
+    "a[href$=\"inscription\"] ::   Element has insufficient color contrast of 2.56 (foreground color: #29313d, background c"
+   ]
+  }
+ ]
+}
