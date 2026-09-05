@@ -188,7 +188,7 @@ export default function MotDePasseOublie() {
                 </button>
               )}
             </p>
-            <p className="mt-2 text-center text-[0.72rem] text-muted-foreground">
+            <p className="mt-2 text-center text-[0.75rem] text-muted-foreground">
               Regardez aussi dans les courriers indésirables.
             </p>
           </>

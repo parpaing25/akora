@@ -1,0 +1,39 @@
+name: CI
+on:
+  pull_request: {}
+  push:
+    branches: [main]
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verifier:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      NODE_OPTIONS: --max-old-space-size=4096
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      # En série, jamais en parallèle : build et bancs demandent chacun 4 Go de tas.
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm run test:a11y
+      - name: Audit des dépendances de production (les vulnérabilités dev-only ne bloquent pas)
+        run: npm audit --audit-level=high --omit=dev
+      - run: node scripts/verifier-htaccess.mjs
+      - name: Build (sans secrets : le sitemap reste statique, c'est voulu)
+        run: npm run build
+      - name: Le build est complet ?
+        run: test -f dist/index.html && test "$(ls dist/assets | wc -l)" -gt 50
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ github.sha }}
+          path: dist
+          retention-days: 7

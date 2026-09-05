@@ -1,0 +1,64 @@
+name: Sauvegarde nocturne de la base Akora
+# X-01 (audit du 05/09/2026) : plan Free, 0 sauvegarde, PITR off.
+# Secrets à poser (Settings › Secrets and variables › Actions) :
+#   SUPABASE_DB_URL        chaîne « Session pooler » du tableau de bord (IPv4)
+#   SAUVEGARDE_PASSPHRASE  openssl rand -base64 32 — gardée aussi dans le coffre d'Andry
+#   GDRIVE_RCLONE_CONF     (optionnel) contenu de rclone.conf avec un remote « drive: »
+on:
+  schedule:
+    - cron: "30 22 * * *"        # 01:30 à Antananarivo (UTC+3)
+  workflow_dispatch:
+
+jobs:
+  sauvegarder:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Client Postgres 16 et age
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-16 age
+      - name: pg_dump (public + auth, sans les journaux internes)
+        env:
+          URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          [ -n "$URL" ] || { echo "secret SUPABASE_DB_URL absent"; exit 1; }
+          nom="akora-$(date -u +%Y%m%d-%H%M).dump"
+          pg_dump "$URL" --format=custom --no-owner --no-privileges \
+            --schema=public --schema=auth \
+            --exclude-table-data='auth.audit_log_entries' \
+            --exclude-table-data='public.rate_limits' \
+            --file="$nom"
+          # Le code de retour ne suffit pas : on relit et on compte (règle du 04/09).
+          taille=$(stat -c %s "$nom"); [ "$taille" -gt 200000 ] || { echo "archive trop petite : $taille o"; exit 1; }
+          tables=$(pg_restore --list "$nom" | grep -c "TABLE DATA public"); [ "$tables" -ge 45 ] || { echo "seulement $tables tables : anormal (48+ attendues)"; exit 1; }
+          echo "archive $nom : $taille octets, $tables tables"
+          echo "NOM=$nom" >> "$GITHUB_ENV"
+      - name: Chiffrer (age, phrase secrète)
+        env:
+          AGE_PASSPHRASE: ${{ secrets.SAUVEGARDE_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          [ -n "$AGE_PASSPHRASE" ] || { echo "secret SAUVEGARDE_PASSPHRASE absent"; exit 1; }
+          # age lit la phrase sur un terminal ; script(1) lui en fournit un.
+          script -qec "age -p -o '$NOM.age' '$NOM'" /dev/null <<< "$AGE_PASSPHRASE"$'\n'"$AGE_PASSPHRASE" >/dev/null 2>&1 \
+            || (printf '%s\n%s\n' "$AGE_PASSPHRASE" "$AGE_PASSPHRASE" | script -qec "age -p -o '$NOM.age' '$NOM'" /dev/null >/dev/null)
+          [ -s "$NOM.age" ] || { echo "chiffrement échoué"; exit 1; }
+          shred -u "$NOM"
+          ls -la "$NOM.age"
+      - name: Garder 30 jours dans GitHub
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.NOM }}
+          path: ${{ env.NOM }}.age
+          retention-days: 30
+      - name: Copie Google Drive (si configuré)
+        if: ${{ env.GDRIVE != '' }}
+        env:
+          GDRIVE: ${{ secrets.GDRIVE_RCLONE_CONF }}
+        run: |
+          curl -fsSL https://rclone.org/install.sh | sudo bash >/dev/null
+          mkdir -p ~/.config/rclone && printf '%s' "$GDRIVE" > ~/.config/rclone/rclone.conf
+          rclone copy "$NOM.age" "drive:Sauvegardes Akora/" --quiet
+          rclone delete "drive:Sauvegardes Akora/" --min-age 90d --quiet

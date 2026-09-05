@@ -53,6 +53,11 @@ export interface FormatVitrine {
   offre_rayon_max_km: number | null;
   offre_coef_sinuosite: number | null;
   offre_fournisseur_id: string | null;
+  /** Ordre de grandeur constate publiquement, tant qu'aucun depot ne publie. */
+  prix_indicatif_min: number | null;
+  prix_indicatif_max: number | null;
+  prix_indicatif_source: string | null;
+  prix_indicatif_le: string | null;
 }
 
 export type NatureResultat = "type" | "format" | "famille";

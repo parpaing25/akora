@@ -133,7 +133,10 @@ export default function Comparateur() {
       <h1 className="mt-1 text-page">{materiau.data?.nom ?? <Squelette className="h-8 w-72" />}</h1>
       <p className="mt-1 text-legende text-muted-foreground" aria-live="polite">
         <span className="nombres">{lignes.length}</span> offre{lignes.length > 1 ? "s" : ""} · prix rendu
-        chantier, livraison comprise
+        chantier, livraison comprise ·{" "}
+        <Link to={`/prix/${format}/madagascar`} className="lien-souligne">
+          prix du marché de ce format
+        </Link>
       </p>
 
       <div className="mt-3">
@@ -146,6 +149,7 @@ export default function Comparateur() {
         </label>
         <Curseur
           id="quantite-comparateur"
+          etiquette="Quantité"
           className="mt-1"
           min={1}
           max={2000}
@@ -206,17 +210,26 @@ export default function Comparateur() {
                 : "Revenez bientôt : le catalogue se remplit dépôt par dépôt."
             }
             action={
-              verifiesUniquement ? (
-                <Bouton variante="secondaire" onClick={() => setVerifies(false)}>
-                  Voir toutes les offres
+              <div className="flex flex-wrap justify-center gap-2">
+                <Bouton asChild>
+                  <Link to="/demandes/nouvelle">Publier une demande</Link>
                 </Bouton>
-              ) : undefined
+                {verifiesUniquement ? (
+                  <Bouton variante="secondaire" onClick={() => setVerifies(false)}>
+                    Voir toutes les offres
+                  </Bouton>
+                ) : null}
+              </div>
             }
           />
         </div>
       ) : (
         <>
-          <div className="mt-4 w-full overflow-x-auto rounded-lg border border-border bg-card">
+          {/* `relative` : les libellés `sr-only` (position absolue) des en-têtes
+              restent dans CE cadre. Sans lui, le « Ajouter » de la dernière colonne
+              se posait par rapport au document et faisait déborder toute la page
+              de 204 px à 390 px (05/09/2026, M-01). */}
+          <div className="relative mt-4 w-full overflow-x-auto rounded-lg border border-border bg-card">
             <table className="w-full border-collapse text-legende">
               <caption className="sr-only">
                 Comparaison des fournisseurs au prix rendu chantier pour {quantite} {unite}
@@ -255,6 +268,9 @@ export default function Comparateur() {
                 ))}
               </tbody>
             </table>
+          <p className="px-3 pb-2 pt-1 text-legende text-muted-foreground sm:hidden" aria-hidden="true">
+              ← Glissez le tableau pour voir la livraison et le prix rendu →
+            </p>
           </div>
 
           {demo ? (

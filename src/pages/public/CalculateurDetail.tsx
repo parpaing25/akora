@@ -96,6 +96,7 @@ export default function CalculateurDetail() {
             surfaceM2: nombre("surface"),
             longueurToleM: (nombre("longueur_tole", 2) as 2 | 3) ?? 2,
             faitageM: nombre("faitage"),
+            longueurBatimentM: nombre("longueur_batiment"),
           },
           r,
           margeEffective,
@@ -296,6 +297,11 @@ export default function CalculateurDetail() {
           {type === "toiture" ? (
             <>
               {champ("surface", "Surface de couverture (m²)", "Pente comprise, pas la surface au sol.")}
+              {champ(
+                "longueur_batiment",
+                "Longueur du bâtiment (m)",
+                "Perpendiculaire à la pente. Sans elle, le compte des tôles reste approché : une tôle se pose entière.",
+              )}
               {champ("longueur_tole", "Longueur des tôles (m)", "2 ou 3.", "2")}
               {champ("faitage", "Longueur du faîtage (m)", "Laissez vide s'il n'y en a pas.")}
             </>
@@ -311,6 +317,7 @@ export default function CalculateurDetail() {
           </p>
           <Curseur
             id="marge"
+            etiquette="Marge pour les chutes et la casse"
             className="mt-1"
             min={0}
             max={20}

@@ -52,8 +52,10 @@ export async function envoyer(courriel: Courriel): Promise<{ ok: true } | { ok: 
       host: hote,
       port: Number.parseInt(port, 10),
       secure: port === "465",
+      // En 587, STARTTLS est exigé ; et on ne fait plus confiance à n'importe quel
+      // certificat (l'ancien rejectUnauthorized:false acceptait un intermédiaire).
+      requireTLS: port !== "465",
       auth: { user: utilisateur, pass: motDePasse },
-      tls: { rejectUnauthorized: false },
     });
 
     await transport.sendMail({
@@ -126,4 +128,69 @@ export function gabaritCode(options: { code: string; intro: string; pied: string
   </table>
 </body>
 </html>`;
+}
+
+/** Texte utilisateur dans du HTML : toujours échappé. */
+function echapper(s: unknown): string {
+  return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] as string);
+}
+
+export interface RecapCommande {
+  numero: string;
+  fournisseur: string;
+  lignes: { designation: string; quantite: number; unite: string; total: number }[];
+  montantProduits: number;
+  montantLivraison: number | null;
+  montantTotal: number;
+  modePaiement: string;
+  /** https://akora.fonenako.mg/commande/AK-…?j=… pour l'acheteur, /pro/commandes pour le fournisseur */
+  lienSuivi: string;
+  contact?: { nom: string; telephone: string; adresse?: string | null };
+}
+
+const ariary = (n: number) => new Intl.NumberFormat("fr-MG", { maximumFractionDigits: 0 }).format(n) + " Ar";
+
+/**
+ * Courriel de confirmation de commande (audit F-03, 06/09/2026) : le même
+ * récapitulatif pour l'acheteur et pour le fournisseur, le fournisseur recevant
+ * en plus le contact du client. Tableaux et styles en ligne : Outlook.
+ */
+export function gabaritCommande(r: RecapCommande, destinataire: "acheteur" | "fournisseur"): { sujet: string; texte: string; html: string } {
+  const titre = destinataire === "acheteur"
+    ? `Votre commande ${r.numero} est envoyée à ${r.fournisseur}`
+    : `Nouvelle commande ${r.numero} sur Akora`;
+  const livraison = r.montantLivraison == null ? "à confirmer par le fournisseur" : ariary(r.montantLivraison);
+  const texte = [
+    titre, "",
+    ...r.lignes.map((l) => `- ${l.designation} × ${l.quantite} ${l.unite} : ${ariary(l.total)}`), "",
+    `Matériaux : ${ariary(r.montantProduits)}`, `Livraison : ${livraison}`, `Total : ${ariary(r.montantTotal)}`,
+    `Paiement : ${r.modePaiement}`, "",
+    destinataire === "fournisseur" && r.contact
+      ? `Client : ${r.contact.nom} — ${r.contact.telephone}${r.contact.adresse ? " — " + r.contact.adresse : ""}`
+      : "Le fournisseur vous appelle pour confirmer le créneau de livraison.",
+    "", `Suivi : ${r.lienSuivi}`, "", "Akora — le prix rendu chantier, pas le prix au dépôt.",
+  ].join("\n");
+  const lignesHtml = r.lignes.map((l) =>
+    `<tr><td style="padding:6px 0;border-bottom:1px solid ${BORDURE}">${echapper(l.designation)}<br><span style="color:#666">${l.quantite} ${echapper(l.unite)}</span></td><td align="right" style="padding:6px 0;border-bottom:1px solid ${BORDURE};white-space:nowrap">${ariary(l.total)}</td></tr>`).join("");
+  const contactHtml = destinataire === "fournisseur" && r.contact
+    ? `<p style="margin:12px 0 0">Client : <strong>${echapper(r.contact.nom)}</strong> — <a href="tel:${echapper(r.contact.telephone)}">${echapper(r.contact.telephone)}</a>${r.contact.adresse ? "<br>" + echapper(r.contact.adresse) : ""}</p>`
+    : `<p style="margin:12px 0 0">Le fournisseur vous appelle pour confirmer le créneau de livraison.</p>`;
+  const html = `<!doctype html><html lang="fr"><body style="margin:0;background:${SABLE};font-family:Inter,Arial,sans-serif;color:${ENCRE}">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:24px 12px">
+  <table role="presentation" width="100%" style="max-width:560px;background:#fff;border:1px solid ${BORDURE};border-radius:8px">
+    <tr><td style="background:${LATERITE};color:#fff;padding:16px 20px;font-size:18px;font-weight:700">${echapper(titre)}</td></tr>
+    <tr><td style="padding:20px">
+      <table role="presentation" width="100%" style="border-collapse:collapse;font-size:14px">
+        ${lignesHtml}
+        <tr><td style="padding:8px 0">Matériaux</td><td align="right">${ariary(r.montantProduits)}</td></tr>
+        <tr><td style="padding:4px 0">Livraison</td><td align="right">${echapper(livraison)}</td></tr>
+        <tr><td style="padding:8px 0;font-weight:700">Total</td><td align="right" style="font-weight:700">${ariary(r.montantTotal)}</td></tr>
+      </table>
+      <p style="margin:16px 0 0">Paiement : <strong>${echapper(r.modePaiement)}</strong></p>
+      ${contactHtml}
+      <p style="margin:20px 0 0"><a href="${echapper(r.lienSuivi)}" style="display:inline-block;background:${LATERITE};color:#fff;text-decoration:none;padding:12px 18px;border-radius:6px;font-weight:600">${destinataire === "acheteur" ? "Suivre ma commande" : "Voir la commande"}</a></p>
+    </td></tr>
+    <tr><td style="padding:12px 20px;color:#666;font-size:12px;border-top:1px solid ${BORDURE}">Akora — le prix rendu chantier, pas le prix au dépôt. Cet e-mail est envoyé automatiquement à la création de la commande.</td></tr>
+  </table></td></tr></table></body></html>`;
+  return { sujet: titre, texte, html };
 }

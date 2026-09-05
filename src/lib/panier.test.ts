@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { grouperParFournisseur, nombreArticles, totalProduits, totalLignePanier, type LignePanier } from "./panier";
+import {
+  grouperParFournisseur,
+  nombreArticles,
+  nombreProduits,
+  totalProduits,
+  totalLignePanier,
+  type LignePanier,
+} from "./panier";
 
 function ligne(p: Partial<LignePanier> & { produitId: string; fournisseurId: string }): LignePanier {
   return {
@@ -64,5 +71,28 @@ describe("panier multi-fournisseurs", () => {
     ];
     expect(nombreArticles(lignes)).toBe(5);
     expect(totalProduits(lignes)).toBe(3000 + 5000);
+  });
+});
+
+describe("nombreProduits", () => {
+  it("compte les produits, pas les unites", () => {
+    // Le defaut corrige : 1 200 briques d'un seul produit saturaient la
+    // pastille a « 99+ » des le premier ajout.
+    const lignes = [ligne({ produitId: "a", fournisseurId: "f1", quantite: 1200 })];
+    expect(nombreArticles(lignes)).toBe(1200);
+    expect(nombreProduits(lignes)).toBe(1);
+  });
+
+  it("compte chaque produit une fois, quelle que soit sa quantite", () => {
+    expect(
+      nombreProduits([
+        ligne({ produitId: "a", fournisseurId: "f1", quantite: 900 }),
+        ligne({ produitId: "b", fournisseurId: "f2", quantite: 3 }),
+      ]),
+    ).toBe(2);
+  });
+
+  it("rend zero sur un panier vide", () => {
+    expect(nombreProduits([])).toBe(0);
   });
 });

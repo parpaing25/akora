@@ -153,13 +153,13 @@ export default function MateriauxFamille() {
                 {type.formats_apercu.slice(0, 4).map((format) => (
                   <li
                     key={format.slug}
-                    className="puce nombres rounded-full border border-border px-2 py-0.5 text-[0.72rem] text-muted-foreground"
+                    className="puce nombres rounded-full border border-border px-2 py-0.5 text-[0.75rem] text-muted-foreground"
                   >
                     {format.libelle_court}
                   </li>
                 ))}
                 {Number(type.nb_formats) > 4 ? (
-                  <li className="nombres rounded-full px-2 py-0.5 text-[0.72rem] text-muted-foreground">
+                  <li className="nombres rounded-full px-2 py-0.5 text-[0.75rem] text-muted-foreground">
                     +{Number(type.nb_formats) - 4}
                   </li>
                 ) : null}

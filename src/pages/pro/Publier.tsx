@@ -11,7 +11,9 @@ import { Seo } from "@/components/Seo";
 import { Champ } from "@/components/ui/champ";
 import { Bouton } from "@/components/ui/button";
 import { GroupeRadio, OptionRadio } from "@/components/ui/radio-group";
+import { Squelette } from "@/components/ui/skeleton";
 import { EtatVide } from "@/components/ui/etats";
+import { AnneauProgression } from "@/components/motion/AnneauProgression";
 
 /**
  * Publier dans le fil.
@@ -132,7 +134,17 @@ export default function Publier() {
   };
 
   if (fiche.isLoading) {
-    return <p className="text-courant text-muted-foreground">Chargement…</p>;
+    /* Squelette à la forme de la page (§5) : titre, intro, puis les trois
+       grands blocs du formulaire — jamais un texte de chargement nu. */
+    return (
+      <div className="space-y-5">
+        <Squelette className="h-7 w-52" />
+        <Squelette className="h-4 w-4/5" />
+        <Squelette className="h-24 w-full" />
+        <Squelette className="h-32 w-full" />
+        <Squelette className="h-24 w-full" />
+      </div>
+    );
   }
 
   if (!fiche.data || fiche.data.statut !== "actif") {
@@ -150,11 +162,21 @@ export default function Publier() {
   return (
     <>
       <Seo titre="Publier dans le fil" chemin="/pro/publier" indexable={false} />
-      <h1 className="text-page">Publier dans le fil</h1>
-      <p className="mt-1 text-legende text-muted-foreground">
-        Votre annonce apparaît sur l'accueil des acheteurs, avec le prix rendu à leur chantier.
-        Dix publications par jour au maximum.
-      </p>
+      {/* V2 : « Je publie » — trois gestes, un anneau qui se remplit. Le
+          dépôt voit où il en est sans lire une ligne. */}
+      <div className="flex items-center gap-4">
+        <AnneauProgression
+          fait={[texte.trim().length >= 10, photos.length > 0, produitIds.length > 0].filter(Boolean).length}
+          total={3}
+        />
+        <div>
+          <h1 className="text-page">Je publie</h1>
+          <p className="mt-1 text-legende text-muted-foreground">
+            Un mot, une photo, un produit — et votre annonce est sur l'accueil des acheteurs, avec
+            le prix rendu à leur chantier.
+          </p>
+        </div>
+      </div>
 
       <form onSubmit={soumettre} className="mt-5 space-y-5">
         <fieldset className="m-0 border-0 p-0">
@@ -192,7 +214,7 @@ export default function Publier() {
             />
           )}
         </Champ>
-        <p className="nombres -mt-3 text-right text-[0.72rem] text-muted-foreground">
+        <p className="nombres -mt-3 text-right text-[0.75rem] text-muted-foreground">
           {texte.length} / 1200
         </p>
 
@@ -246,7 +268,7 @@ export default function Publier() {
           <p className="mb-1 text-legende font-semibold">
             Produits mis en avant (quatre au maximum)
           </p>
-          <p className="mb-2 text-[0.72rem] text-muted-foreground">
+          <p className="mb-2 text-[0.75rem] text-muted-foreground">
             Le premier produit porte le prix rendu chantier affiché sur la carte.
           </p>
           {produitsActifs.length === 0 ? (

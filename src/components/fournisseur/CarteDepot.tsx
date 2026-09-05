@@ -71,13 +71,13 @@ export function CarteDepot({ depot }: { depot: DepotAnnuaire }) {
           {familles.map((famille) => (
             <li
               key={famille}
-              className="rounded-full border border-border px-2 py-0.5 text-[0.72rem] text-muted-foreground"
+              className="rounded-full border border-border px-2 py-0.5 text-[0.75rem] text-muted-foreground"
             >
               {famille}
             </li>
           ))}
           {reste > 0 ? (
-            <li className="nombres rounded-full border border-border px-2 py-0.5 text-[0.72rem] text-muted-foreground">
+            <li className="nombres rounded-full border border-border px-2 py-0.5 text-[0.75rem] text-muted-foreground">
               {reste} produit{reste > 1 ? "s" : ""}
             </li>
           ) : null}
@@ -86,7 +86,7 @@ export function CarteDepot({ depot }: { depot: DepotAnnuaire }) {
         {depot.produit_phare ? (
           <div className="flex items-end justify-between gap-3 rounded-md bg-muted px-3 py-2.5">
             <div className="min-w-0">
-              <p className="truncate text-[0.72rem] text-muted-foreground">
+              <p className="truncate text-[0.75rem] text-muted-foreground">
                 {depot.produit_phare.nom} dès
               </p>
               <p className="nombres text-produit">
@@ -98,7 +98,7 @@ export function CarteDepot({ depot }: { depot: DepotAnnuaire }) {
               </p>
             </div>
             <div className="shrink-0 text-right">
-              <p className="text-[0.72rem] text-muted-foreground">Livre jusqu'à</p>
+              <p className="text-[0.75rem] text-muted-foreground">Livre jusqu'à</p>
               <p className="nombres text-produit">{depot.rayon_max_km} km</p>
             </div>
           </div>

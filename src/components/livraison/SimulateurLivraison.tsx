@@ -119,7 +119,7 @@ export function SimulateurLivraison({
                 <li>Forfait, kilomètres facturés, prix plancher, majoration de zone.</li>
                 <li>Arrondi à la centaine d'Ariary supérieure.</li>
               </ol>
-              <pre className="overflow-x-auto whitespace-pre-wrap rounded-xs bg-muted p-2 font-mono text-[0.72rem] text-foreground">
+              <pre className="overflow-x-auto whitespace-pre-wrap rounded-xs bg-muted p-2 font-mono text-[0.75rem] text-foreground">
                 {detail.formule}
               </pre>
             </PliantContenu>

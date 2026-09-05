@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Search } from "lucide-react";
 import { Seo } from "@/components/Seo";
+import { listeElements } from "@/lib/seo/jsonld";
 import { listerDepots, type TriAnnuaire } from "@/lib/donnees/annuaire";
 import { listerFamilles } from "@/lib/donnees/categories";
 import { usePointLivraison } from "@/lib/point-livraison";
@@ -94,15 +95,26 @@ export default function Fournisseurs() {
         titre="Fournisseurs de matériaux"
         chemin="/fournisseurs"
         description="L'annuaire des dépôts, briqueteries, carrières et scieries de Madagascar : ce qu'ils vendent, à partir de combien, et jusqu'où ils livrent."
+        donneesStructurees={listeElements(
+          "Fournisseurs de matériaux de construction à Madagascar",
+          (depots.data ?? []).slice(0, 50).map((d) => ({ nom: String(d.raison_sociale), chemin: `/fournisseurs/${d.slug}` })),
+        )}
       />
 
       <div className="carte p-4 sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-5">
           <div className="min-w-0 max-w-2xl">
             <h1 className="text-page">Fournisseurs</h1>
+            {/* ⚠ Trois lignes de texte avant le premier dépôt, sur un écran
+                de 390 px. La phrase complète reste sur ordinateur ; sur
+                téléphone, une ligne et le lien suffisent — la page de
+                vérification dit le reste. */}
             <p className="mt-1 text-legende text-muted-foreground">
-              Le badge n'est pas décoratif : carte fiscale, carte statistique, registre du commerce,
-              pièce du gérant et photo du dépôt ont été examinés.{" "}
+              <span className="hidden sm:inline">
+                Le badge n'est pas décoratif : carte fiscale, carte statistique, registre du
+                commerce, pièce du gérant et photo du dépôt ont été examinés.{" "}
+              </span>
+              <span className="sm:hidden">Le badge « vérifié » se mérite. </span>
               <Link to="/verification" className="lien-souligne font-semibold">
                 Ce que ça veut dire exactement
               </Link>
@@ -160,7 +172,7 @@ export default function Fournisseurs() {
         </div>
 
         <div className="mt-4">
-          <p className="nombres mb-2 text-[0.66rem] uppercase tracking-wider text-muted-foreground">
+          <p className="nombres mb-2 text-[0.75rem] uppercase tracking-wider text-muted-foreground">
             Ce qu'ils vendent
           </p>
           <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrer par famille de matériau">

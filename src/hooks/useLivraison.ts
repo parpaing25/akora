@@ -1,7 +1,7 @@
-import { useQueries } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import * as React from "react";
 import { calculerLivraison, type LigneACharger, type ResultatLivraison } from "@/lib/livraison";
-import { listerVehicules, listerZones } from "@/lib/donnees/transport";
+import { listerBaremes } from "@/lib/donnees/transport";
 import { coordonnees, usePointLivraison } from "@/lib/point-livraison";
 
 /**
@@ -11,9 +11,21 @@ import { coordonnees, usePointLivraison } from "@/lib/point-livraison";
  * Le barème (véhicules, zones) est mis en cache 15 minutes : il ne change
  * qu'à la main, et le recharger à chaque frappe du curseur de quantité
  * coûterait cher en egress pour rien. Le calcul, lui, est local et instantané.
+ *
+ * ⭐ 06/09/2026 (audit F-02, P-05) : UN SEUL appel pour tous les fournisseurs
+ * de la page (`in`), au lieu de deux requêtes par carte — l'accueil en faisait
+ * 12 (+ 12 préflights CORS) ; et la page type envoyait « uuid::format » comme
+ * fournisseur_id → six HTTP 400 par page, prix rendu jamais affiché.
  */
 export interface EntreeLivraison {
+  /** Identifiant RÉEL du fournisseur (uuid) : c'est lui qui part en base. */
   fournisseurId: string;
+  /**
+   * Clé de rangement dans la Map rendue, quand une même page calcule plusieurs
+   * lignes pour un même fournisseur (une par format sur la page type). Par
+   * défaut : `fournisseurId`. Ne JAMAIS y mettre l'uuid composé.
+   */
+  cle?: string;
   rayonMaxKm: number;
   coefSinuosite: number | null;
   depart: { lat: number; lng: number } | null;
@@ -24,26 +36,28 @@ export interface EntreeLivraison {
 export function useLivraison(entrees: readonly EntreeLivraison[]): Map<string, ResultatLivraison> {
   const { point } = usePointLivraison();
   const arrivee = coordonnees(point);
-  const ids = entrees.map((e) => e.fournisseurId);
+  const ids = React.useMemo(
+    () => [...new Set(entrees.map((e) => e.fournisseurId))].sort(),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [entrees.map((e) => e.fournisseurId).join(",")],
+  );
 
-  const baremes = useQueries({
-    queries: ids.map((id) => ({
-      queryKey: ["bareme", id],
-      queryFn: async () => ({
-        vehicules: await listerVehicules(id),
-        zones: await listerZones(id),
-      }),
-      staleTime: 15 * 60_000,
-    })),
+  const baremes = useQuery({
+    queryKey: ["baremes", ids.join(",")],
+    queryFn: () => listerBaremes(ids),
+    enabled: ids.length > 0,
+    staleTime: 15 * 60_000,
   });
 
   return React.useMemo(() => {
     const resultats = new Map<string, ResultatLivraison>();
-    entrees.forEach((entree, index) => {
-      const bareme = baremes[index]?.data;
+    const parFournisseur = baremes.data;
+    if (!parFournisseur) return resultats;
+    entrees.forEach((entree) => {
+      const bareme = parFournisseur.get(entree.fournisseurId);
       if (!bareme) return;
       resultats.set(
-        entree.fournisseurId,
+        entree.cle ?? entree.fournisseurId,
         calculerLivraison({
           depart: entree.depart,
           arrivee,
@@ -57,10 +71,8 @@ export function useLivraison(entrees: readonly EntreeLivraison[]): Map<string, R
       );
     });
     return resultats;
-    // `baremes` est un tableau recréé à chaque rendu : on ne dépend que des
-    // données réellement chargées.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(entrees), arrivee?.lat, arrivee?.lng, baremes.map((b) => b.dataUpdatedAt).join(",")]);
+  }, [JSON.stringify(entrees), arrivee?.lat, arrivee?.lng, baremes.dataUpdatedAt]);
 }
 
 /** Cas courant : un seul fournisseur. */

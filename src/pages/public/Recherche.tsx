@@ -1,4 +1,5 @@
 import * as React from "react";
+import { emettre } from "@/lib/evenements";
 import { Link, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Search, SlidersHorizontal } from "lucide-react";
@@ -6,6 +7,7 @@ import { toast } from "sonner";
 import { Seo } from "@/components/Seo";
 import { listerFournisseurs, listerProduits, PAR_PAGE } from "@/lib/donnees/vitrine";
 import { listerFamilles } from "@/lib/donnees/categories";
+import { rechercherReferentiel, cheminResultat } from "@/lib/donnees/referentiel";
 import { usePanier } from "@/lib/panier";
 import { usePointLivraison } from "@/lib/point-livraison";
 import { versCarte, versLignePanier } from "@/lib/adaptateurs";
@@ -60,6 +62,30 @@ export default function Recherche() {
     staleTime: 60_000,
   });
 
+  /*
+   * Le RÉFÉRENTIEL, en plus des offres. Avant : taper « hourdis » ici ne
+   * rendait RIEN tant qu'aucun dépôt n'avait publié de hourdis, alors que
+   * /materiaux en proposait six formats. Deux moteurs incompatibles — la
+   * recherche principale ignorait le catalogue fermé (audit 01/09). Le RPC
+   * comprend le malgache (« biriky ») et tolère les fautes.
+   */
+  const catalogue = useQuery({
+    queryKey: ["recherche-referentiel", q],
+    queryFn: () => rechercherReferentiel(q, null, 8),
+    enabled: q.trim().length >= 2,
+    staleTime: 5 * 60_000,
+  });
+
+  // Entonnoir (audit R-02) : les recherches sans résultat sont les matériaux à ajouter au catalogue.
+  const compter = (d: unknown): number =>
+    Array.isArray(d) ? d.length : Array.isArray((d as { lignes?: unknown[] } | null)?.lignes) ? (d as { lignes: unknown[] }).lignes.length : 0;
+  const nbResultats = compter(produits.data) + compter(fournisseurs.data) + compter(catalogue.data);
+  const recherchePrete = q.trim().length >= 2 && !produits.isPending && !fournisseurs.isPending && !catalogue.isPending;
+  React.useEffect(() => {
+    if (recherchePrete) emettre("recherche", { q: q.trim().slice(0, 60), nb_resultats: nbResultats });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q, recherchePrete]);
+
   const distance = (lat: unknown, lng: unknown, coef: unknown) =>
     point && lat != null && lng != null
       ? haversine({ lat: Number(lat), lng: Number(lng) }, point) * Number(coef ?? 1.3)
@@ -110,6 +136,11 @@ export default function Recherche() {
   return (
     <div className="container py-6">
       <Seo titre={q ? "Recherche : " + q : "Recherche"} chemin="/recherche" indexable={false} />
+
+      {/* ⚠ La page n'avait AUCUN h1 : le lecteur d'écran arrivait sur un champ
+          sans savoir où. Sur téléphone c'est l'entrée « Recherche » de la barre
+          basse — elle mérite son titre. */}
+      <h1 className="mb-3 text-page">Rechercher</h1>
 
       <form
         role="search"
@@ -176,6 +207,31 @@ export default function Recherche() {
             <EtatErreur onReessayer={() => void produits.refetch()} />
           ) : (
             <>
+              {(catalogue.data ?? []).length > 0 ? (
+                <section className="mb-5">
+                  <h2 className="text-section">Dans le catalogue</h2>
+                  <ul className="mt-2 flex flex-wrap gap-2">
+                    {(catalogue.data ?? []).map((r) => (
+                      <li key={r.kind + r.id}>
+                        <Link
+                          to={cheminResultat(r)}
+                          className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-primary/40 bg-primary-soft px-3 text-legende font-semibold text-primary-strong hover:bg-primary-soft/70"
+                        >
+                          {r.nom}
+                          <span className="font-normal text-muted-foreground">
+                            {r.kind === "famille"
+                              ? "famille"
+                              : r.kind === "type" && r.nb_formats
+                                ? `${r.nb_formats} format${r.nb_formats > 1 ? "s" : ""}`
+                                : r.famille_nom}
+                          </span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ) : null}
+
               {(fournisseurs.data ?? []).length > 0 ? (
                 <section className="mb-5">
                   <h2 className="text-section">Fournisseurs</h2>
@@ -195,22 +251,30 @@ export default function Recherche() {
                 </section>
               ) : null}
 
-              <h2 className="text-section">
-                Produits{" "}
-                <span className="nombres font-normal text-muted-foreground">({produits.data.length})</span>
-              </h2>
+              {/* Pas de compteur : la longueur de la page courante (20 max)
+                  se faisait passer pour un total (audit 01/09). */}
+              <h2 className="text-section">Produits</h2>
 
               {produits.data.length === 0 ? (
                 <div className="mt-2">
                   <EtatVide
-                    titre="Aucun produit ne correspond"
-                    phrase="Essayez un mot plus court, ou retirez le filtre « vérifiés uniquement »."
+                    titre="Aucune offre publiée ne correspond"
+                    phrase={
+                      (catalogue.data ?? []).length > 0
+                        ? "Le matériau existe au catalogue (ci-dessus), mais aucun dépôt n'a encore publié d'offre. Publiez une demande : les fournisseurs proches la verront."
+                        : "Essayez un mot plus court, retirez un filtre — ou publiez une demande, les fournisseurs proches la verront."
+                    }
                     action={
-                      verifies ? (
-                        <Bouton variante="secondaire" onClick={() => setVerifies(false)}>
-                          Voir toutes les offres
+                      <div className="flex flex-wrap justify-center gap-2">
+                        <Bouton asChild>
+                          <Link to="/demandes/nouvelle">Publier une demande</Link>
                         </Bouton>
-                      ) : undefined
+                        {verifies ? (
+                          <Bouton variante="secondaire" onClick={() => setVerifies(false)}>
+                            Voir toutes les offres
+                          </Bouton>
+                        ) : null}
+                      </div>
                     }
                   />
                 </div>

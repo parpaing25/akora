@@ -112,6 +112,21 @@ export function nombreArticles(lignes: readonly LignePanier[]): number {
 }
 
 /**
+ * Le nombre de PRODUITS distincts, pour la pastille du panier.
+ *
+ * Surtout pas la somme des quantites : sur un site marchand ordinaire on
+ * commande une ou deux unites, ici on commande 1 200 briques. La pastille
+ * affichait « 99+ » des le premier produit ajoute — elle ne disait plus rien,
+ * et faisait croire a un panier hors de controle.
+ *
+ * Une ligne, un produit. C'est ce qu'on veut savoir d'un coup d'oeil : ai-je
+ * une chose dans mon panier, ou cinq ?
+ */
+export function nombreProduits(lignes: readonly LignePanier[]): number {
+  return lignes.length;
+}
+
+/**
  * Scission par fournisseur : c'est elle qui produit UNE commande par
  * fournisseur au moment de valider (B8). L'ordre suit la première apparition,
  * pour que l'affichage ne saute pas d'un rendu à l'autre.

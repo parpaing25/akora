@@ -46,5 +46,5 @@ export const MenuSeparateur = ({ className, ...reste }: React.ComponentPropsWith
 );
 
 export const MenuEtiquette = ({ className, ...reste }: React.ComponentPropsWithoutRef<typeof MenuPrimitive.Label>) => (
-  <MenuPrimitive.Label className={cn("px-2 py-1.5 text-[0.72rem] font-semibold uppercase tracking-wide text-muted-foreground", className)} {...reste} />
+  <MenuPrimitive.Label className={cn("px-2 py-1.5 text-[0.75rem] font-semibold uppercase tracking-wide text-muted-foreground", className)} {...reste} />
 );

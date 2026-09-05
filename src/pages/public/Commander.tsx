@@ -7,8 +7,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAntiAbus } from "@/hooks/useAntiAbus";
 import { grouperParFournisseur, usePanier } from "@/lib/panier";
 import { usePointLivraison } from "@/lib/point-livraison";
-import { listerFournisseurs } from "@/lib/donnees/vitrine";
-import { creerCommandes } from "@/lib/donnees/commandes";
+import { listerFournisseursParIds } from "@/lib/donnees/vitrine";
+import { creerCommandes, memoriserCommandeInvitee } from "@/lib/donnees/commandes";
+import { emettre } from "@/lib/evenements";
 import { useLivraison } from "@/hooks/useLivraison";
 import { formaterAriary, normaliserTelephone, telephoneValide } from "@/lib/format";
 import { LIBELLE_MODE_PAIEMENT, type ModePaiement } from "@/lib/types-metier";
@@ -32,6 +33,9 @@ import { BadgeVerification } from "@/components/marque/BadgeVerification";
 export default function Commander() {
   const naviguer = useNavigate();
   const { session, profil } = useAuth();
+  React.useEffect(() => {
+    emettre("ouvrir_commander");
+  }, []);
   const antiAbus = useAntiAbus();
   const lignes = usePanier((e) => e.lignes);
   const vider = usePanier((e) => e.vider);
@@ -53,9 +57,11 @@ export default function Commander() {
 
   const groupes = React.useMemo(() => grouperParFournisseur(lignes), [lignes]);
 
+  // Les fournisseurs DU PANIER, par identifiants : une page d'annuaire ne les
+  // contenait pas forcément, et la livraison devenait muettement inchiffrable.
   const fournisseurs = useQuery({
-    queryKey: ["fournisseurs-commande"],
-    queryFn: () => listerFournisseurs({ page: 0 }),
+    queryKey: ["fournisseurs-commande", groupes.map((g) => g.fournisseurId).join(",")],
+    queryFn: () => listerFournisseursParIds(groupes.map((g) => g.fournisseurId)),
     enabled: groupes.length > 0,
     staleTime: 5 * 60_000,
   });
@@ -128,11 +134,21 @@ export default function Commander() {
       });
       vider();
       const premiere = commandes[0];
+      // Sans compte, le lien avec jeton est la seule preuve de la commande (audit F-01, 06/09/2026).
+      if (!session) commandes.forEach(memoriserCommandeInvitee);
+      emettre("commande_envoyee", { mode, invite: !session, nb: commandes.length });
       toast.success(
         commandes.length > 1 ? `${commandes.length} commandes envoyées` : "Commande envoyée",
-        { description: commandes.map((c) => c.numero).join(", ") },
+        {
+          description: commandes.map((c) => c.numero).join(", ") + " — gardez ce numéro, le fournisseur vous appelle.",
+          duration: 12_000,
+        },
       );
-      naviguer(premiere ? "/commande/" + premiere.numero : "/compte/commandes");
+      naviguer(
+        premiere
+          ? "/commande/" + premiere.numero + (session ? "" : "?j=" + premiere.jeton_suivi)
+          : "/compte/commandes",
+      );
     } catch (erreur) {
       toast.error("Commande refusée", { description: (erreur as Error).message });
     } finally {
@@ -145,6 +161,7 @@ export default function Commander() {
       <div className="container py-10">
         <Seo titre="Commander" chemin="/commander" indexable={false} />
         <EtatVide
+          niveauTitre="h1"
           titre="Rien à commander"
           phrase="Votre panier est vide."
           action={

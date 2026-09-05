@@ -10,6 +10,7 @@ export default function NonTrouve() {
       <Seo titre="Page introuvable" chemin={pathname} indexable={false} />
       <p className="nombres text-center text-[3rem] font-bold tracking-tight text-primary">404</p>
       <EtatVide
+        niveauTitre="h1"
         titre="Cette page n'existe pas"
         phrase="Le lien est peut-être ancien, ou l'adresse comporte une faute."
         action={

@@ -84,8 +84,15 @@ export default function Confidentialite() {
         <li><strong>Supprimer</strong> votre compte.</li>
       </ul>
       <p>
-        La suppression efface le profil, les adresses et les favoris. Les commandes passées sont
-        conservées sans lien vers vous : la comptabilité du fournisseur l'exige.
+        La suppression est immédiate et efface votre identifiant de connexion, le profil, les
+        adresses, les favoris, les avis et les notifications. Les commandes terminées sont conservées
+        cinq ans sans votre nom ni votre numéro (obligation comptable) ; un dépôt, un litige ou une
+        commande en cours doit être clos avant. À la création d'une commande, l'adresse IP est
+        journalisée avec elle pendant un an, pour la lutte contre la fraude.
+      </p>
+      <p>
+        Autorité de contrôle : la Commission malagasy de l'informatique et des libertés (CMIL), loi
+        n° 2014-038. Vous pouvez la saisir si vous estimez que vos droits ne sont pas respectés.
       </p>
 
       <h2>Sous-traitants</h2>

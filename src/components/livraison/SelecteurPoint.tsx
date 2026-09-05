@@ -65,6 +65,30 @@ export function SelecteurPoint({ compact = false }: { compact?: boolean }) {
   );
 }
 
+/**
+ * Le tiroir seul, piloté de l'extérieur — pour l'en-tête et les boutons de
+ * l'accueil, qui affichent leur propre déclencheur. Il se branche lui-même
+ * sur le magasin du point de livraison.
+ */
+export function TiroirPointSeul({
+  ouvert,
+  onOuvertChange,
+}: {
+  ouvert: boolean;
+  onOuvertChange: (v: boolean) => void;
+}) {
+  const { point, definir, effacer } = usePointLivraison();
+  return (
+    <TiroirPoint
+      ouvert={ouvert}
+      onOuvertChange={onOuvertChange}
+      onDefinir={definir}
+      onEffacer={effacer}
+      point={point}
+    />
+  );
+}
+
 function TiroirPoint({
   ouvert,
   onOuvertChange,

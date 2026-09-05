@@ -47,10 +47,20 @@ export function ImageProduit({
   return (
     <img
       src={source}
+      // Vignette 480 px pour les cartes et les mobiles, original au-delà : la
+      // fiche produit chargeait l'original 1280 px pour 324 px affichés (P-01).
+      srcSet={
+        variante === "original" && original && getThumbUrl(original) !== original
+          ? `${getThumbUrl(original)} 480w, ${original} 1280w`
+          : undefined
+      }
+      sizes={variante === "original" ? "(min-width: 1024px) 560px, 100vw" : undefined}
       alt={alt}
       className={className}
       loading={prioritaire ? "eager" : "lazy"}
       decoding={prioritaire ? "sync" : "async"}
+      // @ts-expect-error React 18 attend l'attribut en minuscules ; React 19 : fetchPriority.
+      fetchpriority={prioritaire ? "high" : undefined}
       // La vignette peut ne pas encore exister (génération serveur asynchrone) :
       // on retombe alors sur l'original plutôt que d'afficher un trou.
       onError={() => {

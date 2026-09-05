@@ -11,7 +11,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.15"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -59,6 +59,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "produits_publics"
             referencedColumns: ["fournisseur_id"]
+          },
+          {
+            foreignKeyName: "abonnements_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "transporteurs_publics"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "abonnements_user_id_fkey"
@@ -258,6 +265,13 @@ export type Database = {
             referencedRelation: "produits_publics"
             referencedColumns: ["fournisseur_id"]
           },
+          {
+            foreignKeyName: "avis_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "transporteurs_publics"
+            referencedColumns: ["id"]
+          },
         ]
       }
       categories: {
@@ -351,6 +365,7 @@ export type Database = {
           email_contact: string | null
           fournisseur_id: string
           id: string
+          jeton_suivi: string
           lat: number | null
           livraison_estimable: boolean
           livree_le: string | null
@@ -381,6 +396,7 @@ export type Database = {
           email_contact?: string | null
           fournisseur_id: string
           id?: string
+          jeton_suivi?: string
           lat?: number | null
           livraison_estimable?: boolean
           livree_le?: string | null
@@ -411,6 +427,7 @@ export type Database = {
           email_contact?: string | null
           fournisseur_id?: string
           id?: string
+          jeton_suivi?: string
           lat?: number | null
           livraison_estimable?: boolean
           livree_le?: string | null
@@ -459,6 +476,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "produits_publics"
             referencedColumns: ["fournisseur_id"]
+          },
+          {
+            foreignKeyName: "commandes_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "transporteurs_publics"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "commandes_localite_id_fkey"
@@ -525,6 +549,125 @@ export type Database = {
           periode?: string
         }
         Relationships: []
+      }
+      demandes: {
+        Row: {
+          created_at: string
+          date_souhaitee: string | null
+          expire_le: string
+          id: string
+          lat: number | null
+          libelle_lieu: string | null
+          lng: number | null
+          localite_id: string | null
+          note: string | null
+          publication_id: string | null
+          statut: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date_souhaitee?: string | null
+          expire_le?: string
+          id?: string
+          lat?: number | null
+          libelle_lieu?: string | null
+          lng?: number | null
+          localite_id?: string | null
+          note?: string | null
+          publication_id?: string | null
+          statut?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date_souhaitee?: string | null
+          expire_le?: string
+          id?: string
+          lat?: number | null
+          libelle_lieu?: string | null
+          lng?: number | null
+          localite_id?: string | null
+          note?: string | null
+          publication_id?: string | null
+          statut?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demandes_localite_id_fkey"
+            columns: ["localite_id"]
+            isOneToOne: false
+            referencedRelation: "localites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demandes_publication_id_fkey"
+            columns: ["publication_id"]
+            isOneToOne: false
+            referencedRelation: "fil_publications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demandes_publication_id_fkey"
+            columns: ["publication_id"]
+            isOneToOne: false
+            referencedRelation: "publications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      demandes_lignes: {
+        Row: {
+          demande_id: string
+          id: string
+          materiau_ref_id: string
+          ordre: number
+          precision: string | null
+          quantite: number
+          unite: Database["public"]["Enums"]["unite"]
+        }
+        Insert: {
+          demande_id: string
+          id?: string
+          materiau_ref_id: string
+          ordre?: number
+          precision?: string | null
+          quantite: number
+          unite: Database["public"]["Enums"]["unite"]
+        }
+        Update: {
+          demande_id?: string
+          id?: string
+          materiau_ref_id?: string
+          ordre?: number
+          precision?: string | null
+          quantite?: number
+          unite?: Database["public"]["Enums"]["unite"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demandes_lignes_demande_id_fkey"
+            columns: ["demande_id"]
+            isOneToOne: false
+            referencedRelation: "demandes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demandes_lignes_materiau_ref_id_fkey"
+            columns: ["materiau_ref_id"]
+            isOneToOne: false
+            referencedRelation: "formats_vitrine"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demandes_lignes_materiau_ref_id_fkey"
+            columns: ["materiau_ref_id"]
+            isOneToOne: false
+            referencedRelation: "materiaux_ref"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       demandes_materiau: {
         Row: {
@@ -615,6 +758,13 @@ export type Database = {
             referencedColumns: ["fournisseur_id"]
           },
           {
+            foreignKeyName: "demandes_materiau_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "transporteurs_publics"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "demandes_materiau_materiau_ref_cree_id_fkey"
             columns: ["materiau_ref_cree_id"]
             isOneToOne: false
@@ -702,7 +852,41 @@ export type Database = {
             referencedRelation: "produits_publics"
             referencedColumns: ["fournisseur_id"]
           },
+          {
+            foreignKeyName: "documents_fournisseur_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "transporteurs_publics"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      evenements: {
+        Row: {
+          created_at: string
+          id: number
+          nom: string
+          page: string | null
+          proprietes: Json
+          session_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          nom: string
+          page?: string | null
+          proprietes?: Json
+          session_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          nom?: string
+          page?: string | null
+          proprietes?: Json
+          session_id?: string
+        }
+        Relationships: []
       }
       favoris: {
         Row: {
@@ -754,6 +938,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "produits_publics"
             referencedColumns: ["fournisseur_id"]
+          },
+          {
+            foreignKeyName: "favoris_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "transporteurs_publics"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "favoris_produit_id_fkey"
@@ -822,6 +1013,13 @@ export type Database = {
             referencedRelation: "produits_publics"
             referencedColumns: ["fournisseur_id"]
           },
+          {
+            foreignKeyName: "fournisseur_membres_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "transporteurs_publics"
+            referencedColumns: ["id"]
+          },
         ]
       }
       fournisseurs: {
@@ -842,6 +1040,7 @@ export type Database = {
           metier: string | null
           modes_paiement_acceptes: Database["public"]["Enums"]["mode_paiement"][]
           msisdn_versement: string | null
+          nature: string
           nb_avis: number
           nb_commandes_cloturees: number
           nif: string | null
@@ -882,6 +1081,7 @@ export type Database = {
           metier?: string | null
           modes_paiement_acceptes?: Database["public"]["Enums"]["mode_paiement"][]
           msisdn_versement?: string | null
+          nature?: string
           nb_avis?: number
           nb_commandes_cloturees?: number
           nif?: string | null
@@ -922,6 +1122,7 @@ export type Database = {
           metier?: string | null
           modes_paiement_acceptes?: Database["public"]["Enums"]["mode_paiement"][]
           msisdn_versement?: string | null
+          nature?: string
           nb_avis?: number
           nb_commandes_cloturees?: number
           nif?: string | null
@@ -1027,6 +1228,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "produits_publics"
             referencedColumns: ["fournisseur_id"]
+          },
+          {
+            foreignKeyName: "ledger_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "transporteurs_publics"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "ledger_paiement_id_fkey"
@@ -1211,6 +1419,10 @@ export type Database = {
           ordre_format: number | null
           photo: string | null
           poids_kg_unite_defaut: number
+          prix_indicatif_le: string | null
+          prix_indicatif_max: number | null
+          prix_indicatif_min: number | null
+          prix_indicatif_source: string | null
           slug: string
           type_id: string | null
           unite_defaut: Database["public"]["Enums"]["unite"]
@@ -1234,6 +1446,10 @@ export type Database = {
           ordre_format?: number | null
           photo?: string | null
           poids_kg_unite_defaut: number
+          prix_indicatif_le?: string | null
+          prix_indicatif_max?: number | null
+          prix_indicatif_min?: number | null
+          prix_indicatif_source?: string | null
           slug: string
           type_id?: string | null
           unite_defaut: Database["public"]["Enums"]["unite"]
@@ -1257,6 +1473,10 @@ export type Database = {
           ordre_format?: number | null
           photo?: string | null
           poids_kg_unite_defaut?: number
+          prix_indicatif_le?: string | null
+          prix_indicatif_max?: number | null
+          prix_indicatif_min?: number | null
+          prix_indicatif_source?: string | null
           slug?: string
           type_id?: string | null
           unite_defaut?: Database["public"]["Enums"]["unite"]
@@ -1454,6 +1674,13 @@ export type Database = {
             referencedRelation: "produits_publics"
             referencedColumns: ["fournisseur_id"]
           },
+          {
+            foreignKeyName: "portefeuilles_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: true
+            referencedRelation: "transporteurs_publics"
+            referencedColumns: ["id"]
+          },
         ]
       }
       prix_historique: {
@@ -1612,6 +1839,13 @@ export type Database = {
             referencedColumns: ["fournisseur_id"]
           },
           {
+            foreignKeyName: "produits_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "transporteurs_publics"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "produits_materiau_ref_id_fkey"
             columns: ["materiau_ref_id"]
             isOneToOne: false
@@ -1707,6 +1941,386 @@ export type Database = {
           ville?: string | null
         }
         Relationships: []
+      }
+      propositions: {
+        Row: {
+          created_at: string
+          delai_jours: number | null
+          demande_id: string
+          fournisseur_id: string
+          id: string
+          livraison: number | null
+          message: string | null
+          statut: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          delai_jours?: number | null
+          demande_id: string
+          fournisseur_id: string
+          id?: string
+          livraison?: number | null
+          message?: string | null
+          statut?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          delai_jours?: number | null
+          demande_id?: string
+          fournisseur_id?: string
+          id?: string
+          livraison?: number | null
+          message?: string | null
+          statut?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "propositions_demande_id_fkey"
+            columns: ["demande_id"]
+            isOneToOne: false
+            referencedRelation: "demandes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "propositions_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "fil_publications"
+            referencedColumns: ["fournisseur_id"]
+          },
+          {
+            foreignKeyName: "propositions_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "fournisseurs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "propositions_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "fournisseurs_publics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "propositions_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "produits_publics"
+            referencedColumns: ["fournisseur_id"]
+          },
+          {
+            foreignKeyName: "propositions_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "transporteurs_publics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      propositions_lignes: {
+        Row: {
+          disponible: boolean
+          ligne_id: string
+          prix_unitaire: number | null
+          proposition_id: string
+        }
+        Insert: {
+          disponible?: boolean
+          ligne_id: string
+          prix_unitaire?: number | null
+          proposition_id: string
+        }
+        Update: {
+          disponible?: boolean
+          ligne_id?: string
+          prix_unitaire?: number | null
+          proposition_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "propositions_lignes_ligne_id_fkey"
+            columns: ["ligne_id"]
+            isOneToOne: false
+            referencedRelation: "demandes_lignes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "propositions_lignes_proposition_id_fkey"
+            columns: ["proposition_id"]
+            isOneToOne: false
+            referencedRelation: "propositions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prospects_fournisseurs: {
+        Row: {
+          adresse: string | null
+          created_at: string
+          fournisseur_id: string | null
+          id: string
+          jeton: string
+          langue: string
+          lat: number | null
+          lng: number | null
+          localite_id: string | null
+          metier: string | null
+          nature: string
+          nb_vues: number
+          page_url: string | null
+          photos: string[]
+          quartier: string | null
+          raison_sociale: string
+          rayon_km: number | null
+          reserve_le: string
+          revendique_le: string | null
+          score: number | null
+          seuil_franco: number | null
+          source: string
+          source_url: string | null
+          statut: string
+          telephone: string | null
+          updated_at: string
+          ville: string | null
+          vue_le: string | null
+          whatsapp: boolean
+        }
+        Insert: {
+          adresse?: string | null
+          created_at?: string
+          fournisseur_id?: string | null
+          id?: string
+          jeton: string
+          langue?: string
+          lat?: number | null
+          lng?: number | null
+          localite_id?: string | null
+          metier?: string | null
+          nature?: string
+          nb_vues?: number
+          page_url?: string | null
+          photos?: string[]
+          quartier?: string | null
+          raison_sociale: string
+          rayon_km?: number | null
+          reserve_le?: string
+          revendique_le?: string | null
+          score?: number | null
+          seuil_franco?: number | null
+          source?: string
+          source_url?: string | null
+          statut?: string
+          telephone?: string | null
+          updated_at?: string
+          ville?: string | null
+          vue_le?: string | null
+          whatsapp?: boolean
+        }
+        Update: {
+          adresse?: string | null
+          created_at?: string
+          fournisseur_id?: string | null
+          id?: string
+          jeton?: string
+          langue?: string
+          lat?: number | null
+          lng?: number | null
+          localite_id?: string | null
+          metier?: string | null
+          nature?: string
+          nb_vues?: number
+          page_url?: string | null
+          photos?: string[]
+          quartier?: string | null
+          raison_sociale?: string
+          rayon_km?: number | null
+          reserve_le?: string
+          revendique_le?: string | null
+          score?: number | null
+          seuil_franco?: number | null
+          source?: string
+          source_url?: string | null
+          statut?: string
+          telephone?: string | null
+          updated_at?: string
+          ville?: string | null
+          vue_le?: string | null
+          whatsapp?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prospects_fournisseurs_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "fil_publications"
+            referencedColumns: ["fournisseur_id"]
+          },
+          {
+            foreignKeyName: "prospects_fournisseurs_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "fournisseurs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prospects_fournisseurs_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "fournisseurs_publics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prospects_fournisseurs_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "produits_publics"
+            referencedColumns: ["fournisseur_id"]
+          },
+          {
+            foreignKeyName: "prospects_fournisseurs_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "transporteurs_publics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prospects_fournisseurs_localite_id_fkey"
+            columns: ["localite_id"]
+            isOneToOne: false
+            referencedRelation: "localites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prospects_produits: {
+        Row: {
+          created_at: string
+          id: string
+          libelle: string
+          materiau_ref_id: string
+          ordre: number
+          prix_unitaire: number | null
+          prospect_id: string
+          quantite_min: number | null
+          unite: Database["public"]["Enums"]["unite"] | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          libelle: string
+          materiau_ref_id: string
+          ordre?: number
+          prix_unitaire?: number | null
+          prospect_id: string
+          quantite_min?: number | null
+          unite?: Database["public"]["Enums"]["unite"] | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          libelle?: string
+          materiau_ref_id?: string
+          ordre?: number
+          prix_unitaire?: number | null
+          prospect_id?: string
+          quantite_min?: number | null
+          unite?: Database["public"]["Enums"]["unite"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prospects_produits_materiau_ref_id_fkey"
+            columns: ["materiau_ref_id"]
+            isOneToOne: false
+            referencedRelation: "formats_vitrine"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prospects_produits_materiau_ref_id_fkey"
+            columns: ["materiau_ref_id"]
+            isOneToOne: false
+            referencedRelation: "materiaux_ref"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prospects_produits_prospect_id_fkey"
+            columns: ["prospect_id"]
+            isOneToOne: false
+            referencedRelation: "prospects_fournisseurs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prospects_vehicules: {
+        Row: {
+          aller_retour: boolean
+          capacite_kg: number | null
+          capacite_m3: number | null
+          categorie: string | null
+          created_at: string
+          forfait_base: number | null
+          id: string
+          km_inclus: number | null
+          marque: string | null
+          materiaux_acceptes: string[]
+          nb_roues: number | null
+          nom: string
+          ordre: number
+          photo_url: string | null
+          prix_minimum: number | null
+          prix_par_km: number | null
+          prospect_id: string
+        }
+        Insert: {
+          aller_retour?: boolean
+          capacite_kg?: number | null
+          capacite_m3?: number | null
+          categorie?: string | null
+          created_at?: string
+          forfait_base?: number | null
+          id?: string
+          km_inclus?: number | null
+          marque?: string | null
+          materiaux_acceptes?: string[]
+          nb_roues?: number | null
+          nom: string
+          ordre?: number
+          photo_url?: string | null
+          prix_minimum?: number | null
+          prix_par_km?: number | null
+          prospect_id: string
+        }
+        Update: {
+          aller_retour?: boolean
+          capacite_kg?: number | null
+          capacite_m3?: number | null
+          categorie?: string | null
+          created_at?: string
+          forfait_base?: number | null
+          id?: string
+          km_inclus?: number | null
+          marque?: string | null
+          materiaux_acceptes?: string[]
+          nb_roues?: number | null
+          nom?: string
+          ordre?: number
+          photo_url?: string | null
+          prix_minimum?: number | null
+          prix_par_km?: number | null
+          prospect_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prospects_vehicules_prospect_id_fkey"
+            columns: ["prospect_id"]
+            isOneToOne: false
+            referencedRelation: "prospects_fournisseurs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       publication_produits: {
         Row: {
@@ -1838,6 +2452,13 @@ export type Database = {
             referencedColumns: ["fournisseur_id"]
           },
           {
+            foreignKeyName: "publications_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "transporteurs_publics"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "publications_localite_id_fkey"
             columns: ["localite_id"]
             isOneToOne: false
@@ -1902,6 +2523,67 @@ export type Database = {
           valeur?: number
         }
         Relationships: []
+      }
+      releves_prix: {
+        Row: {
+          cree_le: string
+          empreinte_depot: string | null
+          id: string
+          libelle_brut: string | null
+          localite_id: string | null
+          materiau_ref_id: string | null
+          prix: number
+          releve_le: string
+          source: string
+          unite: Database["public"]["Enums"]["unite"] | null
+        }
+        Insert: {
+          cree_le?: string
+          empreinte_depot?: string | null
+          id?: string
+          libelle_brut?: string | null
+          localite_id?: string | null
+          materiau_ref_id?: string | null
+          prix: number
+          releve_le?: string
+          source?: string
+          unite?: Database["public"]["Enums"]["unite"] | null
+        }
+        Update: {
+          cree_le?: string
+          empreinte_depot?: string | null
+          id?: string
+          libelle_brut?: string | null
+          localite_id?: string | null
+          materiau_ref_id?: string | null
+          prix?: number
+          releve_le?: string
+          source?: string
+          unite?: Database["public"]["Enums"]["unite"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "releves_prix_localite_id_fkey"
+            columns: ["localite_id"]
+            isOneToOne: false
+            referencedRelation: "localites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "releves_prix_materiau_ref_id_fkey"
+            columns: ["materiau_ref_id"]
+            isOneToOne: false
+            referencedRelation: "formats_vitrine"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "releves_prix_materiau_ref_id_fkey"
+            columns: ["materiau_ref_id"]
+            isOneToOne: false
+            referencedRelation: "materiaux_ref"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       retraits: {
         Row: {
@@ -1971,6 +2653,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "produits_publics"
             referencedColumns: ["fournisseur_id"]
+          },
+          {
+            foreignKeyName: "retraits_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "transporteurs_publics"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -2092,14 +2781,20 @@ export type Database = {
           actif: boolean
           capacite_kg: number
           capacite_m3: number
+          categorie: string | null
           created_at: string
           facturer_aller_retour: boolean
           forfait_base: number
           fournisseur_id: string
           id: string
           km_inclus: number
+          marque: string | null
+          materiaux_acceptes: string[]
+          modele: string | null
+          nb_roues: number | null
           nom: string
           ordre: number
+          photo_url: string | null
           prix_minimum: number
           prix_par_km: number
           updated_at: string
@@ -2108,14 +2803,20 @@ export type Database = {
           actif?: boolean
           capacite_kg: number
           capacite_m3: number
+          categorie?: string | null
           created_at?: string
           facturer_aller_retour?: boolean
           forfait_base?: number
           fournisseur_id: string
           id?: string
           km_inclus?: number
+          marque?: string | null
+          materiaux_acceptes?: string[]
+          modele?: string | null
+          nb_roues?: number | null
           nom: string
           ordre?: number
+          photo_url?: string | null
           prix_minimum?: number
           prix_par_km?: number
           updated_at?: string
@@ -2124,14 +2825,20 @@ export type Database = {
           actif?: boolean
           capacite_kg?: number
           capacite_m3?: number
+          categorie?: string | null
           created_at?: string
           facturer_aller_retour?: boolean
           forfait_base?: number
           fournisseur_id?: string
           id?: string
           km_inclus?: number
+          marque?: string | null
+          materiaux_acceptes?: string[]
+          modele?: string | null
+          nb_roues?: number | null
           nom?: string
           ordre?: number
+          photo_url?: string | null
           prix_minimum?: number
           prix_par_km?: number
           updated_at?: string
@@ -2165,7 +2872,47 @@ export type Database = {
             referencedRelation: "produits_publics"
             referencedColumns: ["fournisseur_id"]
           },
+          {
+            foreignKeyName: "vehicules_livraison_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "transporteurs_publics"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      vitals: {
+        Row: {
+          appareil: string | null
+          connexion: string | null
+          created_at: string
+          id: number
+          nom: string
+          note: string | null
+          page: string
+          valeur: number
+        }
+        Insert: {
+          appareil?: string | null
+          connexion?: string | null
+          created_at?: string
+          id?: number
+          nom: string
+          note?: string | null
+          page: string
+          valeur: number
+        }
+        Update: {
+          appareil?: string | null
+          connexion?: string | null
+          created_at?: string
+          id?: number
+          nom?: string
+          note?: string | null
+          page?: string
+          valeur?: number
+        }
+        Relationships: []
       }
       vues_produit_jour: {
         Row: {
@@ -2299,6 +3046,13 @@ export type Database = {
             referencedRelation: "produits_publics"
             referencedColumns: ["fournisseur_id"]
           },
+          {
+            foreignKeyName: "zones_livraison_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "transporteurs_publics"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
@@ -2349,6 +3103,10 @@ export type Database = {
           photo: string | null
           poids_kg_unite: number | null
           prix_des: number | null
+          prix_indicatif_le: string | null
+          prix_indicatif_max: number | null
+          prix_indicatif_min: number | null
+          prix_indicatif_source: string | null
           slug: string | null
           type_nom: string | null
           type_slug: string | null
@@ -2375,6 +3133,7 @@ export type Database = {
           modes_paiement_acceptes:
             | Database["public"]["Enums"]["mode_paiement"][]
             | null
+          nature: string | null
           nb_avis: number | null
           nb_commandes_cloturees: number | null
           nif: string | null
@@ -2465,6 +3224,8 @@ export type Database = {
           fournisseur_slug: string | null
           fournisseur_verifie_le: string | null
           id: string | null
+          materiau_largeur_cm: number | null
+          materiau_longueur_cm: number | null
           materiau_nom: string | null
           materiau_ref_id: string | null
           materiau_slug: string | null
@@ -2514,6 +3275,62 @@ export type Database = {
           },
         ]
       }
+      rapport_entonnoir_7j: {
+        Row: {
+          n: number | null
+          nom: string | null
+          sessions: number | null
+        }
+        Relationships: []
+      }
+      rapport_recherches_vides_7j: {
+        Row: {
+          n: number | null
+          recherche: string | null
+        }
+        Relationships: []
+      }
+      rapport_vitals_7j: {
+        Row: {
+          n: number | null
+          nom: string | null
+          p75: number | null
+          page: string | null
+        }
+        Relationships: []
+      }
+      transporteurs_publics: {
+        Row: {
+          couverture_url: string | null
+          description: string | null
+          id: string | null
+          lat: number | null
+          lng: number | null
+          localite_id: string | null
+          localite_nom: string | null
+          logo_url: string | null
+          nature: string | null
+          nb_avis: number | null
+          niveau_verification:
+            | Database["public"]["Enums"]["niveau_verification"]
+            | null
+          note_moyenne: number | null
+          photo_depot: string | null
+          raison_sociale: string | null
+          rayon_max_km: number | null
+          slug: string | null
+          vehicules: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fournisseurs_localite_id_fkey"
+            columns: ["localite_id"]
+            isOneToOne: false
+            referencedRelation: "localites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       types_vitrine: {
         Row: {
           description: string | null
@@ -2548,12 +3365,24 @@ export type Database = {
         }
         Returns: string
       }
+      activite_admin: {
+        Args: { _limite?: number }
+        Returns: {
+          acteur: string
+          action: string
+          entite: string
+          entite_id: string
+          id: number
+          quand: string
+        }[]
+      }
       annuaire_fournisseurs: {
         Args: {
           _famille?: string
           _lat?: number
           _livre_chez_moi?: boolean
           _lng?: number
+          _nature?: string
           _tri?: string
           _type?: string
           _verifies_seulement?: boolean
@@ -2565,6 +3394,7 @@ export type Database = {
           localite_nom: string
           logo_url: string
           metier: string
+          nature: string
           nb_avis: number
           nb_produits: number
           niveau_verification: string
@@ -2577,6 +3407,7 @@ export type Database = {
           types: string[]
         }[]
       }
+      appeler_fonction_akora: { Args: { _nom: string }; Returns: number }
       arbitrer_litige: {
         Args: {
           _decision: string
@@ -2592,6 +3423,10 @@ export type Database = {
       confirmer_livraison: {
         Args: { _commande_id: string }
         Returns: undefined
+      }
+      confirmer_livraison_invitee: {
+        Args: { _jeton: string; _numero: string }
+        Returns: boolean
       }
       confirmer_paiement_manuel: {
         Args: { _accepte: boolean; _motif?: string; _paiement_id: string }
@@ -2619,6 +3454,44 @@ export type Database = {
         Args: { _email: string; _usage?: string; _user_id: string }
         Returns: string
       }
+      creer_demande: {
+        Args: {
+          _date_souhaitee?: string
+          _lat?: number
+          _libelle_lieu?: string
+          _lignes: Json
+          _lng?: number
+          _localite_id?: string
+          _note?: string
+        }
+        Returns: string
+      }
+      definir_role_admin: {
+        Args: {
+          _actif: boolean
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: string[]
+      }
+      demandes_pour_mon_depot: {
+        Args: never
+        Returns: {
+          created_at: string
+          date_souhaitee: string
+          deja_propose: boolean
+          distance_km: number
+          expire_le: string
+          id: string
+          libelle_lieu: string
+          lignes: Json
+          localite_nom: string
+          nb_correspondances: number
+          note: string
+          statut_proposition: string
+        }[]
+      }
+      devenir_fournisseur: { Args: never; Returns: undefined }
       ecrire_ledger: {
         Args: {
           _commande_id?: string
@@ -2631,8 +3504,28 @@ export type Database = {
         }
         Returns: number
       }
+      enregistrer_evenement: {
+        Args: {
+          _nom: string
+          _page: string
+          _proprietes: Json
+          _session_id: string
+        }
+        Returns: undefined
+      }
       enregistrer_reference_paiement: {
         Args: { _paiement_id: string; _reference: string }
+        Returns: undefined
+      }
+      enregistrer_vital: {
+        Args: {
+          _appareil: string
+          _connexion: string
+          _nom: string
+          _note: string
+          _page: string
+          _valeur: number
+        }
         Returns: undefined
       }
       est_appel_systeme: { Args: never; Returns: boolean }
@@ -2644,6 +3537,9 @@ export type Database = {
         Args: { _reference: string; _retrait_id: string }
         Returns: undefined
       }
+      exiger_admin: { Args: never; Returns: undefined }
+      fermer_demande: { Args: { _demande_id: string }; Returns: undefined }
+      fiche_reservee: { Args: { _jeton: string }; Returns: Json }
       generer_code_otp: { Args: never; Returns: string }
       has_role: {
         Args: {
@@ -2652,6 +3548,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_super_admin: { Args: never; Returns: boolean }
       journaliser: {
         Args: {
           _action: string
@@ -2663,6 +3560,28 @@ export type Database = {
         Returns: undefined
       }
       liberer_sequestre: { Args: { _paiement_id: string }; Returns: number }
+      lire_commande_invitee: {
+        Args: { _jeton: string; _numero: string }
+        Returns: Json
+      }
+      lister_utilisateurs_admin: {
+        Args: { _limite?: number; _q?: string }
+        Returns: {
+          cree_le: string
+          derniere_connexion: string
+          email: string
+          email_verifie: boolean
+          fournisseur: string
+          fournisseur_statut: string
+          id: string
+          nom_complet: string
+          roles: string[]
+          telephone: string
+          type_client: string
+          ville: string
+        }[]
+      }
+      ma_demande: { Args: never; Returns: Json }
       moderer_avis: {
         Args: {
           _avis_id: string
@@ -2670,6 +3589,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      mon_fournisseur_id: { Args: never; Returns: string }
       notifier: {
         Args: {
           _categorie?: string
@@ -2679,6 +3599,23 @@ export type Database = {
           _user_id: string
         }
         Returns: undefined
+      }
+      observatoire_prix: {
+        Args: { _famille?: string; _localite_slug?: string }
+        Returns: {
+          dernier_releve: string
+          famille_slug: string
+          fiable: boolean
+          materiau_nom: string
+          materiau_ref_id: string
+          materiau_slug: string
+          nb_depots: number
+          nb_sources: number
+          prix_max: number
+          prix_median: number
+          prix_min: number
+          unite: string
+        }[]
       }
       offres_pour_materiaux: {
         Args: { _lat?: number; _lng?: number; _slugs: string[] }
@@ -2706,6 +3643,16 @@ export type Database = {
         }[]
       }
       prochain_numero_commande: { Args: never; Returns: string }
+      proposer: {
+        Args: {
+          _delai_jours?: number
+          _demande_id: string
+          _lignes: Json
+          _livraison?: number
+          _message?: string
+        }
+        Returns: string
+      }
       purger_codes_expires: { Args: never; Returns: number }
       recalculer_niveau_verification: {
         Args: { _fournisseur_id: string }
@@ -2732,8 +3679,16 @@ export type Database = {
         Args: { _demande_id: string; _motif: string }
         Returns: undefined
       }
+      refuser_fiche: {
+        Args: { _jeton: string; _motif?: string }
+        Returns: boolean
+      }
       refuser_retrait: {
         Args: { _motif: string; _retrait_id: string }
+        Returns: undefined
+      }
+      repondre_proposition: {
+        Args: { _decision: string; _proposition_id: string }
         Returns: undefined
       }
       reveler_contact_fournisseur: {
@@ -2743,8 +3698,19 @@ export type Database = {
           whatsapp: string
         }[]
       }
+      revendiquer_fiche: { Args: { _jeton: string }; Returns: string }
       revoquer_sessions: { Args: { _user_id: string }; Returns: boolean }
       sans_accent: { Args: { texte: string }; Returns: string }
+      series_admin: {
+        Args: { _jours?: number }
+        Returns: {
+          commandes: number
+          inscriptions: number
+          jour: string
+          volume: number
+          vues: number
+        }[]
+      }
       statuer_document: {
         Args: {
           _document_id: string
@@ -2753,6 +3719,7 @@ export type Database = {
         }
         Returns: Database["public"]["Enums"]["niveau_verification"]
       }
+      tableau_de_bord_admin: { Args: never; Returns: Json }
       taux_commission: { Args: { _categorie_id: string }; Returns: number }
       transition_commande_valide: {
         Args: {
@@ -2783,7 +3750,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "acheteur" | "fournisseur" | "admin"
+      app_role: "acheteur" | "fournisseur" | "admin" | "super_admin"
       mode_paiement: "en_ligne_integral" | "en_ligne_acompte" | "a_la_livraison"
       niveau_verification: "non_verifie" | "en_cours" | "verifie" | "partenaire"
       operateur_paiement: "mvola" | "orange_money" | "airtel_money"
@@ -2871,12 +3838,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2900,11 +3867,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2925,11 +3892,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2950,11 +3917,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2967,11 +3934,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2983,7 +3950,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["acheteur", "fournisseur", "admin"],
+      app_role: ["acheteur", "fournisseur", "admin", "super_admin"],
       mode_paiement: [
         "en_ligne_integral",
         "en_ligne_acompte",

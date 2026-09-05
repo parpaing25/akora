@@ -31,3 +31,19 @@ export async function lireLocalite(id: string): Promise<Localite | null> {
   if (error) throw error;
   return (data as unknown as Localite) ?? null;
 }
+
+/**
+ * Une localité par son slug EXACT. La page prix passait par une recherche
+ * floue et prenait `trouvees[0]` en repli : si le slug n'était pas dans les
+ * dix premiers résultats, elle affichait silencieusement la MAUVAISE commune
+ * (audit 01/09). Ici : le slug, ou rien.
+ */
+export async function lireLocaliteParSlug(slug: string): Promise<Localite | null> {
+  const { data, error } = await supabase
+    .from("localites")
+    .select(COLONNES)
+    .eq("slug", slug)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as unknown as Localite) ?? null;
+}

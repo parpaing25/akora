@@ -5,6 +5,7 @@ import { ChevronRight, Minus, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Seo, filAriane } from "@/components/Seo";
 import { compterVue, lireProduit } from "@/lib/donnees/vitrine";
+import { emettre } from "@/lib/evenements";
 import { listerPaliers } from "@/lib/donnees/produits";
 import { prixUnitaireApplicable, prochainPalier } from "@/lib/paliers";
 import { usePanier, type LignePanier } from "@/lib/panier";
@@ -15,9 +16,13 @@ import { LIBELLE_STOCK, LIBELLE_UNITE } from "@/lib/types-metier";
 import { ENV } from "@/lib/env";
 import { BadgeVerification } from "@/components/marque/BadgeVerification";
 import { ImageProduit } from "@/components/produit/ImageProduit";
+import { Visionneuse, useVisionneuse } from "@/components/ui/visionneuse";
+import { couverture, quantitePourSurface } from "@/lib/couverture";
 import { Prix } from "@/components/produit/Prix";
 import { SimulateurLivraison } from "@/components/livraison/SimulateurLivraison";
 import { SelecteurPoint } from "@/components/livraison/SelecteurPoint";
+import { RouteLivraison } from "@/components/motion/RouteLivraison";
+import { usePointLivraison } from "@/lib/point-livraison";
 import { Carte } from "@/components/ui/card";
 import { Bouton } from "@/components/ui/button";
 import { Pastille } from "@/components/ui/badge";
@@ -27,7 +32,9 @@ import NonTrouve from "@/pages/NonTrouve";
 export default function ProduitFiche() {
   const { slug, produitSlug } = useParams<{ slug: string; produitSlug: string }>();
   const ajouter = usePanier((e) => e.ajouter);
+  const { point } = usePointLivraison();
   const [quantite, setQuantite] = React.useState(1);
+  const [surface, setSurface] = React.useState(0);
   const [photoActive, setPhotoActive] = React.useState(0);
 
   const produit = useQuery({
@@ -52,7 +59,10 @@ export default function ProduitFiche() {
 
   // Compteur de vues : agrégé par jour côté base, une seule fois par montage.
   React.useEffect(() => {
-    if (p?.id) void compterVue(p.id as string);
+    if (p?.id) {
+      void compterVue(p.id as string);
+      emettre("voir_produit");
+    }
   }, [p?.id]);
 
   const ligneBase: Omit<LignePanier, "quantite"> | null = p ? versLignePanier(p, paliers.data ?? []) : null;
@@ -84,6 +94,33 @@ export default function ProduitFiche() {
   if (produit.isSuccess && !produit.data) return <NonTrouve />;
 
   const photos = ((p?.photos as string[] | null) ?? []).filter(Boolean);
+  const visionneuse = useVisionneuse(photos);
+  // La couverture au m2 n'existe que pour ce qui se pose en surface : une
+  // brique, une tuile, un hourdis. Pas pour un sac de ciment ni un metre cube
+  // de sable — d'ou le `null`, et le champ qui ne s'affiche pas.
+  const couvertureProduit = React.useMemo(
+    () => (p && p.unite === "piece" ? couverture(p as never) : null),
+    [p],
+  );
+
+  // V2 : « Combien ? » se répond en un tap. Les paliers proposés dépendent de
+  // l'unité — 100 sacs de ciment se commandent, 100 m³ de sable non.
+  const presets = React.useMemo(() => {
+    const minimum = Number(p?.quantite_min ?? 1);
+    const base =
+      p?.unite === "m3" || p?.unite === "tonne" || p?.unite === "chargement"
+        ? [1, 2, 5, 10]
+        : p?.unite === "sac" || p?.unite === "botte" || p?.unite === "palette"
+          ? [10, 20, 50, 100]
+          : p?.unite === "m2" || p?.unite === "ml"
+            ? [10, 25, 50, 100]
+            : [50, 100, 200, 500];
+    return base.filter((q) => q >= minimum);
+  }, [p?.unite, p?.quantite_min]);
+
+  const coutLivraison =
+    livraison?.statut === "estimee" ? livraison.cout : livraison?.statut === "offerte" ? 0 : null;
+  const totalRendu = coutLivraison === null ? null : totalProduits + coutLivraison;
 
   return (
     <div className="container pb-28 pt-6 sm:pb-6">
@@ -154,13 +191,22 @@ export default function ProduitFiche() {
 
           <div className="mt-3 grid gap-6 lg:grid-cols-2">
             <div>
-              <ImageProduit
-                src={photos[photoActive] ?? null}
-                alt={p.nom_affiche as string}
-                variante="original"
-                prioritaire
-                className="aspect-[4/3] w-full rounded-lg border border-border bg-muted object-cover"
-              />
+              {/* Une photo de materiau se regarde de pres : texture, alveoles,
+                  etat des aretes. La vignette ne suffit pas. */}
+              <button
+                type="button"
+                onClick={() => visionneuse.ouvrir(photoActive)}
+                aria-label="Agrandir la photo"
+                className="block w-full cursor-zoom-in"
+              >
+                <ImageProduit
+                  src={photos[photoActive] ?? null}
+                  alt={p.nom_affiche as string}
+                  variante="original"
+                  prioritaire
+                  className="aspect-[4/3] w-full rounded-lg border border-border bg-muted object-cover"
+                />
+              </button>
               {photos.length > 1 ? (
                 <ul className="mt-2 flex gap-2 overflow-x-auto">
                   {photos.map((url, index) => (
@@ -240,6 +286,31 @@ export default function ProduitFiche() {
         <div className="mt-6 grid gap-4 lg:grid-cols-2">
           <div className="space-y-3">
             <SelecteurPoint />
+            {/* V2 : le trajet du dépôt au chantier, puis le total qui apparaît.
+                La formule détaillée reste juste en dessous, pour qui veut. */}
+            {totalRendu !== null && (livraison?.statut === "estimee" || livraison?.statut === "offerte") ? (
+              <Carte className="p-4">
+                <p className="text-legende font-semibold">Livré à mon chantier</p>
+                <RouteLivraison
+                  variante="courbe"
+                  depart={p.fournisseur_nom as string}
+                  arrivee={point?.libelle ?? "mon chantier"}
+                  distanceKm={livraison.detail.distanceRouteKm}
+                  montant={totalRendu}
+                  legende={`tout compris · ${formaterAriary(totalRendu / quantite)} / ${LIBELLE_UNITE[p.unite as never]} rendue`}
+                  sousTitre={`${livraison.detail.vehicule?.nom ?? "camion"} · ${livraison.detail.rotations} voyage${livraison.detail.rotations > 1 ? "s" : ""}`}
+                  className="mt-1"
+                />
+                <div className="mt-3 flex h-2.5 overflow-hidden rounded-full bg-muted" aria-hidden="true">
+                  <span className="part-barre bg-foreground" style={{ width: `${Math.round((totalProduits / totalRendu) * 100)}%` }} />
+                  <span className="part-barre bg-primary" style={{ width: `${100 - Math.round((totalProduits / totalRendu) * 100)}%`, animationDelay: "3.5s" }} />
+                </div>
+                <div className="nombres mt-1.5 flex justify-between text-[0.78rem] text-muted-foreground">
+                  <span><span className="mr-1.5 inline-block size-2 rounded-full bg-foreground" aria-hidden="true" />Matériaux {formaterAriary(totalProduits)}</span>
+                  <span><span className="mr-1.5 inline-block size-2 rounded-full bg-primary" aria-hidden="true" />Livraison {coutLivraison === 0 ? "offerte" : formaterAriary(coutLivraison ?? 0)}</span>
+                </div>
+              </Carte>
+            ) : null}
             {livraison ? (
               <SimulateurLivraison resultat={livraison} />
             ) : (
@@ -250,14 +321,84 @@ export default function ProduitFiche() {
           <Carte className="h-fit p-4">
             <h2 className="text-produit">Votre commande</h2>
 
+            {/*
+              Un macon connait la surface de son mur, pas le nombre de briques.
+              Lui faire poser la division, c'est lui faire porter une erreur
+              qu'on sait eviter. Le champ n'apparait que si la couverture du
+              materiau est connue — proposer une conversion qu'on ne sait pas
+              faire serait pire que ne rien proposer.
+            */}
+            {couvertureProduit ? (
+              <div className="mt-3 rounded-md bg-muted p-3">
+                <label htmlFor="surface-produit" className="text-legende font-semibold">
+                  Surface à couvrir
+                </label>
+                <div className="mt-1.5 flex items-center gap-2">
+                  <input
+                    id="surface-produit"
+                    type="number"
+                    inputMode="decimal"
+                    step="0.5"
+                    min="0"
+                    value={surface}
+                    onChange={(e) => {
+                      const valeur = Math.max(0, Number(e.target.value));
+                      setSurface(valeur);
+                      if (valeur > 0) {
+                        setQuantite(
+                          quantitePourSurface(
+                            valeur,
+                            couvertureProduit.piecesParM2,
+                            Number(p.quantite_min ?? 1),
+                          ),
+                        );
+                      }
+                    }}
+                    className="cible-44 w-28 rounded-md border border-input bg-card px-3 text-courant"
+                  />
+                  <span className="text-courant text-muted-foreground">m²</span>
+                </div>
+                <p className="mt-1.5 text-legende text-muted-foreground">
+                  <span className="nombres">
+                    {couvertureProduit.piecesParM2.toFixed(2).replace(/\.?0+$/, "").replace(".", ",")}
+                  </span>{" "}
+                  {LIBELLE_UNITE[p.unite as never]} au m²
+                  {couvertureProduit.source === "depot"
+                    ? ", chiffre du dépôt"
+                    : ", calculé sur les dimensions — hors joints"}
+                  . La quantité ci-dessous s'ajuste ; vous pouvez la corriger.
+                </p>
+              </div>
+            ) : null}
+
             <div className="mt-3 flex items-center gap-2">
               <label htmlFor="quantite-produit" className="text-legende font-semibold">
-                Quantité
+                Combien ?
               </label>
               <span className="text-legende text-muted-foreground">
                 ({LIBELLE_UNITE[p.unite as never]}, minimum {String(p.quantite_min)})
               </span>
             </div>
+            {presets.length > 0 ? (
+              <div className="mt-1.5 flex flex-wrap gap-2" role="group" aria-label="Quantités courantes">
+                {presets.map((q) => (
+                  <button
+                    key={q}
+                    type="button"
+                    aria-pressed={quantite === q}
+                    onClick={() => setQuantite(q)}
+                    className={
+                      "nombres cible-44 min-w-[3.25rem] rounded-md border px-3 text-courant font-semibold " +
+                      (quantite === q
+                        ? "border-foreground bg-foreground text-background"
+                        : "border-border bg-card hover:bg-muted")
+                    }
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
+            ) : null}
             <div className="mt-1.5 flex items-center gap-2">
               <Bouton
                 variante="tertiaire"
@@ -339,7 +480,7 @@ export default function ProduitFiche() {
       ) : null}
 
       {p && ligneBase ? (
-        <div className="fixed inset-x-0 bottom-[var(--barre-mobile)] z-30 border-t border-border bg-card p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:hidden">
+        <div className="monte-du-bas fixed inset-x-0 bottom-[var(--barre-mobile)] z-30 border-t border-border bg-card p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:hidden">
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1">
               <Bouton
@@ -370,11 +511,26 @@ export default function ProduitFiche() {
                 toast.success("Ajouté au panier");
               }}
             >
-              Ajouter · {formaterAriary(totalProduits)}
+              {totalRendu !== null ? (
+                <>
+                  Commander · {formaterAriary(totalRendu)}
+                  <span className="sr-only">rendu chantier</span>
+                </>
+              ) : (
+                <>Ajouter · {formaterAriary(totalProduits)}</>
+              )}
             </Bouton>
           </div>
         </div>
       ) : null}
+      <Visionneuse
+        photos={photos}
+        index={visionneuse.index}
+        ouvert={visionneuse.ouvert}
+        onFermer={visionneuse.fermer}
+        onIndex={visionneuse.changer}
+        legende={p?.nom_affiche as string | undefined}
+      />
     </div>
   );
 }

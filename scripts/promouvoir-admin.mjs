@@ -9,8 +9,12 @@
 import { lireSecrets, refProjet } from "./secrets.mjs";
 
 const email = process.argv[2];
-if (!email) {
-  console.error("Usage : node scripts/promouvoir-admin.mjs <email>");
+// Le rôle à donner : « admin » (traite les files) ou « super_admin » (gouverne
+// les rôles). Un super_admin reçoit AUSSI admin : les gardes existantes le
+// reconnaissent sans qu'on les réécrive.
+const role = process.argv[3] ?? "admin";
+if (!email || !["admin", "super_admin"].includes(role)) {
+  console.error("Usage : node scripts/promouvoir-admin.mjs <email> [admin|super_admin]");
   process.exit(1);
 }
 
@@ -51,6 +55,13 @@ await sql(`
   values ('${compte.id}', 'admin')
   on conflict (user_id, role) do nothing;
 `);
+if (role === "super_admin") {
+  await sql(`
+    insert into public.user_roles (user_id, role)
+    values ('${compte.id}', 'super_admin')
+    on conflict (user_id, role) do nothing;
+  `);
+}
 
 const roles = await sql(`select role from public.user_roles where user_id = '${compte.id}' order by role;`);
 

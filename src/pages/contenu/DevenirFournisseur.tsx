@@ -1,13 +1,55 @@
-import { Link } from "react-router-dom";
+import * as React from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { PageTexte } from "@/components/PageTexte";
 import { Bouton } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
+import { devenirFournisseur } from "@/lib/donnees/fiches-reservees";
 
 export default function DevenirFournisseur() {
+  const naviguer = useNavigate();
+  const client = useQueryClient();
+  const { session, roles } = useAuth();
+  const [activationEnCours, setActivationEnCours] = React.useState(false);
+
+  /*
+   * Trois situations, trois appels à l'action :
+   *   • déjà fournisseur → son espace, tout simplement ;
+   *   • connecté en acheteur → un clic suffit : la RPC `devenir_fournisseur`
+   *     ajoute le rôle côté base (le navigateur n'écrit JAMAIS dans
+   *     user_roles, règle A3) — pas de second compte à créer ;
+   *   • pas de compte → l'inscription, profil « fournisseur » pré-coché.
+   * Tant que les rôles ne sont pas revenus, on montre le parcours par défaut
+   * plutôt qu'un bouton qui changerait sous le clic.
+   */
+  const dejaFournisseur = roles.includes("fournisseur");
+  const acheteurSeulement = Boolean(session) && !dejaFournisseur && roles.includes("acheteur");
+
+  const activer = async () => {
+    setActivationEnCours(true);
+    try {
+      await devenirFournisseur();
+      toast.success("Espace fournisseur activé", {
+        description: "Créez votre dépôt : nom, position sur la carte, puis votre catalogue.",
+      });
+      // /pro exige le rôle : on attend la relecture des rôles AVANT de
+      // naviguer, sinon la garde de route renverrait à l'accueil.
+      await client.invalidateQueries({ queryKey: ["roles"] });
+      await client.invalidateQueries({ queryKey: ["profil"] });
+      naviguer("/pro");
+    } catch (erreur) {
+      // Message de la base, déjà en français (connexion ou adresse à confirmer).
+      toast.error("Activation impossible", { description: (erreur as Error).message });
+      setActivationEnCours(false);
+    }
+  };
+
   return (
     <PageTexte
       titre="Devenir fournisseur"
       chemin="/devenir-fournisseur"
-      chapeau="Vous tenez un dépôt, une briqueterie, une carrière ou une scierie. Voici ce qu'Akora vous demande, et ce qu'il vous apporte."
+      chapeau="Vous tenez un dépôt, une briqueterie, une carrière, une scierie — ou un camion. Voici ce qu'Akora vous demande, et ce qu'il vous apporte."
     >
       <h2>Ce que ça change pour vous</h2>
       <p>
@@ -49,6 +91,15 @@ export default function DevenirFournisseur() {
         pendant que vous le réglez.
       </p>
 
+      <h2>Vous êtes transporteur, sans dépôt ?</h2>
+      <p>
+        Votre place est ici aussi. Créez votre fiche comme un fournisseur, sautez le catalogue, et
+        déclarez vos camions à l'étape 3 : benne, plateau, citerne, « 6 roues » ou « 10 roues »,
+        capacité, tarif au voyage ou au kilomètre. Vous apparaissez dans{" "}
+        <a href="/transporteurs">l'annuaire des transporteurs</a>, et les chantiers proches vous
+        trouvent.
+      </p>
+
       <h2>La vérification</h2>
       <p>
         Elle est gratuite et débloque le paiement en ligne ainsi que le tri « vérifiés d'abord ».
@@ -73,9 +124,19 @@ export default function DevenirFournisseur() {
       </p>
 
       <div className="not-prose mt-6 flex flex-wrap gap-2">
-        <Bouton asChild taille="large">
-          <Link to="/inscription">Créer mon compte fournisseur</Link>
-        </Bouton>
+        {dejaFournisseur ? (
+          <Bouton asChild taille="large">
+            <Link to="/pro">Ouvrir mon espace fournisseur</Link>
+          </Bouton>
+        ) : acheteurSeulement ? (
+          <Bouton taille="large" disabled={activationEnCours} onClick={() => void activer()}>
+            {activationEnCours ? "Activation en cours…" : "Activer mon espace fournisseur"}
+          </Bouton>
+        ) : (
+          <Bouton asChild taille="large">
+            <Link to="/inscription?profil=fournisseur">Créer mon compte fournisseur</Link>
+          </Bouton>
+        )}
         <Bouton asChild variante="secondaire" taille="large">
           <Link to="/contact">Poser une question</Link>
         </Bouton>

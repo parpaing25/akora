@@ -1,7 +1,12 @@
 import { Navigate, useLocation } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
+import { useParametre } from "@/hooks/useParametre";
+import { supabase } from "@/integrations/supabase/client";
 import type { RoleApplicatif } from "@/lib/types-metier";
 import { Squelette } from "@/components/ui/skeleton";
+import { DefiTotp, InscriptionTotp } from "@/components/auth/SecondFacteur";
+import { Carte } from "@/components/ui/card";
 
 /**
  * Garde de route. C'est un confort de navigation, PAS une sécurité :
@@ -28,6 +33,23 @@ export function RouteProtegee({
   const { session, profil, roles, chargement, chargementProfil } = useAuth();
   const emplacement = useLocation();
 
+  // Second facteur des administrateurs (audit X-11, 06/09/2026). Deux règles :
+  //   · un admin qui a inscrit un facteur doit le passer à chaque session (aal2) ;
+  //   · l'inscription devient obligatoire quand parametres.mfa_admin_obligatoire est actif
+  //     (à false au départ : Andry inscrit son facteur avant que la porte se ferme).
+  // Côté base, exiger_admin() applique la même règle aux fonctions sensibles.
+  const exigence = useParametre<{ actif: boolean }>("mfa_admin_obligatoire", { actif: false });
+  const niveau = useQuery({
+    queryKey: ["aal", session?.user.id],
+    queryFn: async () => {
+      const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (error) throw error;
+      return data;
+    },
+    enabled: Boolean(session) && role === "admin",
+    staleTime: 60_000,
+  });
+
   const attente = (
     <div className="container space-y-3 py-8" aria-busy="true">
       <Squelette className="h-8 w-2/3" />
@@ -53,6 +75,30 @@ export function RouteProtegee({
 
   if (role && !roles.includes(role)) {
     return <Navigate to="/" replace />;
+  }
+
+  if (role === "admin") {
+    if (niveau.isLoading) return attente;
+    const d = niveau.data;
+    if (d && d.currentLevel !== "aal2") {
+      if (d.nextLevel === "aal2") return <DefiTotp onValide={() => void niveau.refetch()} />;
+      if (exigence.actif) {
+        return (
+          <div className="container max-w-md py-10">
+            <Carte className="p-5">
+              <h1 className="text-section">Second facteur obligatoire</h1>
+              <p className="mt-2 text-legende text-muted-foreground">
+                L'espace d'administration confirme des paiements et libère des séquestres : il exige
+                une application d'authentification en plus du mot de passe.
+              </p>
+              <div className="mt-4">
+                <InscriptionTotp onValide={() => void niveau.refetch()} />
+              </div>
+            </Carte>
+          </div>
+        );
+      }
+    }
   }
 
   return <>{children}</>;

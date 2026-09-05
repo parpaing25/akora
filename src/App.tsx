@@ -1,3 +1,4 @@
+import * as React from "react";
 import { lazy, Suspense } from "react";
 import { Route, Routes } from "react-router-dom";
 import { Coquille } from "@/components/layout/Coquille";
@@ -53,6 +54,9 @@ const CompteSecurite = lazy(() => import("@/pages/compte/Securite"));
 const CoquilleAdmin = lazy(() =>
   import("@/components/admin/CoquilleAdmin").then((m) => ({ default: m.CoquilleAdmin })),
 );
+const AdminTableauDeBord = lazy(() => import("@/pages/admin/TableauDeBord"));
+const AdminUtilisateurs = lazy(() => import("@/pages/admin/Utilisateurs"));
+const AdminStatistiques = lazy(() => import("@/pages/admin/Statistiques"));
 const AdminVerifications = lazy(() => import("@/pages/admin/Verifications"));
 const AdminMateriaux = lazy(() => import("@/pages/admin/MateriauxDemandes"));
 const AdminPaiements = lazy(() => import("@/pages/admin/PaiementsAdmin"));
@@ -66,6 +70,10 @@ const AdminAudit = lazy(() => import("@/pages/admin/Audit"));
 const Calculateurs = lazy(() => import("@/pages/public/Calculateurs"));
 const CalculateurDetail = lazy(() => import("@/pages/public/CalculateurDetail"));
 const PrixMarche = lazy(() => import("@/pages/public/PrixMarche"));
+const ObservatoirePrix = lazy(() => import("@/pages/public/ObservatoirePrix"));
+const Transporteurs = lazy(() => import("@/pages/public/Transporteurs"));
+const ProDemandes = lazy(() => import("@/pages/pro/Demandes"));
+const ProClients = lazy(() => import("@/pages/pro/Clients"));
 const Guides = lazy(() => import("@/pages/contenu/Guides"));
 const PageVerification = lazy(() => import("@/pages/contenu/Verification"));
 const DevenirFournisseur = lazy(() => import("@/pages/contenu/DevenirFournisseur"));
@@ -74,6 +82,8 @@ const Contact = lazy(() => import("@/pages/contenu/Contact"));
 const Conditions = lazy(() => import("@/pages/contenu/Conditions"));
 const Confidentialite = lazy(() => import("@/pages/contenu/Confidentialite"));
 const MentionsLegales = lazy(() => import("@/pages/contenu/MentionsLegales"));
+const FAQ = lazy(() => import("@/pages/contenu/FAQ"));
+const Accessibilite = lazy(() => import("@/pages/contenu/Accessibilite"));
 
 // ── Vitrine publique, comparateur, panier et commande (etapes 4, 6, 7) ───
 const Materiaux = lazy(() => import("@/pages/public/Materiaux"));
@@ -82,8 +92,11 @@ const TypeMateriau = lazy(() => import("@/pages/public/TypeMateriau"));
 const Comparateur = lazy(() => import("@/pages/public/Comparateur"));
 const Fournisseurs = lazy(() => import("@/pages/public/Fournisseurs"));
 const FournisseurFiche = lazy(() => import("@/pages/public/FournisseurFiche"));
+const LivraisonFournisseur = lazy(() => import("@/pages/public/LivraisonFournisseur"));
 const ProduitFiche = lazy(() => import("@/pages/public/ProduitFiche"));
 const Recherche = lazy(() => import("@/pages/public/Recherche"));
+// La fiche préparée par le bot de prospection, lisible par son seul jeton.
+const DepotReserve = lazy(() => import("@/pages/public/DepotReserve"));
 const Panier = lazy(() => import("@/pages/public/Panier"));
 const Commander = lazy(() => import("@/pages/public/Commander"));
 const CommandeSuivi = lazy(() => import("@/pages/public/CommandeSuivi"));
@@ -101,6 +114,11 @@ function Attente() {
   );
 }
 
+/** Le repère `main` des pages qui vivent hors de la coquille. */
+function Seule({ children }: { children: React.ReactNode }) {
+  return <main className="contents">{children}</main>;
+}
+
 export default function App() {
   return (
     <Suspense fallback={<Attente />}>
@@ -112,11 +130,14 @@ export default function App() {
           droite — et l'en-tête du site n'a rien à y faire. Un menu « Panier »
           au-dessus d'un formulaire d'inscription invite à partir ailleurs.
         */}
-        <Route path="/connexion" element={<Connexion />} />
-        <Route path="/inscription" element={<Inscription />} />
-        <Route path="/mot-de-passe-oublie" element={<MotDePasseOublie />} />
-        <Route path="/verification-email" element={<VerificationEmail />} />
-        <Route path="/auth/retour" element={<RetourOAuth />} />
+        {/* ⚠ Hors de la coquille, ces pages n'avaient AUCUN repère `main` :
+            un lecteur d'écran n'y trouvait rien à atteindre. `display: contents`
+            pose le repère sans toucher à leur mise en page pleine hauteur. */}
+        <Route path="/connexion" element={<Seule><Connexion /></Seule>} />
+        <Route path="/inscription" element={<Seule><Inscription /></Seule>} />
+        <Route path="/mot-de-passe-oublie" element={<Seule><MotDePasseOublie /></Seule>} />
+        <Route path="/verification-email" element={<Seule><VerificationEmail /></Seule>} />
+        <Route path="/auth/retour" element={<Seule><RetourOAuth /></Seule>} />
 
         <Route element={<Coquille />}>
           <Route index element={<Accueil />} />
@@ -133,6 +154,7 @@ export default function App() {
           <Route path="materiaux/:famille/:type/:format" element={<Comparateur />} />
           <Route path="fournisseurs" element={<Fournisseurs />} />
           <Route path="fournisseurs/:slug" element={<FournisseurFiche />} />
+          <Route path="fournisseurs/:slug/livraison" element={<LivraisonFournisseur />} />
           <Route path="fournisseurs/:slug/:produitSlug" element={<ProduitFiche />} />
           <Route path="recherche" element={<Recherche />} />
           <Route path="panier" element={<Panier />} />
@@ -143,11 +165,20 @@ export default function App() {
           <Route path="demandes/nouvelle" element={<DemandeNouvelle />} />
           <Route path="calculateurs" element={<Calculateurs />} />
           <Route path="calculateurs/:type" element={<CalculateurDetail />} />
+          <Route path="prix" element={<ObservatoirePrix />} />
           <Route path="prix/:materiau/:ville" element={<PrixMarche />} />
+          <Route path="transporteurs" element={<Transporteurs />} />
           <Route path="guides/:slug" element={<Guides />} />
           <Route path="verification" element={<PageVerification />} />
           <Route path="devenir-fournisseur" element={<DevenirFournisseur />} />
+          {/*
+            Publique mais confidentielle : la page ne répond qu'au porteur du
+            jeton envoyé par le bot de prospection, et se sert en noindex.
+          */}
+          <Route path="depot-reserve/:jeton" element={<DepotReserve />} />
           <Route path="a-propos" element={<APropos />} />
+          <Route path="faq" element={<FAQ />} />
+          <Route path="accessibilite" element={<Accessibilite />} />
           <Route path="contact" element={<Contact />} />
           <Route path="conditions-utilisation" element={<Conditions />} />
           <Route path="politique-confidentialite" element={<Confidentialite />} />
@@ -180,6 +211,8 @@ export default function App() {
             <Route index element={<ProTableauDeBord />} />
             <Route path="verification" element={<ProVerification />} />
             <Route path="publier" element={<ProPublier />} />
+            <Route path="demandes" element={<ProDemandes />} />
+            <Route path="clients" element={<ProClients />} />
             <Route path="catalogue" element={<ProCatalogue />} />
             <Route path="catalogue/nouveau" element={<ProProduitEditeur />} />
             <Route path="catalogue/:id" element={<ProProduitEditeur />} />
@@ -200,7 +233,9 @@ export default function App() {
               </RouteProtegee>
             }
           >
-            <Route index element={<AdminVerifications />} />
+            <Route index element={<AdminTableauDeBord />} />
+            <Route path="utilisateurs" element={<AdminUtilisateurs />} />
+            <Route path="statistiques" element={<AdminStatistiques />} />
             <Route path="verifications" element={<AdminVerifications />} />
             <Route path="materiaux" element={<AdminMateriaux />} />
             <Route path="paiements" element={<AdminPaiements />} />

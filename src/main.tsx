@@ -6,6 +6,8 @@ import App from "./App";
 import { FournisseurAuth } from "@/hooks/useAuth";
 import { FournisseurInfobulle } from "@/components/ui/tooltip";
 import { enregistrerServiceWorker } from "@/lib/pwa";
+import { mesurerVitals } from "@/lib/vitals";
+import { FrontiereErreurs } from "@/components/EcranCasse";
 import "./index.css";
 
 /**
@@ -35,7 +37,9 @@ createRoot(racine).render(
       <BrowserRouter>
         <FournisseurAuth>
           <FournisseurInfobulle delayDuration={200}>
-            <App />
+            <FrontiereErreurs>
+              <App />
+            </FrontiereErreurs>
           </FournisseurInfobulle>
         </FournisseurAuth>
       </BrowserRouter>
@@ -44,3 +48,4 @@ createRoot(racine).render(
 );
 
 enregistrerServiceWorker();
+mesurerVitals();

@@ -149,7 +149,10 @@ if (strpos($contentType, 'multipart/form-data') !== false) {
 }
 
 // ── Validation commune ──
-if (!$filename || !in_array($folder, ['produits', 'fournisseurs', 'profils'], true)) {
+// 'prospects' : photos des fiches réservées par le bot fournisseurs
+// (bot-fournisseurs/bot/reservation.py). Son absence de cette liste est la
+// cause des « HTTP 400 » du 23/08 : le bot envoyait folder=prospects.
+if (!$filename || !in_array($folder, ['produits', 'fournisseurs', 'profils', 'prospects'], true)) {
   respond(400, ['error' => 'Missing or invalid fields (filename, folder)']);
 }
 

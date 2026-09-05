@@ -55,7 +55,7 @@ export const ListeEtiquette = ({
   ...reste
 }: React.ComponentPropsWithoutRef<typeof SelectPrimitive.Label>) => (
   <SelectPrimitive.Label
-    className={cn("px-2 py-1.5 text-[0.72rem] font-semibold uppercase tracking-wide text-muted-foreground", className)}
+    className={cn("px-2 py-1.5 text-[0.75rem] font-semibold uppercase tracking-wide text-muted-foreground", className)}
     {...reste}
   />
 );

@@ -78,6 +78,7 @@
     --barre-mobile: 3.75rem;
   }
 
+
   * {
     @apply border-border;
   }
@@ -301,17 +302,141 @@
     min-height: 2.75rem;
     min-width: 2.75rem;
   }
+
+  /* ── Les mouvements de la V2 (02/09/2026) ──────────────────────────────
+     Moins de mots, plus de gestes : le point de chantier respire, le camion
+     roule du dépôt au chantier, puis le prix rendu apparaît. Chaque mouvement
+     RACONTE le prix rendu chantier — aucun n'est décoratif. Tous s'éteignent
+     sous prefers-reduced-motion, en laissant l'état final visible. */
+  @keyframes akora-pulse {
+    0% { box-shadow: 0 0 0 0 hsl(var(--primary) / 0.38); }
+    70% { box-shadow: 0 0 0 16px hsl(var(--primary) / 0); }
+    100% { box-shadow: 0 0 0 0 hsl(var(--primary) / 0); }
+  }
+  .pulse-point { animation: akora-pulse 2.2s ease-out infinite; }
+
+  @keyframes akora-etire { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+  .ligne-trace { transform-origin: left center; animation: akora-etire 2.4s cubic-bezier(0.4, 0, 0.2, 1) 0.6s both; }
+  @keyframes akora-roule-ligne { from { left: 0; } to { left: calc(100% - 28px); } }
+  .camion-ligne { animation: akora-roule-ligne 2.4s cubic-bezier(0.4, 0, 0.2, 1) 0.6s both; }
+
+  @keyframes akora-trace { from { stroke-dashoffset: 600; } to { stroke-dashoffset: 0; } }
+  .trace { stroke-dasharray: 7 7; stroke-dashoffset: 600; animation: akora-trace 2.4s cubic-bezier(0.4, 0, 0.2, 1) 0.6s both; }
+  @keyframes akora-trajet { from { offset-distance: 0%; } to { offset-distance: 100%; } }
+  .camion-trajet { offset-path: var(--trajet); offset-rotate: 0deg; animation: akora-trajet 2.4s cubic-bezier(0.4, 0, 0.2, 1) 0.6s both; }
+
+  @keyframes akora-pop {
+    0% { opacity: 0; transform: translateY(8px) scale(0.9); }
+    60% { transform: scale(1.03); }
+    100% { opacity: 1; transform: none; }
+  }
+  .prix-pop { animation: akora-pop 520ms var(--courbe) 3s both; }
+  .part-barre { transform-origin: left center; animation: akora-etire 700ms var(--courbe) 3.1s both; }
+
+  @keyframes akora-anneau { from { stroke-dashoffset: var(--circ); } to { stroke-dashoffset: var(--reste); } }
+  .anneau-progres { animation: akora-anneau 1.2s var(--courbe) 0.3s both; }
+
+  @keyframes akora-tangue {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-2px) rotate(-1.5deg); }
+  }
+  .camion-tangue { animation: akora-tangue 1.8s ease-in-out infinite; transform-origin: center bottom; }
+  @keyframes akora-roues { to { transform: rotate(360deg); } }
+  .roue-tourne { transform-box: fill-box; transform-origin: center; animation: akora-roues 1.4s linear infinite; }
+
+  @keyframes akora-bondir {
+    0% { transform: translateY(80px); opacity: 0; }
+    70% { transform: translateY(-4px); opacity: 1; }
+    100% { transform: none; opacity: 1; }
+  }
+  .bondir { animation: akora-bondir 640ms var(--courbe) 0.9s both; }
+
+  @keyframes akora-assemble { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: none; } }
+  .assemble { animation: akora-assemble 460ms var(--courbe) both; }
+
+  /* ── Les mouvements de la phase 2 (03/09/2026) ─────────────────────────
+     Quatre gestes, tous calculés sur la courbe et les deux durées du produit,
+     tous éteints sous prefers-reduced-motion. Aucun n'est décoratif :
+     · la page qui arrive glisse de 8 px en 220 ms — assez pour qu'on sente
+       le changement d'écran, trop peu pour attendre ;
+     · le compteur du panier « pop » quand il change, sinon on ajoute deux
+       fois — c'est le retour le plus demandé sur un téléphone ;
+     · la barre d'action de la fiche produit monte du bas, une fois, pour
+       dire qu'elle est là ;
+     · l'onglet actif de la barre basse se souligne en s'étirant. */
+  @keyframes akora-page {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: none; }
+  }
+  .page-entree {
+    animation: akora-page var(--duree-normale) var(--courbe) both;
+    /* Réserve la hauteur d'un écran : tant que les données arrivent, le pied de
+       page reste sous la ligne de flottaison au lieu d'être poussé (CLS 0,16
+       mesuré sur la fiche produit le 06/09/2026, audit P-02). */
+    min-height: calc(100svh - 5rem);
+  }
+
+  @keyframes akora-pop-compteur {
+    0%   { transform: scale(1); }
+    40%  { transform: scale(1.35); }
+    100% { transform: scale(1); }
+  }
+  .pop-compteur { animation: akora-pop-compteur 420ms var(--courbe) both; }
+
+  @keyframes akora-monte {
+    from { transform: translateY(100%); }
+    to   { transform: none; }
+  }
+  .monte-du-bas { animation: akora-monte 320ms var(--courbe) both; }
+
+  .onglet-actif { position: relative; }
+  .onglet-actif::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 1.5rem;
+    height: 3px;
+    border-radius: 999px;
+    background: hsl(var(--primary));
+    transform: translateX(-50%) scaleX(1);
+    transform-origin: center;
+    animation: akora-etire var(--duree-normale) var(--courbe) both;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pulse-point, .ligne-trace, .camion-ligne, .trace, .camion-trajet, .prix-pop,
+    .part-barre, .anneau-progres, .camion-tangue, .roue-tourne, .bondir, .assemble,
+    .page-entree, .pop-compteur, .monte-du-bas, .onglet-actif::after {
+      animation: none;
+    }
+    .page-entree, .monte-du-bas { opacity: 1; transform: none; }
+    .ligne-trace, .part-barre { transform: none; }
+    .camion-ligne { left: calc(100% - 28px); }
+    .trace { stroke-dashoffset: 0; }
+    .camion-trajet { offset-distance: 100%; }
+    .prix-pop, .bondir, .assemble { opacity: 1; transform: none; }
+    .anneau-progres { stroke-dashoffset: var(--reste); }
+  }
 }
 
 @layer utilities {
   /* ── CALQUE GLOBAL DE DENSITÉ MOBILE ──────────────────────────────────
      Une seule couche, ici. Sur Fonenako, re-compacter page par page a coûté
      des semaines pour un résultat incohérent : on ne recommence pas. */
+  /* La barre mobile s'affiche jusqu'à 1023 px depuis le 03/09/2026 (l'en-tête
+     n'a la place de ses liens qu'à partir de 1024) : le décalage du bas suit
+     la même borne, sinon elle masque le pied des pages. */
+  @media (max-width: 1023px) {
+    body {
+      /* La barre de navigation fixe ne doit jamais masquer le bas de page. */
+      padding-bottom: calc(var(--barre-mobile) + env(safe-area-inset-bottom, 0px));
+    }
+  }
+
   @media (max-width: 639px) {
     body {
       font-size: 0.9375rem;
-      /* La barre de navigation fixe ne doit jamais masquer le bas de page. */
-      padding-bottom: calc(var(--barre-mobile) + env(safe-area-inset-bottom, 0px));
     }
     .carte {
       @apply rounded-md;
@@ -368,5 +493,40 @@
   .container {
     max-width: none;
     padding: 0;
+  }
+}
+
+/* ═══ HORS DE TOUTE COUCHE — voir la note ci-dessous ═════════════════════ */
+/* ── Un doigt a droit à 44 px (03/09/2026) ──────────────────────────────
+   Mesuré à 390 px : 19 cibles sous 44 px à l'accueil, 36 sur /prix, 14 sur
+   /fournisseurs — presque toutes des puces de filtre à `min-h-9` (36 px),
+   dessinées pour une souris. Plutôt que de retoucher dix-sept endroits et
+   d'en oublier trois, la règle se pose là où elle vaut : quand le pointeur
+   est grossier. À la souris, 36 px restent justes. Hors `@layer` à dessein :
+   une règle en couche perdrait contre l'utilitaire Tailwind. */
+@media (pointer: coarse), (max-width: 767px) {
+  .min-h-9 {
+    min-height: 2.75rem;
+  }
+}
+
+/* ── Le conteneur des pages, dans la colonne centrale (03/09/2026) ──────────
+   Vingt pages s'enveloppent d'un `.container` (marges + 1400 px). Posées dans
+   la grille des rails, elles auraient DEUX marges et une largeur bornée en
+   plein milieu d'une colonne déjà bornée. Dès que la grille existe (1024 px),
+   le conteneur intérieur s'efface : la colonne fait la largeur, la grille
+   fait les marges. Hors @layer, comme la règle des 44 px : une couche
+   perdrait contre l'utilitaire. */
+@media (min-width: 1024px) {
+  .colonne-centrale .container {
+    padding-left: 0;
+    padding-right: 0;
+  }
+  /* ⚠ Une page qui borne ELLE-MÊME sa largeur (`max-w-3xl` : contact, à
+     propos, devenir fournisseur — des pages de texte) la garde : 1 128 px de
+     prose à 1920 px, c'est 130 caractères par ligne, illisible. Seule la borne
+     du conteneur (1400 px) s'efface. */
+  .colonne-centrale .container:not([class*="max-w-"]) {
+    max-width: none;
   }
 }

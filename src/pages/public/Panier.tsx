@@ -10,7 +10,9 @@ import {
   usePanier,
   type GroupeFournisseur,
 } from "@/lib/panier";
-import { listerFournisseurs } from "@/lib/donnees/vitrine";
+import { listerFournisseursParIds } from "@/lib/donnees/vitrine";
+import { commandesInvitees } from "@/lib/donnees/commandes";
+import { formaterDateHeure } from "@/lib/format";
 import { useLivraison } from "@/hooks/useLivraison";
 import { formaterAriary } from "@/lib/format";
 import { LIBELLE_UNITE } from "@/lib/types-metier";
@@ -37,10 +39,11 @@ export default function Panier() {
 
   const groupes = React.useMemo(() => grouperParFournisseur(lignes), [lignes]);
 
-  // Coordonnées des dépôts : le panier ne les mémorise pas, on les relit.
+  // Coordonnées des dépôts : le panier ne les mémorise pas, on les relit —
+  // CEUX DU PANIER, pas une page d'annuaire qui pouvait ne pas les contenir.
   const fournisseurs = useQuery({
     queryKey: ["fournisseurs-panier", groupes.map((g) => g.fournisseurId).join(",")],
-    queryFn: () => listerFournisseurs({ page: 0 }),
+    queryFn: () => listerFournisseursParIds(groupes.map((g) => g.fournisseurId)),
     enabled: groupes.length > 0,
     staleTime: 5 * 60_000,
   });
@@ -90,6 +93,7 @@ export default function Panier() {
               </Bouton>
             }
           />
+          <CommandesInvitees />
         </div>
       </div>
     );
@@ -274,6 +278,33 @@ function GroupePanier({
         <span className="font-semibold">Sous-total chez ce fournisseur</span>
         <span className="nombres text-[1.0625rem] font-bold text-primary">{formaterAriary(sousTotal)}</span>
       </p>
+    </Carte>
+  );
+}
+
+/**
+ * Les commandes passées SANS compte depuis ce navigateur (audit F-01) : le lien
+ * porte le jeton de suivi, seule preuve de propriété. Rien n'est lu en base ici.
+ */
+function CommandesInvitees() {
+  const liste = React.useMemo(() => commandesInvitees(), []);
+  if (liste.length === 0) return null;
+  return (
+    <Carte className="mt-4 p-4">
+      <h2 className="text-produit">Vos dernières commandes sur ce téléphone</h2>
+      <ul className="mt-2 divide-y divide-border text-legende">
+        {liste.map((c) => (
+          <li key={c.numero} className="flex items-center justify-between gap-2 py-2">
+            <span>
+              <span className="nombres font-mono font-semibold">{c.numero}</span>
+              <span className="text-muted-foreground"> · {formaterDateHeure(c.le)}</span>
+            </span>
+            <Link to={"/commande/" + c.numero + "?j=" + c.jeton} className="lien-souligne inline-block py-2.5">
+              Suivre
+            </Link>
+          </li>
+        ))}
+      </ul>
     </Carte>
   );
 }

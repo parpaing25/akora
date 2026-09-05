@@ -9,6 +9,7 @@ import {
 } from "../_commun.ts";
 import { calculerLivraison, type LigneACharger, type Vehicule, type Zone } from "../_partage/livraison.ts";
 import { prixUnitaireApplicable, type Palier } from "../_partage/paliers.ts";
+import { envoyer, gabaritCommande } from "../_courriel.ts";
 
 /**
  * Création des commandes à partir d'un panier.
@@ -195,7 +196,7 @@ Deno.serve(async (requete: Request) => {
         statut: "envoyee",
         message: corps.message ?? null,
       })
-      .select("id, numero")
+      .select("id, numero, jeton_suivi")
       .single();
     if (erreurCommande || !commande) {
       return reponse(500, { erreur: erreurCommande?.message ?? "Insertion refusée." });
@@ -233,9 +234,56 @@ Deno.serve(async (requete: Request) => {
     creees.push({
       id: commande.id,
       numero: commande.numero,
+      // Remis une seule fois, à la création : seule preuve de propriété d'une
+      // commande passée sans compte (audit F-01, 06/09/2026).
+      jeton_suivi: commande.jeton_suivi,
       fournisseur: String(premier.fournisseur_nom),
       montant_total: montantProduits + montantLivraison,
     });
+
+    // ── Courriels de confirmation (audit F-03) : best-effort, jamais bloquants.
+    // Sans secrets SMTP, envoyer() répond 503 et la commande passe quand même.
+    const site = Deno.env.get("SITE_URL") ?? "https://akora.fonenako.mg";
+    const recap = {
+      numero: commande.numero,
+      fournisseur: String(premier.fournisseur_nom),
+      lignes: lignesCommande.map((l) => ({
+        designation: String(l.designation_snapshot),
+        quantite: Number(l.quantite),
+        unite: String(l.unite_snapshot),
+        total: Number(l.total_ligne),
+      })),
+      montantProduits,
+      montantLivraison: estimable ? montantLivraison : null,
+      montantTotal: montantProduits + montantLivraison,
+      modePaiement: mode === "a_la_livraison" ? "à la livraison" : "mobile money (séquestre Akora)",
+      lienSuivi: `${site}/commande/${commande.numero}?j=${commande.jeton_suivi}`,
+    };
+    const envois: Promise<unknown>[] = [];
+    if (corps.email_contact) {
+      envois.push(envoyer({ destinataire: corps.email_contact, ...gabaritCommande(recap, "acheteur") }));
+    }
+    if (fournisseur?.owner_id) {
+      const { data: proprietaire } = await client.auth.admin.getUserById(fournisseur.owner_id);
+      if (proprietaire?.user?.email) {
+        envois.push(envoyer({
+          destinataire: proprietaire.user.email,
+          ...gabaritCommande(
+            {
+              ...recap,
+              lienSuivi: `${site}/pro/commandes/${commande.id}`,
+              contact: { nom: corps.nom_contact.trim(), telephone: corps.telephone_contact, adresse: corps.adresse_libre ?? null },
+            },
+            "fournisseur",
+          ),
+        }));
+      }
+    }
+    const resultats = await Promise.allSettled(envois);
+    for (const r of resultats) {
+      if (r.status === "fulfilled" && (r.value as { ok?: boolean })?.ok === false) console.warn("courriel de commande non parti :", r.value);
+      if (r.status === "rejected") console.warn("courriel de commande en erreur :", r.reason);
+    }
   }
 
   return reponse(200, { commandes: creees });

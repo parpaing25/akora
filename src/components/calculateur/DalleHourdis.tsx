@@ -31,14 +31,19 @@ import { Saisie } from "@/components/ui/input";
  */
 
 /** Les six formats du referentiel, avec leurs dimensions de pose. */
-const FORMATS: (FormatHourdis & { nom: string; portee: string; matiere: string })[] = [
-  { slug: "hourdis-12", nom: "12", entraxeCm: 60, pasCm: 20, hauteurCm: 12, portee: "portée ≤ 3,50 m", matiere: "béton" },
-  { slug: "hourdis-16", nom: "16", entraxeCm: 60, pasCm: 20, hauteurCm: 16, portee: "portée ≤ 4,50 m", matiere: "béton" },
-  { slug: "hourdis-20", nom: "20", entraxeCm: 60, pasCm: 20, hauteurCm: 20, portee: "portée ≤ 5,50 m", matiere: "béton" },
-  { slug: "hourdis-tc-12", nom: "12×33×33", entraxeCm: 33, pasCm: 33, hauteurCm: 12, portee: "portée ≤ 3,50 m", matiere: "terre cuite" },
-  { slug: "hourdis-tc-15", nom: "15×33×33", entraxeCm: 33, pasCm: 33, hauteurCm: 15, portee: "portée ≤ 4,00 m", matiere: "terre cuite" },
-  { slug: "hourdis-tc-20", nom: "20×33×33", entraxeCm: 33, pasCm: 33, hauteurCm: 20, portee: "portée ≤ 5,00 m", matiere: "terre cuite" },
+type FormatUI = FormatHourdis & { nom: string; porteeMaxM: number; matiere: string };
+
+const FORMATS: FormatUI[] = [
+  { slug: "hourdis-12", nom: "12", entraxeCm: 60, pasCm: 20, hauteurCm: 12, porteeMaxM: 3.5, matiere: "béton" },
+  { slug: "hourdis-16", nom: "16", entraxeCm: 60, pasCm: 20, hauteurCm: 16, porteeMaxM: 4.5, matiere: "béton" },
+  { slug: "hourdis-20", nom: "20", entraxeCm: 60, pasCm: 20, hauteurCm: 20, porteeMaxM: 5.5, matiere: "béton" },
+  { slug: "hourdis-tc-12", nom: "12×33×33", entraxeCm: 33, pasCm: 33, hauteurCm: 12, porteeMaxM: 3.5, matiere: "terre cuite" },
+  { slug: "hourdis-tc-15", nom: "15×33×33", entraxeCm: 33, pasCm: 33, hauteurCm: 15, porteeMaxM: 4, matiere: "terre cuite" },
+  { slug: "hourdis-tc-20", nom: "20×33×33", entraxeCm: 33, pasCm: 33, hauteurCm: 20, porteeMaxM: 5, matiere: "terre cuite" },
 ];
+
+/** Surfaces courantes : une piece, une chambre, un etage, une grande dalle. */
+const RACCOURCIS = [12, 40, 80, 120];
 
 const RESERVES = [
   "Étaiement, coffrage de rive et armatures de chaînage.",
@@ -53,9 +58,23 @@ export function DalleHourdis() {
   const { point } = usePointLivraison();
   const ajouterAuPanier = usePanier((e) => e.ajouter);
 
-  const [portee, setPortee] = React.useState(4);
-  const [largeur, setLargeur] = React.useState(5.5);
-  const [format, setFormat] = React.useState(FORMATS[1] as (typeof FORMATS)[number]);
+  // La SURFACE est la saisie immediate : c'est le chiffre que tout le monde a
+  // en tete. Mais un calepinage a besoin de deux dimensions — on ne pose pas
+  // des files entieres sur un metre carre abstrait. La portee prend donc par
+  // defaut la valeur maximale admissible du hourdis choisi, et la largeur s'en
+  // deduit. Qui connait sa portee la corrige ; qui ne la connait pas obtient
+  // quand meme un compte constructible, et sait sur quelle hypothese.
+  const [surfaceSaisie, setSurfaceSaisie] = React.useState(40);
+  const [format, setFormat] = React.useState<FormatUI>(FORMATS[1] as FormatUI);
+  const [portee, setPortee] = React.useState(FORMATS[1]!.porteeMaxM);
+
+  // Un hourdis plus bas ne franchit pas la meme portee : en changer ramene la
+  // portee sous le maximum du nouveau format, sinon la dalle ne tient pas.
+  React.useEffect(() => {
+    setPortee((p) => Math.min(p, format.porteeMaxM));
+  }, [format]);
+
+  const largeur = portee > 0 ? surfaceSaisie / portee : 0;
   const [marge, setMarge] = React.useState(5);
   const [dialogue, setDialogue] = React.useState(false);
   const [choix, setChoix] = React.useState<Record<string, string | null>>({});
@@ -144,7 +163,16 @@ export function DalleHourdis() {
     [lignes, retenue],
   );
 
-  const totalMateriaux = chiffrees.reduce((s, l) => s + l.total, 0);
+  // Le devis ne chiffre QUE ce qu'Akora peut vendre. Une ligne sans offre n'a
+  // pas sa place dans un tableau de prix : elle y met des tirets partout et
+  // fait croire a un devis incomplet plutot qu'a un catalogue incomplet.
+  const devis = React.useMemo(() => chiffrees.filter((l) => l.offre), [chiffrees]);
+  // Mais elle ne DISPARAIT pas : une dalle n'est pas faite que de hourdis, et
+  // laisser croire le contraire couterait un chantier a quelqu'un. Elle passe
+  // en note, avec sa quantite, pour qu'on sache quoi acheter ailleurs.
+  const horsDevis = React.useMemo(() => chiffrees.filter((l) => !l.offre), [chiffrees]);
+
+  const totalMateriaux = devis.reduce((s, l) => s + l.total, 0);
 
   // Un poste de livraison par depot distinct : c'est ce qui explique qu'un
   // metre eclate sur quatre fournisseurs coute plus cher a livrer qu'un metre
@@ -243,7 +271,7 @@ export function DalleHourdis() {
     <>
       {/* ── Le coût AVANT la liste : un métré sans prix ne sert à rien ── */}
       <section className="print:hidden rounded-lg bg-foreground p-4 text-background sm:p-5">
-        <p className="nombres text-[0.66rem] uppercase tracking-wider text-background/60">
+        <p className="nombres text-[0.75rem] uppercase tracking-wider text-background/60">
           Coût total rendu chantier
         </p>
         <p className="nombres mt-0.5 text-[2.125rem] font-bold leading-none">
@@ -267,7 +295,7 @@ export function DalleHourdis() {
 
         <dl className="mt-4 grid gap-4 border-t border-background/15 pt-4 sm:grid-cols-3">
           <div>
-            <dt className="nombres text-[0.66rem] uppercase tracking-wider text-background/60">
+            <dt className="nombres text-[0.75rem] uppercase tracking-wider text-background/60">
               Coût au m² de dalle
             </dt>
             <dd className="nombres text-[1.375rem] font-bold">
@@ -279,7 +307,7 @@ export function DalleHourdis() {
             </dd>
           </div>
           <div>
-            <dt className="nombres text-[0.66rem] uppercase tracking-wider text-background/60">
+            <dt className="nombres text-[0.75rem] uppercase tracking-wider text-background/60">
               Poids à transporter
             </dt>
             <dd className="nombres text-[1.375rem] font-bold">
@@ -290,7 +318,7 @@ export function DalleHourdis() {
             </dd>
           </div>
           <div>
-            <dt className="nombres text-[0.66rem] uppercase tracking-wider text-background/60">
+            <dt className="nombres text-[0.75rem] uppercase tracking-wider text-background/60">
               Marge de sécurité
             </dt>
             <dd className="nombres text-[1.375rem] font-bold">{marge} %</dd>
@@ -307,40 +335,38 @@ export function DalleHourdis() {
           <div className="carte p-4">
             <h2 className="text-produit">Votre ouvrage</h2>
 
-            <div className="mt-3 grid grid-cols-2 gap-3">
-              <Champ etiquette="Portée (sens des poutrelles)" aide="en mètres">
-                {(a) => (
-                  <Saisie
-                    {...a}
-                    type="number"
-                    inputMode="decimal"
-                    step="0.1"
-                    min="1"
-                    max="8"
-                    value={portee}
-                    onChange={(e) => setPortee(Math.max(0, Number(e.target.value)))}
-                  />
-                )}
-              </Champ>
-              <Champ etiquette="Largeur" aide="en mètres">
-                {(a) => (
-                  <Saisie
-                    {...a}
-                    type="number"
-                    inputMode="decimal"
-                    step="0.1"
-                    min="1"
-                    max="30"
-                    value={largeur}
-                    onChange={(e) => setLargeur(Math.max(0, Number(e.target.value)))}
-                  />
-                )}
-              </Champ>
+            <Champ etiquette="Surface de la dalle" aide="en mètres carrés">
+              {(a) => (
+                <Saisie
+                  {...a}
+                  type="number"
+                  inputMode="decimal"
+                  step="1"
+                  min="1"
+                  max="2000"
+                  value={surfaceSaisie}
+                  onChange={(e) => setSurfaceSaisie(Math.max(0, Number(e.target.value)))}
+                />
+              )}
+            </Champ>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {RACCOURCIS.map((valeur) => (
+                <button
+                  key={valeur}
+                  type="button"
+                  aria-pressed={surfaceSaisie === valeur}
+                  onClick={() => setSurfaceSaisie(valeur)}
+                  className={
+                    "nombres min-h-9 rounded-md border px-3 text-legende " +
+                    (surfaceSaisie === valeur
+                      ? "border-primary bg-primary-soft font-semibold"
+                      : "border-border bg-card")
+                  }
+                >
+                  {valeur} m²
+                </button>
+              ))}
             </div>
-            <p className="mt-1.5 text-legende text-muted-foreground">
-              <span className="nombres">{nombre(surface, 1)}</span> m² de dalle. Les poutrelles
-              courent dans le sens de la portée, d'un seul tenant.
-            </p>
 
             <p className="mt-4 text-legende font-semibold">Hourdis</p>
             <div className="mt-1.5 grid grid-cols-3 gap-2">
@@ -356,8 +382,8 @@ export function DalleHourdis() {
                   }
                 >
                   <span className="nombres block text-courant font-bold">{f.nom}</span>
-                  <span className="block text-[0.66rem] text-muted-foreground">{f.matiere}</span>
-                  <span className="block text-[0.66rem] text-muted-foreground">{f.portee}</span>
+                  <span className="block text-[0.75rem] text-muted-foreground">{f.matiere}</span>
+                  <span className="nombres block text-[0.75rem] text-muted-foreground">≤ {nombre(f.porteeMaxM, 2)} m</span>
                 </button>
               ))}
             </div>
@@ -365,6 +391,41 @@ export function DalleHourdis() {
               <span className="nombres">{nombre(hourdisParM2(format), 2)}</span> hourdis au m² en
               théorie — le calepinage ci-contre donne le compte réel.
             </p>
+
+            {/*
+              La portee reste reglable, en second rang : une dalle se pose en
+              files entieres, et deux dalles de meme surface n'ont pas le meme
+              metre selon leurs proportions. On annonce donc l'hypothese au
+              lieu de la cacher.
+            */}
+            <div className="mt-4 rounded-md bg-muted p-3">
+              <div className="flex items-baseline justify-between gap-2">
+                <label htmlFor="portee" className="text-legende font-semibold">
+                  Portée des poutrelles
+                </label>
+                <span className="nombres text-courant font-bold text-primary">
+                  {nombre(portee, 2)} m
+                </span>
+              </div>
+              <input
+                id="portee"
+                type="range"
+                min={2}
+                max={format.porteeMaxM}
+                step={0.25}
+                value={portee}
+                onChange={(e) => setPortee(Number(e.target.value))}
+                className="mt-1.5 w-full accent-primary"
+              />
+              <p className="text-legende text-muted-foreground">
+                Dalle supposée de{" "}
+                <span className="nombres">{nombre(portee, 2)}</span> ×{" "}
+                <span className="nombres">{nombre(largeur, 2)}</span> m. Le hourdis{" "}
+                <span className="nombres">{format.nom}</span> franchit{" "}
+                <span className="nombres">{nombre(format.porteeMaxM, 2)}</span> m au maximum. Si
+                vous connaissez la portée réelle, réglez-la : le compte des files en dépend.
+              </p>
+            </div>
 
             <div className="mt-4">
               <div className="flex items-baseline justify-between gap-2">
@@ -408,7 +469,8 @@ export function DalleHourdis() {
           <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-border p-4">
             <h2 className="text-produit">Votre liste de courses</h2>
             <p className="text-legende text-muted-foreground">
-              <span className="nombres">{lignes.length}</span> lignes · marge de{" "}
+              <span className="nombres">{devis.length}</span> ligne{devis.length > 1 ? "s" : ""}{" "}
+              chiffrée{devis.length > 1 ? "s" : ""} · marge de{" "}
               <span className="nombres">{marge} %</span> incluse
             </p>
           </div>
@@ -426,45 +488,37 @@ export function DalleHourdis() {
                 </tr>
               </thead>
               <tbody>
-                {chiffrees.map((ligne) => (
+                {devis.map((ligne) => (
                   <tr key={ligne.cle} className="ligne-survol border-t border-border">
                     <th scope="row" className="px-4 py-3 text-left align-top">
                       <span className="block text-courant font-semibold">{ligne.libelle}</span>
-                      <span className="nombres block text-[0.72rem] text-muted-foreground">
+                      <span className="nombres block text-[0.75rem] text-muted-foreground">
                         {ligne.formule}
                       </span>
                     </th>
                     <td className="px-4 py-3 text-right align-top">
                       <span className="nombres block text-produit">{nombre(ligne.quantite, 2)}</span>
-                      <span className="block text-[0.72rem] text-muted-foreground">{ligne.unite}</span>
+                      <span className="block text-[0.75rem] text-muted-foreground">{ligne.unite}</span>
                     </td>
                     <td className="nombres px-4 py-3 text-right align-top text-courant">
                       {ligne.offre ? formaterAriary(ligne.offre.prix_unitaire) : "—"}
                     </td>
                     <td className="px-4 py-3 align-top">
-                      {ligne.offre ? (
-                        <>
-                          <span className="block text-legende font-semibold">
-                            {ligne.offre.fournisseur_nom}
-                          </span>
-                          <span className="nombres block text-[0.72rem] text-muted-foreground">
-                            {ligne.offre.distance_km != null
-                              ? `${nombre(ligne.offre.distance_km, 1)} km`
-                              : "distance inconnue"}
-                          </span>
-                        </>
-                      ) : (
-                        <span className="text-legende text-muted-foreground">
-                          Aucune offre — à commander ailleurs
-                        </span>
-                      )}
+                      <span className="block text-legende font-semibold">
+                        {ligne.offre?.fournisseur_nom}
+                      </span>
+                      <span className="nombres block text-[0.75rem] text-muted-foreground">
+                        {ligne.offre?.distance_km != null
+                          ? `${nombre(ligne.offre.distance_km, 1)} km`
+                          : "distance inconnue"}
+                      </span>
                     </td>
                     <td className="px-4 py-3 text-right align-top">
                       <span className="nombres block text-courant font-semibold">
                         {ligne.offre ? formaterAriary(ligne.total) : "—"}
                       </span>
                       {totalRendu > 0 && ligne.total > 0 ? (
-                        <span className="nombres block text-[0.72rem] text-muted-foreground">
+                        <span className="nombres block text-[0.75rem] text-muted-foreground">
                           {Math.round((ligne.total / totalRendu) * 100)} % du budget
                         </span>
                       ) : null}
@@ -484,7 +538,7 @@ export function DalleHourdis() {
                 <tr className="border-t border-border bg-muted">
                   <th scope="row" colSpan={4} className="px-4 py-2.5 text-left text-courant">
                     Livraison rendue chantier
-                    <span className="nombres block text-[0.72rem] font-normal text-muted-foreground">
+                    <span className="nombres block text-[0.75rem] font-normal text-muted-foreground">
                       {parDepot.length} fournisseur{parDepot.length > 1 ? "s" : ""} · {rotations}{" "}
                       rotation{rotations > 1 ? "s" : ""}
                     </span>
@@ -504,6 +558,28 @@ export function DalleHourdis() {
               </tfoot>
             </table>
           </div>
+
+          {horsDevis.length > 0 ? (
+            <div className="border-t border-border bg-muted p-4">
+              <p className="text-legende font-semibold">
+                Non chiffré : aucun dépôt ne le propose encore sur Akora
+              </p>
+              <ul className="mt-1 space-y-0.5">
+                {horsDevis.map((ligne) => (
+                  <li key={ligne.cle} className="text-legende text-muted-foreground">
+                    {ligne.libelle} —{" "}
+                    <span className="nombres">
+                      {nombre(ligne.quantite, 2)} {ligne.unite}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-1.5 text-[0.75rem] text-muted-foreground">
+                Ces postes restent nécessaires à l'ouvrage : la quantité est calculée, à commander
+                ailleurs.
+              </p>
+            </div>
+          ) : null}
 
           <div className="flex flex-wrap gap-2 border-t border-border p-4">
             <Bouton onClick={() => setDialogue(true)} disabled={totalMateriaux <= 0}>
@@ -526,7 +602,7 @@ export function DalleHourdis() {
       <DialogueFournisseurs
         ouvert={dialogue}
         onFermer={() => setDialogue(false)}
-        lignes={lignes}
+        lignes={devis}
         offres={toutes}
         choix={choix}
         onChoisir={(cle, produitId) => setChoix((c) => ({ ...c, [cle]: produitId }))}
@@ -546,13 +622,18 @@ export function DalleHourdis() {
           },
           { intitule: "Marge de sécurité", valeur: `${marge} %` },
         ]}
-        lignes={chiffrees as unknown as LigneDevis[]}
+        lignes={devis as unknown as LigneDevis[]}
         totalMateriaux={totalMateriaux}
         totalLivraison={totalLivraison}
         totalRendu={totalRendu}
         surfaceM2={surface}
         lieu={point?.libelle ?? null}
-        reserves={RESERVES}
+        reserves={[
+          ...RESERVES,
+          ...horsDevis.map(
+            (l) => `${l.libelle} (${nombre(l.quantite, 2)} ${l.unite}) : aucun dépôt sur Akora`,
+          ),
+        ]}
         reference={reference}
         etabliLe={new Date()}
       />

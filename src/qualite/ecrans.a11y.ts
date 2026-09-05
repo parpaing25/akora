@@ -17,6 +17,10 @@ import Calculateurs from "@/pages/public/Calculateurs";
 import MateriauxFamille from "@/pages/public/MateriauxFamille";
 import Fournisseurs from "@/pages/public/Fournisseurs";
 import TypeMateriau from "@/pages/public/TypeMateriau";
+import DemandeNouvelle from "@/pages/public/DemandeNouvelle";
+import Transporteurs from "@/pages/public/Transporteurs";
+import ObservatoirePrix from "@/pages/public/ObservatoirePrix";
+import ProDemandes from "@/pages/pro/Demandes";
 import { FournisseurAuth } from "@/hooks/useAuth";
 import { FournisseurInfobulle } from "@/components/ui/tooltip";
 
@@ -79,6 +83,10 @@ const ECRANS: [string, React.ComponentType, boolean?][] = [
   ["Matériaux — types d'une famille", MateriauxFamille],
   ["Matériaux — formats d'un type", TypeMateriau],
   ["Matériaux — formats, écran large", TypeMateriau, true],
+  ["Je cherche — demande (porte de connexion)", DemandeNouvelle],
+  ["Transporteurs — annuaire", Transporteurs],
+  ["Observatoire des prix", ObservatoirePrix],
+  ["Pro — demandes des acheteurs", ProDemandes],
 ];
 
 function html(Ecran: React.ComponentType): string {

@@ -6,6 +6,7 @@
   "description": "AKORA - la marketplace des materiaux de construction a Madagascar",
   "scripts": {
     "dev": "vite",
+    "prebuild": "node scripts/generer-sitemap.mjs && node scripts/verifier-htaccess.mjs",
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint .",
@@ -22,7 +23,10 @@
     "fonctions:deploy": "node scripts/deployer-fonctions.mjs",
     "verifier": "npm run typecheck && npm run test && npm run test:a11y && npm run verif:recette && npm run verif:securite",
     "admin": "node scripts/promouvoir-admin.mjs",
-    "google": "node scripts/configurer-google.mjs"
+    "google": "node scripts/configurer-google.mjs",
+    "marchand": "node scripts/configurer-marchand.mjs",
+    "coffre": "node scripts/poser-secrets-coffre.mjs",
+    "verif:domaine": "node scripts/verifier-domaine-google.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -62,6 +66,7 @@
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^0.9.9",
+    "web-vitals": "^4.2.4",
     "zod": "^3.25.76",
     "zustand": "^5.0.8"
   },

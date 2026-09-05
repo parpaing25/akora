@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { confirmerEmailOAuth } from "@/lib/oauth";
+import { retourInterne } from "@/lib/retour";
 import { Seo } from "@/components/Seo";
 import { LogoAkora } from "@/components/marque/LogoAkora";
 import { Squelette } from "@/components/ui/skeleton";
@@ -43,8 +44,10 @@ export default function RetourOAuth() {
         })
         .finally(() => {
           // Rechargement franc plutôt que navigation : le profil doit être
-          // relu côté serveur, vérification comprise.
-          window.location.replace(vers.startsWith("/") ? vers : "/compte");
+          // relu côté serveur, vérification comprise. `retourInterne` refuse
+          // aussi « //… » : startsWith("/") seul laissait passer une URL
+          // protocol-relative vers un autre domaine (open redirect).
+          window.location.replace(retourInterne(vers) ?? "/compte");
         });
       return;
     }

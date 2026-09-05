@@ -32,7 +32,7 @@ Deno.serve(async (requete: Request) => {
 
   // Plafond par IP en plus du compteur de tentatives par code : sans lui, on
   // pourrait balayer les codes de plusieurs adresses en parallele.
-  if (!(await quotaOk(client, "verifier_code", adresse(requete), 60))) {
+  if (!(await quotaOk(client, "verifier_code", adresse(requete), 60, true))) {
     return reponse(429, { erreur: "Trop de tentatives. Réessayez dans une heure." });
   }
 

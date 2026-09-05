@@ -53,7 +53,7 @@ export function Notifications() {
                   {n.corps ? (
                     <span className="mt-0.5 block text-[0.78rem] text-muted-foreground">{n.corps}</span>
                   ) : null}
-                  <span className="nombres mt-0.5 block text-[0.72rem] text-muted-foreground">
+                  <span className="nombres mt-0.5 block text-[0.75rem] text-muted-foreground">
                     {formaterDateHeure(n.created_at)}
                   </span>
                 </>

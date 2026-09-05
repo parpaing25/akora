@@ -1,0 +1,911 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bot fournisseurs — Akora</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23bb4a18'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-family='Inter,Arial,sans-serif' font-size='18' font-weight='700' fill='white'%3EA%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<!-- Icônes (lucide, tracées une fois, réutilisées par <use>) -->
+<svg hidden aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="i-bord" viewBox="0 0 24 24"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></symbol>
+  <symbol id="i-fournisseurs" viewBox="0 0 24 24"><path d="M22 8.35V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8.35A2 2 0 0 1 3.26 6.5l8-3.2a2 2 0 0 1 1.48 0l8 3.2A2 2 0 0 1 22 8.35Z"/><path d="M6 18h12"/><path d="M6 14h12"/><rect width="12" height="12" x="6" y="10"/></symbol>
+  <symbol id="i-appels" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></symbol>
+  <symbol id="i-formats" viewBox="0 0 24 24"><path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z"/><path d="m14.5 12.5 2-2"/><path d="m11.5 9.5 2-2"/><path d="m8.5 6.5 2-2"/><path d="m17.5 15.5 2-2"/></symbol>
+  <symbol id="i-prospection" viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></symbol>
+  <symbol id="i-demandes" viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></symbol>
+  <symbol id="i-marche" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></symbol>
+  <symbol id="i-annuaire" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></symbol>
+  <symbol id="i-sources" viewBox="0 0 24 24"><path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/></symbol>
+  <symbol id="i-candidats" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-automatisations" viewBox="0 0 24 24"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></symbol>
+  <symbol id="i-reglages" viewBox="0 0 24 24"><line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="18" y2="18"/></symbol>
+</svg>
+
+<div class="coque">
+
+<aside class="nav" id="nav" aria-label="Navigation principale">
+  <div class="marque">
+    <span class="pastille">A</span>
+    <div>
+      <strong>Bot fournisseurs</strong>
+      <small>Facebook → akora.fonenako.mg</small>
+    </div>
+  </div>
+
+  <nav class="onglets">
+    <span class="nav-groupe">Travail du jour</span>
+    <button class="onglet actif" data-vue="bord"><svg class="ico"><use href="#i-bord"/></svg><span>Tableau de bord</span></button>
+    <button class="onglet" data-vue="fournisseurs"><svg class="ico"><use href="#i-fournisseurs"/></svg><span>Fournisseurs</span> <span id="pastille-trier" class="compteur zero">0</span></button>
+    <button class="onglet" data-vue="appels"><svg class="ico"><use href="#i-appels"/></svg><span>À appeler</span> <span id="pastille-appels" class="compteur zero">0</span></button>
+    <button class="onglet" data-vue="formats"><svg class="ico"><use href="#i-formats"/></svg><span>Formats</span> <span id="pastille-formats" class="compteur zero">0</span></button>
+    <button class="onglet" data-vue="prospection"><svg class="ico"><use href="#i-prospection"/></svg><span>Prospection</span> <span id="pastille-file" class="compteur zero">0</span></button>
+    <button class="onglet" data-vue="demandes"><svg class="ico"><use href="#i-demandes"/></svg><span>Demandes</span> <span id="pastille-demandes" class="compteur zero">0</span></button>
+
+    <span class="nav-groupe">Marché</span>
+    <button class="onglet" data-vue="marche"><svg class="ico"><use href="#i-marche"/></svg><span>Prix et couverture</span></button>
+    <button class="onglet" data-vue="annuaire"><svg class="ico"><use href="#i-annuaire"/></svg><span>Annuaire</span></button>
+
+    <span class="nav-groupe">Le bot</span>
+    <button class="onglet" data-vue="sources"><svg class="ico"><use href="#i-sources"/></svg><span>Sources</span></button>
+    <button class="onglet" data-vue="candidats"><svg class="ico"><use href="#i-candidats"/></svg><span>Nouvelles sources</span> <span id="pastille-candidats" class="compteur zero">0</span></button>
+    <button class="onglet" data-vue="automatisations"><svg class="ico"><use href="#i-automatisations"/></svg><span>Automatisations</span></button>
+    <button class="onglet" data-vue="reglages"><svg class="ico"><use href="#i-reglages"/></svg><span>Réglages</span></button>
+  </nav>
+
+  <div class="etats">
+    <button class="etat" id="etat-ref" title="Catalogue des matériaux Akora">
+      <i></i><span>Catalogue</span>
+    </button>
+    <button class="etat" id="etat-fb" title="Compte Facebook utilisé pour la collecte">
+      <i></i><span id="etat-fb-texte">Facebook</span>
+    </button>
+  </div>
+</aside>
+<button class="nav-voile" id="nav-voile" aria-label="Fermer le menu" hidden></button>
+
+<div class="page">
+<header class="barre">
+  <button class="menu" id="btn-nav" aria-label="Ouvrir le menu" aria-controls="nav" aria-expanded="false">
+    <svg class="ico"><use href="#i-menu"/></svg>
+  </button>
+  <h1 id="titre-vue">Tableau de bord</h1>
+  <div class="barre-etat" id="barre-etat" aria-live="polite"></div>
+</header>
+
+<main>
+
+  <!-- ══════════════════ TABLEAU DE BORD ══════════════════ -->
+  <section class="vue active" id="vue-bord">
+
+    <div class="carte" id="carte-miroir">
+      <div class="entete-carte">
+        <h2>La collecte et le site</h2>
+        <div class="actions-carte">
+          <span class="discret" id="miroir-quand"></span>
+          <button class="bouton fin" id="btn-miroir">Recalculer</button>
+        </div>
+      </div>
+      <p class="aide">
+        Ce que le bot porte, face à ce que le site montre. Les deux ne seront
+        jamais égaux au même instant — un dépôt collecté ce matin n'est pas
+        encore transféré — mais <strong>l'écart doit se voir et se nommer</strong>.
+      </p>
+      <table class="miroir" id="table-miroir"></table>
+    </div>
+
+    <div class="banniere" id="banniere-fb" hidden>
+      <div class="banniere-corps">
+        <span class="banniere-icone">!</span>
+        <div>
+          <strong class="banniere-titre">Connectez un compte Facebook pour commencer</strong>
+          <p>
+            Le bot lit Facebook avec <em>votre</em> session, comme si vous
+            l'ouvriez vous-même — il n'y a ni mot de passe à saisir ici, ni
+            compte à créer. À faire <strong>une seule fois</strong>.
+          </p>
+          <ol class="etapes">
+            <li>Cliquez le bouton : une fenêtre Facebook s'ouvre.</li>
+            <li>Connectez-vous normalement (identifiants, code de vérification…).</li>
+            <li>La fenêtre se ferme toute seule dès que c'est bon.</li>
+          </ol>
+        </div>
+      </div>
+      <button class="bouton principal grand" id="btn-connexion-banniere">
+        Connecter mon compte Facebook
+      </button>
+    </div>
+
+    <div class="banniere douce" id="banniere-ref" hidden>
+      <div class="banniere-corps">
+        <span class="banniere-icone">⌗</span>
+        <div>
+          <strong class="banniere-titre">Le catalogue Akora n'est pas encore chargé</strong>
+          <p>
+            Sans lui, aucune offre ne peut être rattachée à une référence — et
+            un produit sans référence ne peut jamais être mis en ligne.
+          </p>
+        </div>
+      </div>
+      <button class="bouton principal" id="btn-sync-ref-banniere">Synchroniser le catalogue</button>
+    </div>
+
+    <div class="chiffres">
+      <button class="chiffre lien-statut" data-statut="a_trier">
+        <span class="valeur" id="n-a_trier">0</span><span class="etiquette">à trier</span>
+      </button>
+      <button class="chiffre lien-statut" data-statut="valide">
+        <span class="valeur" id="n-valide">0</span><span class="etiquette">validés</span>
+      </button>
+      <button class="chiffre lien-statut" data-statut="reserve">
+        <span class="valeur bleu" id="n-reserve">0</span><span class="etiquette">réservés</span>
+      </button>
+      <button class="chiffre lien-statut" data-statut="contacte">
+        <span class="valeur" id="n-contacte">0</span><span class="etiquette">contactés</span>
+      </button>
+      <button class="chiffre lien-statut" data-statut="revendique">
+        <span class="valeur ok" id="n-revendique">0</span><span class="etiquette">revendiqués</span>
+      </button>
+      <button class="chiffre lien-statut" data-statut="incomplet">
+        <span class="valeur alerte" id="n-incomplet">0</span><span class="etiquette">incomplets</span>
+      </button>
+      <div class="chiffre">
+        <span class="valeur" id="n-offres">0</span><span class="etiquette">offres appariées</span>
+      </div>
+      <div class="chiffre">
+        <span class="valeur bleu" id="n-demandes">0</span><span class="etiquette">demandes 7 j</span>
+      </div>
+    </div>
+
+    <div class="entonnoir carte">
+      <h2>Du groupe Facebook au fournisseur inscrit</h2>
+      <div class="etapes-entonnoir" id="entonnoir"></div>
+    </div>
+
+    <div class="grille-deux">
+      <div class="carte">
+        <h2>Collecte</h2>
+        <p class="aide">
+          Le bot parcourt les sources actives, garde les publications qui
+          <strong>vendent</strong> un matériau du catalogue ou <strong>louent
+          un camion</strong>, et les range par <strong>fournisseur</strong> —
+          pas par publication. Les demandes d'acheteurs partent de leur côté.
+        </p>
+        <div class="ligne-compte" id="ligne-compte"></div>
+        <div class="actions-collecte">
+          <button class="bouton principal" id="btn-collecte">Lancer la collecte</button>
+          <button class="bouton" id="btn-arreter" disabled>Arrêter</button>
+        </div>
+        <div class="progression" id="progression" hidden>
+          <div class="barre-progres"><i></i></div>
+          <span id="texte-progression"></span>
+        </div>
+      </div>
+
+      <div class="carte">
+        <h2>Inscrire sur akora.fonenako.mg</h2>
+        <p class="aide">
+          Crée un <strong>vrai fournisseur</strong> sur le site, avec ses
+          produits et ses prix — c'est ce qui remplit l'annuaire. La fiche est
+          créée <strong>en brouillon</strong> : elle existe, elle n'apparaît
+          nulle part tant que vous n'avez pas cliqué « Publier » sur sa fiche.
+        </p>
+        <button class="bouton principal" id="btn-inscrire-lot">Inscrire les fournisseurs validés</button>
+        <p class="aide fine">
+          Un produit sans prix n'est pas inscrit : Akora compare des prix, et
+          un montant de remplissage se retrouve en ligne six mois plus tard.
+        </p>
+      </div>
+
+      <div class="carte">
+        <h2>Fiches réservées</h2>
+        <p class="aide">
+          Réserver, c'est écrire la fiche du dépôt sur akora.fonenako.mg : son
+          nom, son quartier, ses produits, ses prix, ses camions. Elle n'est
+          <strong>ni publique ni indexée</strong> — elle ne s'ouvre qu'avec le
+          lien qu'on lui envoie.
+        </p>
+        <button class="bouton principal" id="btn-reserver-lot">Réserver les fiches validées</button>
+        <button class="bouton" id="btn-synchro">Relire le site</button>
+        <p class="aide fine" id="etat-reservation"></p>
+      </div>
+    </div>
+
+    <div class="carte">
+      <h2>Collectes automatiques</h2>
+      <div class="ligne-compte" id="etat-planning"></div>
+      <div class="grille-reglages">
+        <div class="reglage">
+          <label>Activer</label>
+          <label class="case"><input type="checkbox" id="collecte-auto-bord"> collectes automatiques</label>
+        </div>
+        <div class="reglage">
+          <label for="heures-collecte-bord">Heures (séparées par une virgule)</label>
+          <input type="text" id="heures-collecte-bord" placeholder="10:00, 17:00">
+        </div>
+        <div class="reglage">
+          <label for="objectif-jour-bord">Nouveaux fournisseurs par jour</label>
+          <input type="number" id="objectif-jour-bord" min="0" max="200">
+        </div>
+      </div>
+      <button class="bouton principal" id="btn-planning">Enregistrer</button>
+      <p class="aide fine">
+        L'horloge est dans le bot, pas dans Windows : fenêtre fermée, rien ne se
+        passe. Pour qu'il démarre tout seul à l'ouverture de session,
+        <code>outils\installer-tache-planifiee.ps1</code>.
+      </p>
+    </div>
+
+    <div class="carte">
+      <h2>Ce qui tourne tout seul</h2>
+      <p class="aide">
+        Les huit automatisations, allumables ici même. Le détail de ce que
+        chacune fait — et de ce qu'elle ne fera jamais — est dans l'onglet
+        <strong>Automatisations</strong>. Tout est éteint par défaut : le bot
+        ne fait rien que vous n'ayez allumé.
+      </p>
+      <div class="grille-auto compacte" id="auto-rapide"></div>
+    </div>
+
+    <div class="carte">
+      <h2>Journal</h2>
+      <ul class="journal" id="journal"></ul>
+    </div>
+  </section>
+
+  <!-- ══════════════════ FOURNISSEURS ══════════════════ -->
+  <section class="vue" id="vue-fournisseurs">
+    <!-- Le bouton « Réserver » ment tant que `pousser_les_fiches` est éteint :
+         il est là, cliquable, et refuse. Cette bannière le dit AVANT le clic. -->
+    <div class="banniere" id="banniere-poussee" hidden>
+      <div class="banniere-corps">
+        <span class="banniere-icone">!</span>
+        <div>
+          <strong class="banniere-titre">L'envoi des fiches vers le site est éteint</strong>
+          <p>
+            « Réserver » refusera : les tables d'attente n'existent pas encore
+            sur akora.fonenako.mg. Appliquez d'abord
+            <code>migration/20260823120000_fiches_reservees.sql</code>, puis
+            allumez <em>Autoriser l'envoi des fiches vers le site</em>.
+            Tout le reste — trier, corriger, exporter, préparer les
+            messages — fonctionne normalement.
+          </p>
+        </div>
+      </div>
+      <button class="bouton" id="btn-poussee-auto">Ouvrir les automatisations</button>
+    </div>
+
+    <!-- Doublons PROBABLES. Signalés, jamais fusionnés tout seuls : trois
+         fiches nommées « Fournisseur en Matériaux de construction » peuvent
+         parfaitement être trois pages différentes. Le rapprochement par
+         identifiant de compte Facebook, lui, est solide — mais c'est encore
+         un humain qui clique. -->
+    <details class="bloc-doublons" id="bloc-doublons" hidden>
+      <summary>
+        <strong id="doublons-titre">Doublons probables</strong>
+        <span class="doublons-aide">
+          Rapprochements proposés. <strong>Rien n'est fusionné sans votre
+          clic</strong> — une fusion déplace publications, offres et photos,
+          puis supprime la fiche vidée.
+        </span>
+      </summary>
+      <div id="doublons-liste"></div>
+    </details>
+
+    <div class="filtres">
+      <div class="puces" id="filtres-statut">
+        <button class="puce actif" data-statut="">Tous</button>
+        <button class="puce" data-statut="a_trier">À trier</button>
+        <button class="puce" data-statut="valide">Validés</button>
+        <button class="puce" data-statut="reserve">Réservés</button>
+        <button class="puce" data-statut="contacte">Contactés</button>
+        <button class="puce" data-statut="relance">Relancés</button>
+        <button class="puce" data-statut="revendique">Revendiqués</button>
+        <button class="puce" data-statut="incomplet">Incomplets</button>
+        <button class="puce" data-statut="deja_client">Déjà clients</button>
+        <button class="puce" data-statut="refuse">Refus</button>
+      </div>
+      <select id="filtre-famille"><option value="">Toutes les familles</option></select>
+      <select id="filtre-source"><option value="0">Toutes les sources</option></select>
+      <select id="tri">
+        <option value="score">Meilleur score d'abord</option>
+        <option value="recent">Vus récemment</option>
+        <option value="offres">Le plus de produits</option>
+        <option value="nom">Par nom</option>
+      </select>
+      <input type="search" id="recherche" placeholder="Nom, téléphone, quartier, matériau…">
+      <a class="bouton fin" id="btn-export" href="/api/export.csv">Exporter en CSV</a>
+    </div>
+    <div class="grille-fiches" id="grille"></div>
+    <p class="vide" id="vide" hidden>Rien ici pour l'instant.</p>
+
+    <div class="barre-selection" id="barre-selection" hidden>
+      <span class="compte" id="selection-compte">0 fiche sélectionnée</span>
+      <div class="actions">
+        <button class="bouton fin" id="sel-tout">Tout cocher</button>
+        <button class="bouton fin" id="sel-rien">Décocher</button>
+        <button class="bouton fin" id="sel-rejeter">Écarter</button>
+        <button class="bouton fin" id="sel-valider">Valider</button>
+        <button class="bouton fin" id="sel-reserver">Réserver les fiches</button>
+        <button class="bouton principal fin" id="sel-inscrire">Inscrire sur le site</button>
+      </div>
+      <small class="note-selection">
+        Le refus définitif reste fiche par fiche : il met un numéro en liste
+        rouge pour toujours.
+      </small>
+    </div>
+  </section>
+
+  <!-- ══════════════════ DEMANDES ══════════════════ -->
+  <section class="vue" id="vue-demandes">
+    <p class="intro">
+      Ce que les <strong>acheteurs</strong> cherchent sur Facebook. Le bot les
+      capturait comme des erreurs ; ce sont en fait les leads les plus utiles :
+      un besoin daté, chiffré, localisé — et l'argument qui fait signer un dépôt
+      qui hésite. <strong>Rien n'est republié</strong> : personne n'a donné son
+      accord pour que sa recherche de sable réapparaisse ailleurs.
+    </p>
+
+    <div class="carte">
+      <h2>Ce que le marché réclame</h2>
+      <p class="aide">
+        Sur 7 jours. Un matériau très demandé et servi par personne est un trou
+        à combler cette semaine, pas un jour.
+      </p>
+      <div class="tableau-defilant">
+        <table class="tableau" id="table-pression">
+          <thead><tr>
+            <th>Matériau</th><th class="nombre">Demandes</th><th class="nombre">Urgentes</th>
+            <th class="nombre">Joignables</th><th>Où</th><th></th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="filtres">
+      <div class="puces" id="filtres-demandes">
+        <button class="puce actif" data-statut="">Toutes</button>
+        <button class="puce" data-statut="nouvelle">Nouvelles</button>
+        <button class="puce" data-statut="traitee">Traitées</button>
+        <button class="puce" data-statut="ignoree">Ignorées</button>
+      </div>
+      <select id="demandes-famille"><option value="">Toutes les familles</option></select>
+    </div>
+    <div class="grille-fiches" id="grille-demandes"></div>
+    <p class="vide" id="vide-demandes" hidden>
+      Aucune demande collectée. Elles arrivent avec la collecte.
+    </p>
+  </section>
+
+  <!-- ══════════════════ PROSPECTION ══════════════════ -->
+  <section class="vue" id="vue-prospection">
+    <p class="intro">
+      Le bot <strong>n'envoie aucun message</strong> : Facebook coupe les
+      comptes qui écrivent en série, et un dépôt démarché par un robot ne
+      rappelle pas. Il prépare le texte et ouvre la bonne conversation — vous
+      appuyez.
+    </p>
+    <div class="grille-trois" id="piles"></div>
+  </section>
+
+  <!-- ══════════════════ ANNUAIRE ══════════════════ -->
+  <section class="vue" id="vue-appels">
+    <div class="carte">
+      <h2>Les dépôts à appeler</h2>
+      <p class="aide">
+        <strong>84 % des publications collectées ne portent aucun prix</strong>
+        (440 sur 526). Le tarif ne se met pas dans le post : il se donne au
+        téléphone. Cette liste dit qui appeler et <strong>quoi lui
+        demander</strong>, nommément.
+      </p>
+      <p class="aide">
+        Le prix rentre ensuite dans la fiche du dépôt, à la main. Un produit ne
+        part sur le site que complet : <strong>référence du catalogue, prix, et
+        photo désignée</strong>.
+      </p>
+      <div class="ligne-form">
+        <span class="discret" id="etat-appels">—</span>
+        <button class="bouton" id="btn-appels-recharger">Recharger</button>
+      </div>
+    </div>
+    <div id="liste-appels"></div>
+    <p class="aide" id="appels-vide" hidden>
+      Aucun dépôt en attente de prix.
+    </p>
+  </section>
+
+  <section class="vue" id="vue-formats">
+    <div class="carte">
+      <h2>Atelier des formats</h2>
+      <p class="aide">
+        Ces offres <strong>ont déjà leur prix</strong> et <strong>leur type</strong>.
+        Il ne leur manque que le format — et c'est la seule chose que le bot
+        s'interdit de deviner : hériter le format de l'en-tête avait étiqueté
+        une tôle 0,45&nbsp;mm au prix d'une 0,14. Tant qu'il manque, le produit
+        ne peut pas exister sur le site, donc le dépôt ne peut pas être inscrit.
+      </p>
+      <p class="aide">
+        <strong>Regardez l'unité.</strong> Si le dépôt affiche un prix au m² et
+        que la référence se vend à la pièce, le format ne suffit pas : le prix
+        change de sens. L'atelier refuse ce cas tant que vous ne l'avez pas
+        confirmé.
+      </p>
+      <div class="ligne-form">
+        <span class="discret" id="etat-formats">—</span>
+        <button class="bouton" id="btn-formats-recharger">Recharger</button>
+      </div>
+    </div>
+    <div id="liste-formats"></div>
+    <p class="aide" id="formats-vide" hidden>
+      Aucune offre en attente de format. Tout ce qui a un prix a sa référence.
+    </p>
+  </section>
+
+  <section class="vue" id="vue-annuaire">
+    <div class="carte">
+      <h2>Qui vend des matériaux, et où</h2>
+      <p class="aide">
+        Le recensement complet : les fournisseurs <strong>déjà inscrits sur
+        akora.fonenako.mg</strong> et les dépôts <strong>repérés sur
+        Facebook</strong>, dans une seule liste. Une ligne marquée
+        <em>les&nbsp;deux</em> est un dépôt qu'on a re-trouvé sur Facebook alors
+        qu'il a déjà son compte — <strong>ne le démarchez pas</strong>.
+      </p>
+      <p class="aide fine">
+        Ville et familles restent vides pour un inscrit que la prospection n'a
+        jamais croisé : le site ne rend que sa raison sociale et ses numéros.
+      </p>
+
+      <div class="banniere" id="banniere-annuaire" hidden>
+        <div class="banniere-corps">
+          <span class="banniere-icone">!</span>
+          <div>
+            <strong class="banniere-titre">Liste incomplète</strong>
+            <p id="annuaire-avertissement"></p>
+          </div>
+        </div>
+      </div>
+
+      <div class="filtres fin">
+        <input type="search" id="annuaire-recherche"
+               placeholder="Nom, téléphone, ville, famille, statut…">
+        <a class="bouton fin" id="btn-export-annuaire" href="/api/annuaire.csv">
+          Exporter en CSV
+        </a>
+      </div>
+      <p class="ligne-compte" id="annuaire-compte"></p>
+
+      <div class="tableau-defilant">
+        <table class="tableau triable" id="table-annuaire">
+          <thead><tr>
+            <th data-tri="nom">Nom</th>
+            <th data-tri="telephones">Téléphones</th>
+            <th data-tri="ville">Ville</th>
+            <th data-tri="familles">Familles vendues</th>
+            <th class="nombre" data-tri="nb_offres">Offres</th>
+            <th data-tri="statut">Statut</th>
+            <th data-tri="client">Déjà client</th>
+            <th data-tri="origine">Vu où</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="vide" id="annuaire-vide" hidden>Personne dans le recensement.</p>
+    </div>
+  </section>
+
+  <!-- ══════════════════ MARCHÉ ══════════════════ -->
+  <section class="vue" id="vue-marche">
+    <div class="carte">
+      <h2>Prix relevés sur le terrain</h2>
+      <p class="aide">
+        Chaque tarif lu sur Facebook compte, même si le dépôt ne s'inscrit
+        jamais. La <strong>médiane</strong>, jamais la moyenne : un seul prix de
+        gros fausse une moyenne, pas une médiane. Une ligne appuyée sur moins de
+        trois dépôts est marquée <em>peu sûre</em> — elle ne vaut pas argument.
+      </p>
+      <div class="filtres fin">
+        <select id="marche-famille"><option value="">Toutes les familles</option></select>
+        <select id="marche-ville"><option value="">Toutes les villes</option></select>
+      </div>
+      <div class="tableau-defilant">
+        <table class="tableau" id="table-marche">
+          <thead><tr>
+            <th>Matériau</th><th class="nombre">Dépôts</th><th class="nombre">Min</th>
+            <th class="nombre">Médiane</th><th class="nombre">Max</th>
+            <th class="nombre">Écart</th><th>Villes</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="carte">
+      <h2>Bulletin de prix pour le fil Akora</h2>
+      <p class="aide">
+        Le fil d'accueil du site prévoit un type de publication
+        <code>prix_marche</code>, écrit par Akora elle-même. Rien ne l'alimentait.
+        Un fil vide dit « il ne se passe rien ici » — le remplir avec des prix
+        réels donne au visiteur la seule chose qu'il cherche vraiment.
+      </p>
+      <div class="banniere douce compacte">
+        <div class="banniere-corps">
+          <span class="banniere-icone">⚠</span>
+          <div>
+            <strong class="banniere-titre">Ceci est public et signé Akora</strong>
+            <p>
+              Seules les lignes appuyées sur <strong>au moins trois dépôts</strong>
+              y entrent. Relisez avant de publier : une médiane fausse lue par un
+              professionnel décrédibilise le site pour de bon.
+            </p>
+          </div>
+        </div>
+      </div>
+      <div class="filtres fin">
+        <select id="bulletin-ville"><option value="">Tout Madagascar</option></select>
+        <button class="bouton fin" id="btn-bulletin-apercu">Préparer le brouillon</button>
+      </div>
+      <div id="bulletin-zone"></div>
+    </div>
+
+    <div class="carte">
+      <h2>Trous de couverture</h2>
+      <p class="aide">
+        Une case rouge = aucun fournisseur en ligne sur Akora, et aucun prospect
+        à appeler. C'est là qu'il faut chercher — le clic ajoute la recherche
+        Facebook correspondante aux sources.
+      </p>
+      <div class="tableau-defilant">
+        <table class="tableau grille-couverture" id="table-couverture"><tbody></tbody></table>
+      </div>
+    </div>
+
+    <div class="carte">
+      <h2>Matériaux vus, absents du catalogue</h2>
+      <p class="aide">
+        Le catalogue Akora est une liste fermée : ce que le terrain vend et
+        qu'il ignore doit remonter, sinon l'offre est perdue sans qu'on le sache.
+      </p>
+      <div class="tableau-defilant">
+        <table class="tableau" id="table-absents">
+          <thead><tr><th>Libellé relevé</th><th class="nombre">Vu</th><th>Exemple</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════ AUTOMATISATIONS ══════════════════ -->
+  <section class="vue" id="vue-automatisations">
+    <p class="intro">
+      Tout ce que le bot peut faire sans vous. <strong>Tout est éteint par
+      défaut</strong>, et chaque interrupteur dit ce qu'il fait
+      <em>et&nbsp;ce&nbsp;qu'il&nbsp;ne&nbsp;fera&nbsp;jamais</em>. Ils sont
+      classés par ce qu'ils touchent : votre PC, la base Akora en privé, puis
+      le site public.
+    </p>
+
+    <div class="groupe-auto">
+      <h2 class="titre-groupe">
+        <span class="jauge-impact locale"></span> Sur ce PC seulement
+        <small>rien ne sort de votre machine</small>
+      </h2>
+      <div class="grille-auto" id="auto-locales"></div>
+    </div>
+
+    <div class="groupe-auto">
+      <h2 class="titre-groupe">
+        <span class="jauge-impact privee"></span> Dans la base Akora, en privé
+        <small>écrit chez Akora, mais invisible du public</small>
+      </h2>
+      <div class="grille-auto" id="auto-privees"></div>
+    </div>
+
+    <div class="groupe-auto">
+      <h2 class="titre-groupe">
+        <span class="jauge-impact publique"></span> Visible par tout le monde
+        <small>publié sur akora.fonenako.mg, signé Akora</small>
+      </h2>
+      <div class="grille-auto" id="auto-publiques"></div>
+    </div>
+
+    <div class="carte">
+      <h2>Horaires et objectif</h2>
+      <div class="grille-reglages">
+        <div class="reglage">
+          <label for="heures-collecte">Heures de passage (séparées par une virgule)</label>
+          <input type="text" id="heures-collecte" placeholder="10:00, 17:00">
+        </div>
+        <div class="reglage">
+          <label for="objectif-jour">Nouveaux fournisseurs visés par jour</label>
+          <input type="number" id="objectif-jour" min="0" max="200">
+        </div>
+        <div class="reglage">
+          <label for="r-delai_relance_jours">Relancer après (jours)</label>
+          <input type="number" id="r-delai_relance_jours" data-auto-num="delai_relance_jours" min="1" max="60">
+        </div>
+        <div class="reglage">
+          <label for="r-relances_max">Relances maximum par dépôt</label>
+          <input type="number" id="r-relances_max" data-auto-num="relances_max" min="0" max="10">
+        </div>
+        <div class="reglage">
+          <label for="r-auto_recherches_max">Recherches ajoutées par passage</label>
+          <input type="number" id="r-auto_recherches_max" data-auto-num="auto_recherches_max" min="1" max="20">
+        </div>
+        <div class="reglage">
+          <label for="r-auto_bulletin_ville">Ville du bulletin (vide = tout le pays)</label>
+          <input type="text" id="r-auto_bulletin_ville" data-auto-txt="auto_bulletin_ville" placeholder="Antananarivo">
+        </div>
+      </div>
+      <button class="bouton principal" id="btn-auto-horaires">Enregistrer</button>
+      <p class="aide fine">
+        L'horloge est dans le bot, pas dans Windows : fenêtre fermée, rien ne se
+        passe. Pour un démarrage automatique à l'ouverture de session,
+        <code>outils\installer-tache-planifiee.ps1</code>.
+      </p>
+    </div>
+  </section>
+
+  <!-- ══════════════════ SOURCES ══════════════════ -->
+  <section class="vue" id="vue-candidats">
+    <div class="carte">
+      <h2>Trouver de nouvelles sources</h2>
+      <p class="aide">
+        Le bot cherche lui-même des <strong>groupes</strong> et des
+        <strong>pages</strong> qui vendent des matériaux de construction, relève leur
+        <strong>nombre de membres ou d'abonnés</strong> et leur rythme de
+        publication, puis les note. <strong>Vous décidez</strong> : rien n'est
+        ajouté sans votre accord, et un candidat écarté ne revient plus.
+      </p>
+      <p class="aide">
+        Le bot <strong>ne rejoint aucun groupe et ne suit aucune page</strong> —
+        ce sont des actes visibles depuis votre compte. Pour un groupe privé,
+        ouvrez son lien et demandez l'adhésion vous-même ; le bot ne saura le
+        lire qu'une fois que vous y serez admis.
+      </p>
+      <div class="ligne-form">
+        <button class="bouton principal" id="btn-prospecter-sources">
+          Chercher de nouvelles sources
+        </button>
+        <span class="discret" id="etat-candidats"></span>
+      </div>
+      <details class="repli">
+        <summary>Ce que le bot recherche (<span id="nb-requetes">0</span> recherches)</summary>
+        <p class="aide">
+          Une recherche par ligne. C'est ce qui adapte le bot à votre métier —
+          ajoutez les mots que les dépôts et carrières emploient vraiment.
+        </p>
+        <textarea id="requetes-prospection" rows="8"
+                  placeholder="parpaing Antananarivo&#10;fasika vato Madagascar"></textarea>
+        <button class="bouton" id="btn-requetes">Enregistrer les recherches</button>
+      </details>
+    </div>
+
+    <div class="carte">
+      <div class="entete-carte">
+        <h2>Candidats à trancher</h2>
+        <div class="actions-carte">
+          <a href="#" id="cand-tout">Tout cocher</a>
+          <a href="#" id="cand-rien">Tout décocher</a>
+          <span class="discret" id="cand-compte">0 sélectionné(s)</span>
+          <button class="bouton" id="btn-cand-ecarter">Écarter la sélection</button>
+          <button class="bouton principal" id="btn-cand-adopter">Adopter la sélection</button>
+        </div>
+      </div>
+      <div class="filtres-candidats">
+        <button class="puce actif" data-origine="">Tous</button>
+        <button class="puce" data-origine="fil">Repérés sur le fil</button>
+        <button class="puce" data-origine="recherche">Trouvés par recherche</button>
+      </div>
+      <div id="liste-candidats" class="liste-candidats"></div>
+      <p class="aide" id="candidats-vide" hidden>
+        Aucun candidat en attente. Lancez une recherche pour en trouver.
+      </p>
+    </div>
+  </section>
+
+  <section class="vue" id="vue-sources">
+    <div class="carte">
+      <h2>Importer une publication précise</h2>
+      <p class="aide">
+        Vous êtes tombé sur la bonne publication ? Collez son lien. Le bot la
+        lit comme s'il l'avait trouvée lui-même : mêmes photos, même
+        appariement au catalogue, même fiche de dépôt. <strong>Rien n'est
+        écrit sur Akora</strong> — l'inscription reste un geste à part.
+      </p>
+      <p class="aide">
+        Le lien du bouton « Copier le lien » convient
+        (<code>facebook.com/share/p/…</code>). Une publication de groupe privé
+        n'est lisible que si le compte du bot est membre du groupe.
+      </p>
+      <div class="ligne-form">
+        <input type="text" id="url-import" class="grand"
+               placeholder="https://www.facebook.com/share/p/…">
+        <button class="bouton principal" id="btn-importer">Importer</button>
+      </div>
+    </div>
+
+    <div class="carte">
+      <h2>Où chercher</h2>
+      <p class="aide">
+        Collez une adresse, ou tapez un mot-clé. Le bot reconnaît tout seul de
+        quoi il s'agit.
+      </p>
+      <div class="genres">
+        <div class="genre">
+          <strong>Fil d'actualité</strong>
+          <code>facebook.com</code>
+          <p>
+            Le fil du compte connecté. L'algorithme de Facebook y pousse ce que
+            le compte a l'habitude de regarder : sur un compte dédié à la veille
+            matériaux, c'est la source la plus riche — et la seule qui
+            s'améliore toute seule.
+          </p>
+        </div>
+        <div class="genre">
+          <strong>Groupe</strong>
+          <code>facebook.com/groups/…</code>
+          <p>Il faut en être membre. Ouvert en tri chronologique.</p>
+        </div>
+        <div class="genre">
+          <strong>Page</strong>
+          <code>facebook.com/DepotX</code>
+          <p>Le fil de publications d'une page, pistage retiré.</p>
+        </div>
+        <div class="genre">
+          <strong>Recherche</strong>
+          <code>parpaing Antananarivo</code>
+          <p>
+            Va chercher les dépôts <em>hors</em> des groupes que vous connaissez.
+          </p>
+        </div>
+      </div>
+      <form class="ligne-form" id="form-source">
+        <input id="source-nom" placeholder="Nom court (facultatif)">
+        <input id="source-url" placeholder="Adresse Facebook, ou mot-clé…" required>
+        <button class="bouton principal" type="submit">Ajouter</button>
+      </form>
+      <div class="actions-collecte">
+        <button class="bouton" id="btn-ajouter-fil">+ Ajouter mon fil d'actualité</button>
+        <button class="bouton" id="btn-couper-muettes">Désactiver les sources muettes</button>
+      </div>
+      <p class="aide fine">
+        La note dit une seule chose : <strong>faut-il continuer à parcourir
+        cette source ?</strong> Elle se recalcule depuis les données à chaque
+        affichage — fournisseurs distincts, offres appariées au catalogue,
+        offres <em>avec un prix</em>, et fraîcheur. Un compteur de publications
+        ne dit pas si l'une d'elles portait un tarif.
+      </p>
+      <div class="tableau-defilant">
+        <table class="tableau" id="table-sources">
+          <thead><tr>
+            <th class="nombre">Note</th><th>Nom</th><th>Genre</th>
+            <th>Ce qu'elle a donné</th>
+            <th class="nombre">Fourn.</th><th class="nombre">Prix</th>
+            <th>Dernière</th><th>Actif</th><th></th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="carte">
+      <h2>Suggestions de recherche</h2>
+      <p class="aide">Un clic ajoute la recherche à la liste ci-dessus.</p>
+      <div class="puces" id="suggestions"></div>
+    </div>
+  </section>
+
+  <!-- ══════════════════ RÉGLAGES ══════════════════ -->
+  <section class="vue" id="vue-reglages">
+    <div class="carte">
+      <h2>Catalogue Akora</h2>
+      <p class="aide">
+        Le catalogue est une <strong>liste fermée</strong> : familles, types et
+        formats viennent de la base Akora, et un produit sans référence ne peut
+        jamais être publié. Le bot en garde une copie locale.
+      </p>
+      <div class="ligne-compte" id="etat-catalogue"></div>
+      <button class="bouton principal" id="btn-sync-ref">Synchroniser le catalogue</button>
+      <button class="bouton" id="btn-test-akora">Tester la connexion Akora</button>
+    </div>
+
+    <div class="carte">
+      <h2>Relecture par un modèle</h2>
+      <p class="aide">
+        Facultative. Elle tranche ce que les règles ne savent pas juger :
+        vendeur ou acheteur, hors-périmètre, et quel montant va avec quel
+        matériau dans un tarif écrit en prose. Le modèle ne choisit
+        <strong>jamais</strong> la référence : il propose un libellé, c'est
+        l'appariement qui décide.
+      </p>
+      <div class="ligne-compte" id="etat-llm">
+        <span></span>
+        <button class="lien-discret" id="btn-test-llm">Tester la relecture</button>
+      </div>
+      <div class="grille-reglages">
+        <div class="reglage">
+          <label>Activer</label>
+          <label class="case"><input type="checkbox" data-cfg="llm_actif"> relecture par un modèle</label>
+        </div>
+        <div class="reglage">
+          <label for="llm-transport">Chemin</label>
+          <select id="llm-transport" data-cfg="llm_transport">
+            <option value="passerelle">Passerelle locale (LiteLLM, gratuit)</option>
+            <option value="anthropic">API Claude officielle (payante)</option>
+          </select>
+        </div>
+        <div class="reglage">
+          <label for="llm-modele">Modèle (vide = par défaut)</label>
+          <input type="text" id="llm-modele" data-cfg="llm_modele" placeholder="claude-sonnet-5">
+        </div>
+        <div class="reglage">
+          <label>Repli</label>
+          <label class="case"><input type="checkbox" data-cfg="llm_repli_anthropic"> basculer sur l'API payante si la passerelle tombe</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="carte">
+      <h2>Cadence et filtres</h2>
+      <p class="aide">
+        Volontairement lente : un compte Facebook qui déroule trop vite finit
+        limité. Utilisez un compte <strong>dédié à la veille</strong>, pas votre
+        compte principal.
+      </p>
+      <div class="grille-reglages" id="grille-reglages"></div>
+      <button class="bouton principal" id="btn-reglages">Enregistrer</button>
+    </div>
+
+    <div class="carte">
+      <h2>Liste rouge</h2>
+      <p class="aide">
+        Les dépôts qui ont demandé à ne plus être contactés. Un refus est
+        définitif et survit à la suppression de la fiche : une collecte de
+        demain ne les fera pas réapparaître.
+      </p>
+      <div class="tableau-defilant">
+        <table class="tableau" id="table-rouge">
+          <thead><tr><th>Nom</th><th>Clé</th><th>Motif</th><th>Depuis</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+</main>
+</div><!-- .page -->
+</div><!-- .coque -->
+
+<!-- ══════════════════ PANNEAU DE DÉTAIL ══════════════════ -->
+<aside class="panneau" id="panneau" hidden>
+  <div class="panneau-carte">
+    <header class="panneau-tete">
+      <div>
+        <h2 id="p-titre">Fournisseur</h2>
+        <small id="p-sous-titre"></small>
+      </div>
+      <button class="fermer" id="p-fermer" aria-label="Fermer">×</button>
+    </header>
+    <div class="panneau-contenu" id="panneau-contenu"></div>
+    <footer class="panneau-pied">
+      <button class="bouton danger" id="p-refus">Ne veut pas</button>
+      <button class="bouton" id="p-rejeter">Écarter</button>
+      <button class="bouton" id="p-valider">Valider</button>
+      <button class="bouton" id="p-reserver">Réserver la fiche</button>
+      <button class="bouton principal" id="p-inscrire">Transférer le fournisseur</button>
+      <button class="bouton principal" id="p-produits">Actualiser les produits</button>
+    </footer>
+  </div>
+</aside>
+
+<div class="toast" id="toast" hidden></div>
+<script src="/static/app.js"></script>
+<script src="/static/modules.js"></script>
+</body>
+</html>

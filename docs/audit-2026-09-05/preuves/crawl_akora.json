@@ -1,0 +1,2450 @@
+[
+ {
+  "lang": "fr",
+  "title": "Akora",
+  "description": "Le fil des dépôts de matériaux à Madagascar : stock du jour, baisses de prix, tournées de livraison. Comparez au prix rendu chantier, livraison comprise.",
+  "canonical": "https://akora.fonenako.mg/",
+  "robots": "index, follow",
+  "h1": [
+   "Où livrer ?"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 121,
+  "ciblesSous44": 0,
+  "exemplesPetites": [],
+  "jsonld": [],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 3230,
+  "fcp": 4628,
+  "cls": 0,
+  "motsVisibles": 1297,
+  "etatVide": true,
+  "chemin": "/",
+  "largeur": 390,
+  "httpShell": 200,
+  "urlFinale": "/",
+  "requetes": 44,
+  "octetsDeclares": 292354,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 9.3,
+  "capture": "capture-390_.jpeg",
+  "genre": "public"
+ },
+ {
+  "lang": "fr",
+  "title": "Akora",
+  "description": "Le fil des dépôts de matériaux à Madagascar : stock du jour, baisses de prix, tournées de livraison. Comparez au prix rendu chantier, livraison comprise.",
+  "canonical": "https://akora.fonenako.mg/",
+  "robots": "index, follow",
+  "h1": [
+   "Où livrer ?"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 135,
+  "ciblesSous44": 15,
+  "exemplesPetites": [
+   "Près de moi 101x36",
+   "Vérifiés 76x36",
+   "Baisses de prix 123x36",
+   "Suivis 67x36"
+  ],
+  "jsonld": [],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 7,
+  "fcp": 92,
+  "cls": 0,
+  "motsVisibles": 1372,
+  "etatVide": true,
+  "chemin": "/",
+  "largeur": 1280,
+  "httpShell": 200,
+  "urlFinale": "/",
+  "requetes": 44,
+  "octetsDeclares": 292354,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 3.1,
+  "genre": "public"
+ },
+ {
+  "lang": "fr",
+  "title": "Matériaux de construction — Akora",
+  "description": "Parpaings, briques, granulats, ciment, bois, tôles, fers à béton, béton prêt à l'emploi. Comparez au prix rendu chantier.",
+  "canonical": "https://akora.fonenako.mg/materiaux",
+  "robots": "index, follow",
+  "h1": [
+   "Matériaux"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 34,
+  "ciblesSous44": 0,
+  "exemplesPetites": [],
+  "jsonld": [
+   "BreadcrumbList",
+   "ItemList"
+  ],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 187,
+  "fcp": 492,
+  "cls": 0,
+  "motsVisibles": 67,
+  "etatVide": true,
+  "chemin": "/materiaux",
+  "largeur": 390,
+  "httpShell": 200,
+  "urlFinale": "/materiaux",
+  "requetes": 19,
+  "octetsDeclares": 57590,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 2.6,
+  "capture": "capture-390_materiaux.jpeg",
+  "genre": "public"
+ },
+ {
+  "lang": "fr",
+  "title": "Matériaux de construction — Akora",
+  "description": "Parpaings, briques, granulats, ciment, bois, tôles, fers à béton, béton prêt à l'emploi. Comparez au prix rendu chantier.",
+  "canonical": "https://akora.fonenako.mg/materiaux",
+  "robots": "index, follow",
+  "h1": [
+   "Matériaux"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 51,
+  "ciblesSous44": 1,
+  "exemplesPetites": [
+   "Que veut dire vérifié ? 138x16"
+  ],
+  "jsonld": [
+   "BreadcrumbList",
+   "ItemList"
+  ],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 185,
+  "fcp": 248,
+  "cls": 0,
+  "motsVisibles": 147,
+  "etatVide": true,
+  "chemin": "/materiaux",
+  "largeur": 1280,
+  "httpShell": 200,
+  "urlFinale": "/materiaux",
+  "requetes": 19,
+  "octetsDeclares": 57590,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 2.4,
+  "genre": "public"
+ },
+ {
+  "lang": "fr",
+  "title": "Bois — Akora",
+  "description": "Comparez les bois au prix rendu chantier : 26 formats, 9 offres de fournisseurs vérifiés à Madagascar.",
+  "canonical": "https://akora.fonenako.mg/materiaux/bois",
+  "robots": "index, follow",
+  "h1": [
+   "Bois"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 35,
+  "ciblesSous44": 1,
+  "exemplesPetites": [
+   "Matériaux 61x19"
+  ],
+  "jsonld": [
+   "BreadcrumbList"
+  ],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 187,
+  "fcp": 432,
+  "cls": 0,
+  "motsVisibles": 300,
+  "etatVide": true,
+  "chemin": "/materiaux/bois",
+  "largeur": 390,
+  "httpShell": 200,
+  "urlFinale": "/materiaux/bois",
+  "requetes": 15,
+  "octetsDeclares": 56918,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 2.6,
+  "genre": "public"
+ },
+ {
+  "lang": "fr",
+  "title": "Bois — Akora",
+  "description": "Comparez les bois au prix rendu chantier : 26 formats, 9 offres de fournisseurs vérifiés à Madagascar.",
+  "canonical": "https://akora.fonenako.mg/materiaux/bois",
+  "robots": "index, follow",
+  "h1": [
+   "Bois"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 52,
+  "ciblesSous44": 2,
+  "exemplesPetites": [
+   "Matériaux 61x19",
+   "Que veut dire vérifié ? 138x16"
+  ],
+  "jsonld": [
+   "BreadcrumbList"
+  ],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 185,
+  "fcp": 236,
+  "cls": 0,
+  "motsVisibles": 380,
+  "etatVide": true,
+  "chemin": "/materiaux/bois",
+  "largeur": 1280,
+  "httpShell": 200,
+  "urlFinale": "/materiaux/bois",
+  "requetes": 15,
+  "octetsDeclares": 56918,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 2.4,
+  "genre": "public"
+ },
+ {
+  "lang": "fr",
+  "title": "Madrier — prix et fournisseurs — Akora",
+  "description": "Tous les formats de madrier disponibles à Madagascar, avec le prix rendu chantier calculé depuis votre adresse.",
+  "canonical": "https://akora.fonenako.mg/materiaux/bois/madrier",
+  "robots": "index, follow",
+  "h1": [
+   "Madrier"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 34,
+  "ciblesSous44": 2,
+  "exemplesPetites": [
+   "Matériaux 61x19",
+   "Bois 26x19"
+  ],
+  "jsonld": [
+   "BreadcrumbList"
+  ],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 189,
+  "fcp": 408,
+  "cls": 0,
+  "motsVisibles": 306,
+  "etatVide": true,
+  "chemin": "/materiaux/bois/madrier",
+  "largeur": 390,
+  "httpShell": 200,
+  "urlFinale": "/materiaux/bois/madrier",
+  "requetes": 19,
+  "octetsDeclares": 56585,
+  "console": [
+   "error: Failed to load resource: the server responded with a status of 400 ()",
+   "error: Failed to load resource: the server responded with a status of 400 ()",
+   "error: Failed to load resource: the server responded with a status of 400 ()",
+   "error: Failed to load resource: the server responded with a status of 400 ()",
+   "error: Failed to load resource: the server responded with a status of 400 ()",
+   "error: Failed to load resource: the server responded with a status of 400 ()"
+  ],
+  "echecs": [
+   "400 https://lvhnqrnmkajhlohympcs.supabase.co/rest/v1/vehicules_livraison?select=id%2Cnom%2Ccapacite_m3%2Ccapacite_",
+   "400 https://lvhnqrnmkajhlohympcs.supabase.co/rest/v1/vehicules_livraison?select=id%2Cnom%2Ccapacite_m3%2Ccapacite_",
+   "400 https://lvhnqrnmkajhlohympcs.supabase.co/rest/v1/vehicules_livraison?select=id%2Cnom%2Ccapacite_m3%2Ccapacite_",
+   "400 https://lvhnqrnmkajhlohympcs.supabase.co/rest/v1/vehicules_livraison?select=id%2Cnom%2Ccapacite_m3%2Ccapacite_",
+   "400 https://lvhnqrnmkajhlohympcs.supabase.co/rest/v1/vehicules_livraison?select=id%2Cnom%2Ccapacite_m3%2Ccapacite_",
+   "400 https://lvhnqrnmkajhlohympcs.supabase.co/rest/v1/vehicules_livraison?select=id%2Cnom%2Ccapacite_m3%2Ccapacite_"
+  ],
+  "dureeS": 3.3,
+  "genre": "public"
+ },
+ {
+  "lang": "fr",
+  "title": "Madrier — prix et fournisseurs — Akora",
+  "description": "Tous les formats de madrier disponibles à Madagascar, avec le prix rendu chantier calculé depuis votre adresse.",
+  "canonical": "https://akora.fonenako.mg/materiaux/bois/madrier",
+  "robots": "index, follow",
+  "h1": [
+   "Madrier"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 58,
+  "ciblesSous44": 10,
+  "exemplesPetites": [
+   "Matériaux 61x19",
+   "Bois 26x19",
+   "Prix du marché 83x37",
+   "Prix du marché 83x37"
+  ],
+  "jsonld": [
+   "BreadcrumbList"
+  ],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 189,
+  "fcp": 248,
+  "cls": 0,
+  "motsVisibles": 389,
+  "etatVide": true,
+  "chemin": "/materiaux/bois/madrier",
+  "largeur": 1280,
+  "httpShell": 200,
+  "urlFinale": "/materiaux/bois/madrier",
+  "requetes": 19,
+  "octetsDeclares": 56585,
+  "console": [
+   "error: Failed to load resource: the server responded with a status of 400 ()",
+   "error: Failed to load resource: the server responded with a status of 400 ()",
+   "error: Failed to load resource: the server responded with a status of 400 ()",
+   "error: Failed to load resource: the server responded with a status of 400 ()",
+   "error: Failed to load resource: the server responded with a status of 400 ()",
+   "error: Failed to load resource: the server responded with a status of 400 ()"
+  ],
+  "echecs": [
+   "400 https://lvhnqrnmkajhlohympcs.supabase.co/rest/v1/vehicules_livraison?select=id%2Cnom%2Ccapacite_m3%2Ccapacite_",
+   "400 https://lvhnqrnmkajhlohympcs.supabase.co/rest/v1/vehicules_livraison?select=id%2Cnom%2Ccapacite_m3%2Ccapacite_",
+   "400 https://lvhnqrnmkajhlohympcs.supabase.co/rest/v1/vehicules_livraison?select=id%2Cnom%2Ccapacite_m3%2Ccapacite_",
+   "400 https://lvhnqrnmkajhlohympcs.supabase.co/rest/v1/vehicules_livraison?select=id%2Cnom%2Ccapacite_m3%2Ccapacite_",
+   "400 https://lvhnqrnmkajhlohympcs.supabase.co/rest/v1/vehicules_livraison?select=id%2Cnom%2Ccapacite_m3%2Ccapacite_",
+   "400 https://lvhnqrnmkajhlohympcs.supabase.co/rest/v1/vehicules_livraison?select=id%2Cnom%2Ccapacite_m3%2Ccapacite_"
+  ],
+  "dureeS": 4.8,
+  "genre": "public"
+ },
+ {
+  "lang": "fr",
+  "title": "Madrier 7 x 15 cm, 4 m — Akora",
+  "description": "Comparez 1 fournisseur(s) de madrier 7 x 15 cm, 4 m au prix rendu chantier, livraison comprise.",
+  "canonical": "https://akora.fonenako.mg/materiaux/bois/madrier/madrier-70x150-4m",
+  "robots": "index, follow",
+  "h1": [
+   "Madrier 7 x 15 cm, 4 m"
+  ],
+  "main": 1,
+  "debordement": 204,
+  "imgSansAlt": 0,
+  "cibles": 37,
+  "ciblesSous44": 4,
+  "exemplesPetites": [
+   "Matériaux 61x16",
+   "bois 26x16",
+   "madrier 47x16",
+   "prix du marché de ce forma 321x35"
+  ],
+  "jsonld": [
+   "BreadcrumbList"
+  ],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 185,
+  "fcp": 464,
+  "cls": 0,
+  "motsVisibles": 84,
+  "etatVide": true,
+  "chemin": "/materiaux/bois/madrier/madrier-70x150-4m",
+  "largeur": 390,
+  "httpShell": 200,
+  "urlFinale": "/materiaux/bois/madrier/madrier-70x150-4m",
+  "requetes": 27,
+  "octetsDeclares": 56889,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 3.9,
+  "capture": "capture-390_materiaux_bois_madrier_madrier-70x150-4.jpeg",
+  "genre": "public"
+ },
+ {
+  "lang": "fr",
+  "title": "Madrier 7 x 15 cm, 4 m — Akora",
+  "description": "Comparez 1 fournisseur(s) de madrier 7 x 15 cm, 4 m au prix rendu chantier, livraison comprise.",
+  "canonical": "https://akora.fonenako.mg/materiaux/bois/madrier/madrier-70x150-4m",
+  "robots": "index, follow",
+  "h1": [
+   "Madrier 7 x 15 cm, 4 m"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 54,
+  "ciblesSous44": 5,
+  "exemplesPetites": [
+   "Matériaux 61x16",
+   "bois 26x16",
+   "madrier 47x16",
+   "prix du marché de ce forma 174x16"
+  ],
+  "jsonld": [
+   "BreadcrumbList"
+  ],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 188,
+  "fcp": 252,
+  "cls": 0,
+  "motsVisibles": 164,
+  "etatVide": true,
+  "chemin": "/materiaux/bois/madrier/madrier-70x150-4m",
+  "largeur": 1280,
+  "httpShell": 200,
+  "urlFinale": "/materiaux/bois/madrier/madrier-70x150-4m",
+  "requetes": 27,
+  "octetsDeclares": 56889,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 3.6,
+  "genre": "public"
+ },
+ {
+  "lang": "fr",
+  "title": "Fournisseurs de matériaux — Akora",
+  "description": "L'annuaire des dépôts, briqueteries, carrières et scieries de Madagascar : ce qu'ils vendent, à partir de combien, et jusqu'où ils livrent.",
+  "canonical": "https://akora.fonenako.mg/fournisseurs",
+  "robots": "index, follow",
+  "h1": [
+   "Fournisseurs"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 46,
+  "ciblesSous44": 1,
+  "exemplesPetites": [
+   "Ce que ça veut dire exacte 284x35"
+  ],
+  "jsonld": [],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 187,
+  "fcp": 448,
+  "cls": 0,
+  "motsVisibles": 295,
+  "etatVide": true,
+  "chemin": "/fournisseurs",
+  "largeur": 390,
+  "httpShell": 200,
+  "urlFinale": "/fournisseurs",
+  "requetes": 25,
+  "octetsDeclares": 481936,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 3.9,
+  "capture": "capture-390_fournisseurs.jpeg",
+  "genre": "public"
+ },
+ {
+  "lang": "fr",
+  "title": "Fournisseurs de matériaux — Akora",
+  "description": "L'annuaire des dépôts, briqueteries, carrières et scieries de Madagascar : ce qu'ils vendent, à partir de combien, et jusqu'où ils livrent.",
+  "canonical": "https://akora.fonenako.mg/fournisseurs",
+  "robots": "index, follow",
+  "h1": [
+   "Fournisseurs"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 63,
+  "ciblesSous44": 13,
+  "exemplesPetites": [
+   "Ce que ça veut dire exacte 198x16",
+   "Tout 6 68x36",
+   "Agglomérés et préfabriqués 240x36",
+   "Briques 77x36"
+  ],
+  "jsonld": [],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 188,
+  "fcp": 252,
+  "cls": 0,
+  "motsVisibles": 391,
+  "etatVide": true,
+  "chemin": "/fournisseurs",
+  "largeur": 1280,
+  "httpShell": 200,
+  "urlFinale": "/fournisseurs",
+  "requetes": 25,
+  "octetsDeclares": 481936,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 2.4,
+  "genre": "public"
+ },
+ {
+  "lang": "fr",
+  "title": "Hourdis MG — Akora",
+  "description": "Briqueterie à Ambohimanga Rova, sur la route qui passe par Sabotsy Namehana. Hourdis, briques creuses, tuiles et habillages en terre cuite cuite au four. Appelez avant de venir : selon le stock, la quantité voulue peut demander une commande.",
+  "canonical": "https://akora.fonenako.mg/fournisseurs/hourdis-mg",
+  "robots": "index, follow",
+  "h1": [
+   "Hourdis MG"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 87,
+  "ciblesSous44": 30,
+  "exemplesPetites": [
+   "Briquette 2x5x22 72x43",
+   "Hourdis MG 73x19",
+   "Tuile écaille 91x20",
+   "Hourdis MG 73x19"
+  ],
+  "jsonld": [
+   "BreadcrumbList",
+   "Store"
+  ],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 188,
+  "fcp": 432,
+  "cls": 0,
+  "motsVisibles": 287,
+  "etatVide": true,
+  "chemin": "/fournisseurs/hourdis-mg",
+  "largeur": 390,
+  "httpShell": 200,
+  "urlFinale": "/fournisseurs/hourdis-mg",
+  "requetes": 36,
+  "octetsDeclares": 336580,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 3.6,
+  "capture": "capture-390_fournisseurs_hourdis-mg.jpeg",
+  "genre": "public"
+ },
+ {
+  "lang": "fr",
+  "title": "Hourdis MG — Akora",
+  "description": "Briqueterie à Ambohimanga Rova, sur la route qui passe par Sabotsy Namehana. Hourdis, briques creuses, tuiles et habillages en terre cuite cuite au four. Appelez avant de venir : selon le stock, la quantité voulue peut demander une commande.",
+  "canonical": "https://akora.fonenako.mg/fournisseurs/hourdis-mg",
+  "robots": "index, follow",
+  "h1": [
+   "Hourdis MG"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 104,
+  "ciblesSous44": 27,
+  "exemplesPetites": [
+   "Suivre 66x36",
+   "Briquette 2x5x22 72x43",
+   "Hourdis MG 44x19",
+   "Tuile écaille 50x43"
+  ],
+  "jsonld": [
+   "BreadcrumbList",
+   "Store"
+  ],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 187,
+  "fcp": 244,
+  "cls": 0,
+  "motsVisibles": 367,
+  "etatVide": true,
+  "chemin": "/fournisseurs/hourdis-mg",
+  "largeur": 1280,
+  "httpShell": 200,
+  "urlFinale": "/fournisseurs/hourdis-mg",
+  "requetes": 36,
+  "octetsDeclares": 336580,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 2.8,
+  "genre": "public"
+ },
+ {
+  "lang": "fr",
+  "title": "Hourdis 20x33x33 — Akora",
+  "description": "Plancher : pose entre poutrelles, dalle allegee.",
+  "canonical": "https://akora.fonenako.mg/fournisseurs/hourdis-mg/hourdis-tc-20",
+  "robots": "index, follow",
+  "h1": [
+   "Hourdis 20x33x33"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 40,
+  "ciblesSous44": 3,
+  "exemplesPetites": [
+   "Agglomérés et préfabriqués 210x16",
+   "Hourdis MG 73x16",
+   "Hourdis MG 73x19"
+  ],
+  "jsonld": [
+   "BreadcrumbList",
+   "Product"
+  ],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 186,
+  "fcp": 456,
+  "cls": 0,
+  "motsVisibles": 97,
+  "etatVide": true,
+  "chemin": "/fournisseurs/hourdis-mg/hourdis-tc-20",
+  "largeur": 390,
+  "httpShell": 200,
+  "urlFinale": "/fournisseurs/hourdis-mg/hourdis-tc-20",
+  "requetes": 34,
+  "octetsDeclares": 169446,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 3.4,
+  "capture": "capture-390_fournisseurs_hourdis-mg_hourdis-tc-20.jpeg",
+  "genre": "public"
+ },
+ {
+  "lang": "fr",
+  "title": "Hourdis 20x33x33 — Akora",
+  "description": "Plancher : pose entre poutrelles, dalle allegee.",
+  "canonical": "https://akora.fonenako.mg/fournisseurs/hourdis-mg/hourdis-tc-20",
+  "robots": "index, follow",
+  "h1": [
+   "Hourdis 20x33x33"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 55,
+  "ciblesSous44": 4,
+  "exemplesPetites": [
+   "Agglomérés et préfabriqués 210x16",
+   "Hourdis MG 73x16",
+   "Hourdis MG 73x19",
+   "Que veut dire vérifié ? 138x16"
+  ],
+  "jsonld": [
+   "BreadcrumbList",
+   "Product"
+  ],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 199,
+  "fcp": 260,
+  "cls": 0,
+  "motsVisibles": 174,
+  "etatVide": true,
+  "chemin": "/fournisseurs/hourdis-mg/hourdis-tc-20",
+  "largeur": 1280,
+  "httpShell": 200,
+  "urlFinale": "/fournisseurs/hourdis-mg/hourdis-tc-20",
+  "requetes": 34,
+  "octetsDeclares": 169446,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 3.2,
+  "genre": "public"
+ },
+ {
+  "lang": "fr",
+  "title": "Simuler une livraison — Hourdis MG — Akora",
+  "description": "Calculez le prix rendu chantier : matériau plus livraison, depuis l'adresse de votre chantier.",
+  "canonical": "https://akora.fonenako.mg/fournisseurs/hourdis-mg/livraison",
+  "robots": "noindex, nofollow",
+  "h1": [
+   "Simuler une livraison"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 33,
+  "ciblesSous44": 2,
+  "exemplesPetites": [
+   "Fournisseurs 79x19",
+   "Hourdis MG 73x19"
+  ],
+  "jsonld": [
+   "BreadcrumbList"
+  ],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 186,
+  "fcp": 412,
+  "cls": 0,
+  "motsVisibles": 271,
+  "etatVide": true,
+  "chemin": "/fournisseurs/hourdis-mg/livraison",
+  "largeur": 390,
+  "httpShell": 200,
+  "urlFinale": "/fournisseurs/hourdis-mg/livraison",
+  "requetes": 28,
+  "octetsDeclares": 58366,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 3.8,
+  "genre": "public"
+ },
+ {
+  "lang": "fr",
+  "title": "Simuler une livraison — Hourdis MG — Akora",
+  "description": "Calculez le prix rendu chantier : matériau plus livraison, depuis l'adresse de votre chantier.",
+  "canonical": "https://akora.fonenako.mg/fournisseurs/hourdis-mg/livraison",
+  "robots": "noindex, nofollow",
+  "h1": [
+   "Simuler une livraison"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 50,
+  "ciblesSous44": 3,
+  "exemplesPetites": [
+   "Fournisseurs 79x19",
+   "Hourdis MG 73x19",
+   "Que veut dire vérifié ? 138x16"
+  ],
+  "jsonld": [
+   "BreadcrumbList"
+  ],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 188,
+  "fcp": 252,
+  "cls": 0,
+  "motsVisibles": 351,
+  "etatVide": true,
+  "chemin": "/fournisseurs/hourdis-mg/livraison",
+  "largeur": 1280,
+  "httpShell": 200,
+  "urlFinale": "/fournisseurs/hourdis-mg/livraison",
+  "requetes": 28,
+  "octetsDeclares": 58366,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 3.6,
+  "genre": "public"
+ },
+ {
+  "lang": "fr",
+  "title": "Prix des matériaux de construction à Madagascar — Akora",
+  "description": "Prix du marché des matériaux de gros œuvre à Madagascar : médiane, minimum et maximum par matériau, relevés sur les offres actives et la veille Akora.",
+  "canonical": "https://akora.fonenako.mg/prix",
+  "robots": "index, follow",
+  "h1": [
+   "Prix du marché — Madagascar"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 70,
+  "ciblesSous44": 0,
+  "exemplesPetites": [],
+  "jsonld": [],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 186,
+  "fcp": 412,
+  "cls": 0,
+  "motsVisibles": 851,
+  "etatVide": true,
+  "chemin": "/prix",
+  "largeur": 390,
+  "httpShell": 200,
+  "urlFinale": "/prix",
+  "requetes": 12,
+  "octetsDeclares": 56585,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 2.6,
+  "capture": "capture-390_prix.jpeg",
+  "genre": "public"
+ },
+ {
+  "lang": "fr",
+  "title": "Prix des matériaux de construction à Madagascar — Akora",
+  "description": "Prix du marché des matériaux de gros œuvre à Madagascar : médiane, minimum et maximum par matériau, relevés sur les offres actives et la veille Akora.",
+  "canonical": "https://akora.fonenako.mg/prix",
+  "robots": "index, follow",
+  "h1": [
+   "Prix du marché — Madagascar"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 87,
+  "ciblesSous44": 46,
+  "exemplesPetites": [
+   "Tout Madagascar 154x36",
+   "Toutes 77x36",
+   "Agglomérés et préfabriqués 240x36",
+   "Briques 77x36"
+  ],
+  "jsonld": [],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 185,
+  "fcp": 240,
+  "cls": 0,
+  "motsVisibles": 818,
+  "etatVide": true,
+  "chemin": "/prix",
+  "largeur": 1280,
+  "httpShell": 200,
+  "urlFinale": "/prix",
+  "requetes": 12,
+  "octetsDeclares": 56585,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 2.4,
+  "genre": "public"
+ },
+ {
+  "lang": "fr",
+  "title": "Prix du madrier 7 x 15 cm, 4 m à Madagascar — Akora",
+  "description": "Prix constatés du madrier 7 x 15 cm, 4 m à Madagascar : minimum, médiane et maximum, relevés sur les offres actives d'Akora.",
+  "canonical": "https://akora.fonenako.mg/prix/madrier-70x150-4m/madagascar",
+  "robots": "index, follow",
+  "h1": [
+   "Prix du madrier 7 x 15 cm, 4 m à Madagascar"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 25,
+  "ciblesSous44": 0,
+  "exemplesPetites": [],
+  "jsonld": [
+   "BreadcrumbList"
+  ],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 187,
+  "fcp": 412,
+  "cls": 0,
+  "motsVisibles": 129,
+  "etatVide": true,
+  "chemin": "/prix/madrier-70x150-4m/madagascar",
+  "largeur": 390,
+  "httpShell": 200,
+  "urlFinale": "/prix/madrier-70x150-4m/madagascar",
+  "requetes": 15,
+  "octetsDeclares": 56585,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 2.5,
+  "genre": "public"
+ },
+ {
+  "lang": "fr",
+  "title": "Prix du madrier 7 x 15 cm, 4 m à Madagascar — Akora",
+  "description": "Prix constatés du madrier 7 x 15 cm, 4 m à Madagascar : minimum, médiane et maximum, relevés sur les offres actives d'Akora.",
+  "canonical": "https://akora.fonenako.mg/prix/madrier-70x150-4m/madagascar",
+  "robots": "index, follow",
+  "h1": [
+   "Prix du madrier 7 x 15 cm, 4 m à Madagascar"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 42,
+  "ciblesSous44": 1,
+  "exemplesPetites": [
+   "Que veut dire vérifié ? 138x16"
+  ],
+  "jsonld": [
+   "BreadcrumbList"
+  ],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 186,
+  "fcp": 248,
+  "cls": 0,
+  "motsVisibles": 209,
+  "etatVide": true,
+  "chemin": "/prix/madrier-70x150-4m/madagascar",
+  "largeur": 1280,
+  "httpShell": 200,
+  "urlFinale": "/prix/madrier-70x150-4m/madagascar",
+  "requetes": 15,
+  "octetsDeclares": 56585,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 2.4,
+  "genre": "public"
+ },
+ {
+  "lang": "fr",
+  "title": "Calculateurs de métré — Akora",
+  "description": "Combien de parpaings pour votre mur, combien de ciment pour votre dalle. Cinq calculateurs qui remplissent votre panier au prix rendu chantier.",
+  "canonical": "https://akora.fonenako.mg/calculateurs",
+  "robots": "index, follow",
+  "h1": [
+   "Calculateurs de métré"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 29,
+  "ciblesSous44": 0,
+  "exemplesPetites": [],
+  "jsonld": [
+   "BreadcrumbList"
+  ],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 185,
+  "fcp": 420,
+  "cls": 0,
+  "motsVisibles": 114,
+  "etatVide": true,
+  "chemin": "/calculateurs",
+  "largeur": 390,
+  "httpShell": 200,
+  "urlFinale": "/calculateurs",
+  "requetes": 10,
+  "octetsDeclares": 57020,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 2.1,
+  "genre": "public"
+ },
+ {
+  "lang": "fr",
+  "title": "Calculateurs de métré — Akora",
+  "description": "Combien de parpaings pour votre mur, combien de ciment pour votre dalle. Cinq calculateurs qui remplissent votre panier au prix rendu chantier.",
+  "canonical": "https://akora.fonenako.mg/calculateurs",
+  "robots": "index, follow",
+  "h1": [
+   "Calculateurs de métré"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 46,
+  "ciblesSous44": 1,
+  "exemplesPetites": [
+   "Que veut dire vérifié ? 138x16"
+  ],
+  "jsonld": [
+   "BreadcrumbList"
+  ],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 185,
+  "fcp": 248,
+  "cls": 0,
+  "motsVisibles": 194,
+  "etatVide": true,
+  "chemin": "/calculateurs",
+  "largeur": 1280,
+  "httpShell": 200,
+  "urlFinale": "/calculateurs",
+  "requetes": 10,
+  "octetsDeclares": 57020,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 1.9,
+  "genre": "public"
+ },
+ {
+  "lang": "fr",
+  "title": "Mur en parpaings — Akora",
+  "description": "Calculez les quantités nécessaires : Mur en parpaings",
+  "canonical": "https://akora.fonenako.mg/calculateurs/mur-parpaings",
+  "robots": "index, follow",
+  "h1": [
+   "Mur en parpaings"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 29,
+  "ciblesSous44": 1,
+  "exemplesPetites": [
+   "Revenir aux calculateurs 150x16"
+  ],
+  "jsonld": [
+   "BreadcrumbList"
+  ],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 186,
+  "fcp": 476,
+  "cls": 0,
+  "motsVisibles": 61,
+  "etatVide": true,
+  "chemin": "/calculateurs/mur-parpaings",
+  "largeur": 390,
+  "httpShell": 200,
+  "urlFinale": "/calculateurs/mur-parpaings",
+  "requetes": 27,
+  "octetsDeclares": 58252,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 2.6,
+  "capture": "capture-390_calculateurs_mur-parpaings.jpeg",
+  "genre": "public"
+ },
+ {
+  "lang": "fr",
+  "title": "Mur en parpaings — Akora",
+  "description": "Calculez les quantités nécessaires : Mur en parpaings",
+  "canonical": "https://akora.fonenako.mg/calculateurs/mur-parpaings",
+  "robots": "index, follow",
+  "h1": [
+   "Mur en parpaings"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 46,
+  "ciblesSous44": 2,
+  "exemplesPetites": [
+   "Revenir aux calculateurs 150x16",
+   "Que veut dire vérifié ? 138x16"
+  ],
+  "jsonld": [
+   "BreadcrumbList"
+  ],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 188,
+  "fcp": 260,
+  "cls": 0,
+  "motsVisibles": 141,
+  "etatVide": true,
+  "chemin": "/calculateurs/mur-parpaings",
+  "largeur": 1280,
+  "httpShell": 200,
+  "urlFinale": "/calculateurs/mur-parpaings",
+  "requetes": 27,
+  "octetsDeclares": 58252,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 2.4,
+  "genre": "public"
+ },
+ {
+  "lang": "fr",
+  "title": "Transporteurs de matériaux à Madagascar — Akora",
+  "description": "Camions bennes, plateaux et semi-remorques pour livrer sable, gravillons, briques et bois : les transporteurs référencés par Akora, avec capacité et tarifs annoncés.",
+  "canonical": "https://akora.fonenako.mg/transporteurs",
+  "robots": "index, follow",
+  "h1": [
+   "Un camion ?"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 28,
+  "ciblesSous44": 0,
+  "exemplesPetites": [],
+  "jsonld": [],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 185,
+  "fcp": 420,
+  "cls": 0,
+  "motsVisibles": 80,
+  "etatVide": true,
+  "chemin": "/transporteurs",
+  "largeur": 390,
+  "httpShell": 200,
+  "urlFinale": "/transporteurs",
+  "requetes": 18,
+  "octetsDeclares": 57157,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 2.5,
+  "genre": "public"
+ },
+ {
+  "lang": "fr",
+  "title": "Transporteurs de matériaux à Madagascar — Akora",
+  "description": "Camions bennes, plateaux et semi-remorques pour livrer sable, gravillons, briques et bois : les transporteurs référencés par Akora, avec capacité et tarifs annoncés.",
+  "canonical": "https://akora.fonenako.mg/transporteurs",
+  "robots": "index, follow",
+  "h1": [
+   "Un camion ?"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 45,
+  "ciblesSous44": 1,
+  "exemplesPetites": [
+   "Que veut dire vérifié ? 138x16"
+  ],
+  "jsonld": [],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 189,
+  "fcp": 256,
+  "cls": 0,
+  "motsVisibles": 160,
+  "etatVide": true,
+  "chemin": "/transporteurs",
+  "largeur": 1280,
+  "httpShell": 200,
+  "urlFinale": "/transporteurs",
+  "requetes": 18,
+  "octetsDeclares": 57157,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 2.4,
+  "genre": "public"
+ },
+ {
+  "lang": "fr",
+  "title": "Recherche : parpaing — Akora",
+  "description": "Comparez les fournisseurs de matériaux au prix rendu chantier, livraison calculée depuis votre adresse.",
+  "canonical": "https://akora.fonenako.mg/recherche",
+  "robots": "noindex, nofollow",
+  "h1": [
+   "Rechercher"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 49,
+  "ciblesSous44": 6,
+  "exemplesPetites": [
+   "Parpaing creux 15 (40x20x1 118x43",
+   "MIVAROTRA :fasika, biriky, 117x19",
+   "Parpaing creux 10 (40x20x1 118x43",
+   "Béton ECO 67x19"
+  ],
+  "jsonld": [],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 911,
+  "fcp": 1176,
+  "cls": 0,
+  "motsVisibles": 127,
+  "etatVide": true,
+  "chemin": "/recherche?q=parpaing",
+  "largeur": 390,
+  "httpShell": 200,
+  "urlFinale": "/recherche?q=parpaing",
+  "requetes": 26,
+  "octetsDeclares": 117841,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 3.6,
+  "capture": "capture-390_recherche_q-parpaing.jpeg",
+  "genre": "public"
+ },
+ {
+  "lang": "fr",
+  "title": "Recherche : parpaing — Akora",
+  "description": "Comparez les fournisseurs de matériaux au prix rendu chantier, livraison calculée depuis votre adresse.",
+  "canonical": "https://akora.fonenako.mg/recherche",
+  "robots": "noindex, nofollow",
+  "h1": [
+   "Rechercher"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 75,
+  "ciblesSous44": 5,
+  "exemplesPetites": [
+   "BUTTON 20x20",
+   "MIVAROTRA :fasika, biriky, 36x19",
+   "Béton ECO 36x19",
+   "Béton ECO 36x19"
+  ],
+  "jsonld": [],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 186,
+  "fcp": 264,
+  "cls": 0,
+  "motsVisibles": 227,
+  "etatVide": true,
+  "chemin": "/recherche?q=parpaing",
+  "largeur": 1280,
+  "httpShell": 200,
+  "urlFinale": "/recherche?q=parpaing",
+  "requetes": 26,
+  "octetsDeclares": 117841,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 2.4,
+  "genre": "public"
+ },
+ {
+  "lang": "fr",
+  "title": "Panier — Akora",
+  "description": "Comparez les fournisseurs de matériaux au prix rendu chantier, livraison calculée depuis votre adresse.",
+  "canonical": "https://akora.fonenako.mg/panier",
+  "robots": "noindex, nofollow",
+  "h1": [
+   "Panier"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 25,
+  "ciblesSous44": 0,
+  "exemplesPetites": [],
+  "jsonld": [],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 189,
+  "fcp": 424,
+  "cls": 0,
+  "motsVisibles": 24,
+  "etatVide": true,
+  "chemin": "/panier",
+  "largeur": 390,
+  "httpShell": 200,
+  "urlFinale": "/panier",
+  "requetes": 25,
+  "octetsDeclares": 58288,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 2.1,
+  "capture": "capture-390_panier.jpeg",
+  "genre": "public"
+ },
+ {
+  "lang": "fr",
+  "title": "Panier — Akora",
+  "description": "Comparez les fournisseurs de matériaux au prix rendu chantier, livraison calculée depuis votre adresse.",
+  "canonical": "https://akora.fonenako.mg/panier",
+  "robots": "noindex, nofollow",
+  "h1": [
+   "Panier"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 42,
+  "ciblesSous44": 1,
+  "exemplesPetites": [
+   "Que veut dire vérifié ? 138x16"
+  ],
+  "jsonld": [],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 187,
+  "fcp": 236,
+  "cls": 0,
+  "motsVisibles": 104,
+  "etatVide": true,
+  "chemin": "/panier",
+  "largeur": 1280,
+  "httpShell": 200,
+  "urlFinale": "/panier",
+  "requetes": 25,
+  "octetsDeclares": 58288,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 1.9,
+  "genre": "public"
+ },
+ {
+  "lang": "fr",
+  "title": "Combien de parpaings pour mon mur ? — Akora",
+  "description": "Le calcul tient en une ligne. Ce qu'on oublie, c'est le mortier et les 5 % de casse.",
+  "canonical": "https://akora.fonenako.mg/guides/combien-de-parpaings",
+  "robots": "index, follow",
+  "h1": [
+   "Combien de parpaings pour mon mur ?"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 25,
+  "ciblesSous44": 1,
+  "exemplesPetites": [
+   "calculateur de mur 134x19"
+  ],
+  "jsonld": [
+   "BreadcrumbList"
+  ],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 187,
+  "fcp": 416,
+  "cls": 0,
+  "motsVisibles": 248,
+  "etatVide": true,
+  "chemin": "/guides/combien-de-parpaings",
+  "largeur": 390,
+  "httpShell": 200,
+  "urlFinale": "/guides/combien-de-parpaings",
+  "requetes": 10,
+  "octetsDeclares": 56585,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 2.1,
+  "genre": "public"
+ },
+ {
+  "lang": "fr",
+  "title": "Combien de parpaings pour mon mur ? — Akora",
+  "description": "Le calcul tient en une ligne. Ce qu'on oublie, c'est le mortier et les 5 % de casse.",
+  "canonical": "https://akora.fonenako.mg/guides/combien-de-parpaings",
+  "robots": "index, follow",
+  "h1": [
+   "Combien de parpaings pour mon mur ?"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 42,
+  "ciblesSous44": 2,
+  "exemplesPetites": [
+   "calculateur de mur 134x19",
+   "Que veut dire vérifié ? 138x16"
+  ],
+  "jsonld": [
+   "BreadcrumbList"
+  ],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 185,
+  "fcp": 232,
+  "cls": 0,
+  "motsVisibles": 328,
+  "etatVide": true,
+  "chemin": "/guides/combien-de-parpaings",
+  "largeur": 1280,
+  "httpShell": 200,
+  "urlFinale": "/guides/combien-de-parpaings",
+  "requetes": 10,
+  "octetsDeclares": 56585,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 1.9,
+  "genre": "public"
+ },
+ {
+  "lang": "fr",
+  "title": "Devenir fournisseur — Akora",
+  "description": "Vous tenez un dépôt, une briqueterie, une carrière, une scierie — ou un camion. Voici ce qu'Akora vous demande, et ce qu'il vous apporte.",
+  "canonical": "https://akora.fonenako.mg/devenir-fournisseur",
+  "robots": "index, follow",
+  "h1": [
+   "Devenir fournisseur"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 28,
+  "ciblesSous44": 2,
+  "exemplesPetites": [
+   "l'annuaire des transporteu 269x43",
+   "Ce que le badge veut dire  269x43"
+  ],
+  "jsonld": [],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 186,
+  "fcp": 408,
+  "cls": 0,
+  "motsVisibles": 472,
+  "etatVide": true,
+  "chemin": "/devenir-fournisseur",
+  "largeur": 390,
+  "httpShell": 200,
+  "urlFinale": "/devenir-fournisseur",
+  "requetes": 10,
+  "octetsDeclares": 56585,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 2.1,
+  "genre": "public"
+ },
+ {
+  "lang": "fr",
+  "title": "Devenir fournisseur — Akora",
+  "description": "Vous tenez un dépôt, une briqueterie, une carrière, une scierie — ou un camion. Voici ce qu'Akora vous demande, et ce qu'il vous apporte.",
+  "canonical": "https://akora.fonenako.mg/devenir-fournisseur",
+  "robots": "index, follow",
+  "h1": [
+   "Devenir fournisseur"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 45,
+  "ciblesSous44": 3,
+  "exemplesPetites": [
+   "l'annuaire des transporteu 202x19",
+   "Ce que le badge veut dire  572x43",
+   "Que veut dire vérifié ? 138x16"
+  ],
+  "jsonld": [],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 188,
+  "fcp": 228,
+  "cls": 0,
+  "motsVisibles": 552,
+  "etatVide": true,
+  "chemin": "/devenir-fournisseur",
+  "largeur": 1280,
+  "httpShell": 200,
+  "urlFinale": "/devenir-fournisseur",
+  "requetes": 10,
+  "octetsDeclares": 56585,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 1.9,
+  "genre": "public"
+ },
+ {
+  "lang": "fr",
+  "title": "Que veut dire « vérifié » ? — Akora",
+  "description": "Un badge qui ne veut rien dire ne protège personne. Voici exactement ce qu'Akora contrôle, et ce qu'il ne contrôle pas.",
+  "canonical": "https://akora.fonenako.mg/verification",
+  "robots": "index, follow",
+  "h1": [
+   "Que veut dire « vérifié » ?"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 27,
+  "ciblesSous44": 3,
+  "exemplesPetites": [
+   "Partenaire Akora. Partenai 135x25",
+   "Fournisseur vérifié. Ident 147x25",
+   "Voir comment monter son do 293x43"
+  ],
+  "jsonld": [
+   "FAQPage"
+  ],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 191,
+  "fcp": 420,
+  "cls": 0,
+  "motsVisibles": 336,
+  "etatVide": true,
+  "chemin": "/verification",
+  "largeur": 390,
+  "httpShell": 200,
+  "urlFinale": "/verification",
+  "requetes": 10,
+  "octetsDeclares": 56585,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 2.1,
+  "genre": "public"
+ },
+ {
+  "lang": "fr",
+  "title": "Que veut dire « vérifié » ? — Akora",
+  "description": "Un badge qui ne veut rien dire ne protège personne. Voici exactement ce qu'Akora contrôle, et ce qu'il ne contrôle pas.",
+  "canonical": "https://akora.fonenako.mg/verification",
+  "robots": "index, follow",
+  "h1": [
+   "Que veut dire « vérifié » ?"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 44,
+  "ciblesSous44": 4,
+  "exemplesPetites": [
+   "Partenaire Akora. Partenai 135x25",
+   "Fournisseur vérifié. Ident 147x25",
+   "Voir comment monter son do 242x19",
+   "Que veut dire vérifié ? 138x16"
+  ],
+  "jsonld": [
+   "FAQPage"
+  ],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 186,
+  "fcp": 236,
+  "cls": 0,
+  "motsVisibles": 416,
+  "etatVide": true,
+  "chemin": "/verification",
+  "largeur": 1280,
+  "httpShell": 200,
+  "urlFinale": "/verification",
+  "requetes": 10,
+  "octetsDeclares": 56585,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 1.9,
+  "genre": "public"
+ },
+ {
+  "lang": "fr",
+  "title": "À propos d'Akora — Akora",
+  "description": "Akora compare les fournisseurs de matériaux de gros œuvre au prix rendu chantier, à Madagascar.",
+  "canonical": "https://akora.fonenako.mg/a-propos",
+  "robots": "index, follow",
+  "h1": [
+   "À propos d'Akora"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 25,
+  "ciblesSous44": 1,
+  "exemplesPetites": [
+   "La page contact 115x19"
+  ],
+  "jsonld": [],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 187,
+  "fcp": 224,
+  "cls": 0,
+  "motsVisibles": 244,
+  "etatVide": true,
+  "chemin": "/a-propos",
+  "largeur": 390,
+  "httpShell": 200,
+  "urlFinale": "/a-propos",
+  "requetes": 10,
+  "octetsDeclares": 56585,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 1.9,
+  "genre": "public"
+ },
+ {
+  "lang": "fr",
+  "title": "À propos d'Akora — Akora",
+  "description": "Akora compare les fournisseurs de matériaux de gros œuvre au prix rendu chantier, à Madagascar.",
+  "canonical": "https://akora.fonenako.mg/a-propos",
+  "robots": "index, follow",
+  "h1": [
+   "À propos d'Akora"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 42,
+  "ciblesSous44": 2,
+  "exemplesPetites": [
+   "La page contact 115x19",
+   "Que veut dire vérifié ? 138x16"
+  ],
+  "jsonld": [],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 184,
+  "fcp": 224,
+  "cls": 0,
+  "motsVisibles": 324,
+  "etatVide": true,
+  "chemin": "/a-propos",
+  "largeur": 1280,
+  "httpShell": 200,
+  "urlFinale": "/a-propos",
+  "requetes": 10,
+  "octetsDeclares": 56585,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 1.9,
+  "genre": "public"
+ },
+ {
+  "lang": "fr",
+  "title": "Contact — Akora",
+  "description": "Une question, un signalement, une candidature de fournisseur.",
+  "canonical": "https://akora.fonenako.mg/contact",
+  "robots": "index, follow",
+  "h1": [
+   "Contact"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 28,
+  "ciblesSous44": 1,
+  "exemplesPetites": [
+   "comment monter son dépôt 198x19"
+  ],
+  "jsonld": [],
+  "formsSansLabel": 1,
+  "textesSous12": 0,
+  "ttfb": 185,
+  "fcp": 416,
+  "cls": 0,
+  "motsVisibles": 113,
+  "etatVide": true,
+  "chemin": "/contact",
+  "largeur": 390,
+  "httpShell": 200,
+  "urlFinale": "/contact",
+  "requetes": 13,
+  "octetsDeclares": 56585,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 2.1,
+  "capture": "capture-390_contact.jpeg",
+  "genre": "public"
+ },
+ {
+  "lang": "fr",
+  "title": "Contact — Akora",
+  "description": "Une question, un signalement, une candidature de fournisseur.",
+  "canonical": "https://akora.fonenako.mg/contact",
+  "robots": "index, follow",
+  "h1": [
+   "Contact"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 45,
+  "ciblesSous44": 2,
+  "exemplesPetites": [
+   "comment monter son dépôt 198x19",
+   "Que veut dire vérifié ? 138x16"
+  ],
+  "jsonld": [],
+  "formsSansLabel": 1,
+  "textesSous12": 0,
+  "ttfb": 186,
+  "fcp": 228,
+  "cls": 0,
+  "motsVisibles": 193,
+  "etatVide": true,
+  "chemin": "/contact",
+  "largeur": 1280,
+  "httpShell": 200,
+  "urlFinale": "/contact",
+  "requetes": 13,
+  "octetsDeclares": 56585,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 1.9,
+  "genre": "public"
+ },
+ {
+  "lang": "fr",
+  "title": "Mentions légales — Akora",
+  "description": "Comparez les fournisseurs de matériaux au prix rendu chantier, livraison calculée depuis votre adresse.",
+  "canonical": "https://akora.fonenako.mg/mentions-legales",
+  "robots": "index, follow",
+  "h1": [
+   "Mentions légales"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 24,
+  "ciblesSous44": 0,
+  "exemplesPetites": [],
+  "jsonld": [],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 185,
+  "fcp": 220,
+  "cls": 0,
+  "motsVisibles": 200,
+  "etatVide": true,
+  "chemin": "/mentions-legales",
+  "largeur": 390,
+  "httpShell": 200,
+  "urlFinale": "/mentions-legales",
+  "requetes": 9,
+  "octetsDeclares": 56585,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 1.9,
+  "genre": "public"
+ },
+ {
+  "lang": "fr",
+  "title": "Mentions légales — Akora",
+  "description": "Comparez les fournisseurs de matériaux au prix rendu chantier, livraison calculée depuis votre adresse.",
+  "canonical": "https://akora.fonenako.mg/mentions-legales",
+  "robots": "index, follow",
+  "h1": [
+   "Mentions légales"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 41,
+  "ciblesSous44": 1,
+  "exemplesPetites": [
+   "Que veut dire vérifié ? 138x16"
+  ],
+  "jsonld": [],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 184,
+  "fcp": 224,
+  "cls": 0,
+  "motsVisibles": 280,
+  "etatVide": true,
+  "chemin": "/mentions-legales",
+  "largeur": 1280,
+  "httpShell": 200,
+  "urlFinale": "/mentions-legales",
+  "requetes": 9,
+  "octetsDeclares": 56585,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 1.9,
+  "genre": "public"
+ },
+ {
+  "lang": "fr",
+  "title": "Politique de confidentialité — Akora",
+  "description": "Ce qu'Akora collecte, pourquoi, combien de temps, et comment le récupérer ou l'effacer.",
+  "canonical": "https://akora.fonenako.mg/politique-confidentialite",
+  "robots": "index, follow",
+  "h1": [
+   "Politique de confidentialité"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 26,
+  "ciblesSous44": 2,
+  "exemplesPetites": [
+   "votre espace sécurité 155x19",
+   "page contact 287x43"
+  ],
+  "jsonld": [],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 186,
+  "fcp": 400,
+  "cls": 0,
+  "motsVisibles": 512,
+  "etatVide": true,
+  "chemin": "/politique-confidentialite",
+  "largeur": 390,
+  "httpShell": 200,
+  "urlFinale": "/politique-confidentialite",
+  "requetes": 10,
+  "octetsDeclares": 56585,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 2.1,
+  "genre": "public"
+ },
+ {
+  "lang": "fr",
+  "title": "Politique de confidentialité — Akora",
+  "description": "Ce qu'Akora collecte, pourquoi, combien de temps, et comment le récupérer ou l'effacer.",
+  "canonical": "https://akora.fonenako.mg/politique-confidentialite",
+  "robots": "index, follow",
+  "h1": [
+   "Politique de confidentialité"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 43,
+  "ciblesSous44": 3,
+  "exemplesPetites": [
+   "votre espace sécurité 155x19",
+   "page contact 560x43",
+   "Que veut dire vérifié ? 138x16"
+  ],
+  "jsonld": [],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 186,
+  "fcp": 248,
+  "cls": 0,
+  "motsVisibles": 592,
+  "etatVide": true,
+  "chemin": "/politique-confidentialite",
+  "largeur": 1280,
+  "httpShell": 200,
+  "urlFinale": "/politique-confidentialite",
+  "requetes": 10,
+  "octetsDeclares": 56585,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 1.9,
+  "genre": "public"
+ },
+ {
+  "lang": "fr",
+  "title": "Conditions d'utilisation — Akora",
+  "description": "Ce que vous pouvez attendre d'Akora, et ce qu'Akora attend de vous.",
+  "canonical": "https://akora.fonenako.mg/conditions-utilisation",
+  "robots": "index, follow",
+  "h1": [
+   "Conditions d'utilisation"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 26,
+  "ciblesSous44": 2,
+  "exemplesPetites": [
+   "votre espace 93x19",
+   "politique de confidentiali 234x43"
+  ],
+  "jsonld": [],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 189,
+  "fcp": 420,
+  "cls": 0,
+  "motsVisibles": 498,
+  "etatVide": true,
+  "chemin": "/conditions-utilisation",
+  "largeur": 390,
+  "httpShell": 200,
+  "urlFinale": "/conditions-utilisation",
+  "requetes": 10,
+  "octetsDeclares": 56585,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 2.1,
+  "genre": "public"
+ },
+ {
+  "lang": "fr",
+  "title": "Conditions d'utilisation — Akora",
+  "description": "Ce que vous pouvez attendre d'Akora, et ce qu'Akora attend de vous.",
+  "canonical": "https://akora.fonenako.mg/conditions-utilisation",
+  "robots": "index, follow",
+  "h1": [
+   "Conditions d'utilisation"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 43,
+  "ciblesSous44": 3,
+  "exemplesPetites": [
+   "votre espace 93x19",
+   "politique de confidentiali 190x19",
+   "Que veut dire vérifié ? 138x16"
+  ],
+  "jsonld": [],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 186,
+  "fcp": 256,
+  "cls": 0,
+  "motsVisibles": 578,
+  "etatVide": true,
+  "chemin": "/conditions-utilisation",
+  "largeur": 1280,
+  "httpShell": 200,
+  "urlFinale": "/conditions-utilisation",
+  "requetes": 10,
+  "octetsDeclares": 56585,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 1.9,
+  "genre": "public"
+ },
+ {
+  "lang": "fr",
+  "title": "Se connecter — Akora",
+  "description": "Comparez les fournisseurs de matériaux au prix rendu chantier, livraison calculée depuis votre adresse.",
+  "canonical": "https://akora.fonenako.mg/connexion",
+  "robots": "noindex, nofollow",
+  "h1": [
+   "Se connecter"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 7,
+  "ciblesSous44": 3,
+  "exemplesPetites": [
+   "Akora — accueil 350x36",
+   "Mot de passe oublié 308x23",
+   "Créer un compte 121x19"
+  ],
+  "jsonld": [],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 192,
+  "fcp": 492,
+  "cls": 0,
+  "motsVisibles": 39,
+  "etatVide": false,
+  "chemin": "/connexion",
+  "largeur": 390,
+  "httpShell": 200,
+  "urlFinale": "/connexion",
+  "requetes": 16,
+  "octetsDeclares": 56585,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 3.4,
+  "capture": "capture-390_connexion.jpeg",
+  "genre": "auth"
+ },
+ {
+  "lang": "fr",
+  "title": "Créer un compte — Akora",
+  "description": "Comparez les fournisseurs de matériaux au prix rendu chantier, livraison calculée depuis votre adresse.",
+  "canonical": "https://akora.fonenako.mg/inscription",
+  "robots": "noindex, nofollow",
+  "h1": [
+   "Vous venez acheter ou vendre ?"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 8,
+  "ciblesSous44": 6,
+  "exemplesPetites": [
+   "Akora — accueil 101x28",
+   "BUTTON 20x20",
+   "INPUT 20x20",
+   "BUTTON 20x20"
+  ],
+  "jsonld": [],
+  "formsSansLabel": 3,
+  "textesSous12": 0,
+  "ttfb": 189,
+  "fcp": 472,
+  "cls": 0,
+  "motsVisibles": 116,
+  "etatVide": false,
+  "chemin": "/inscription",
+  "largeur": 390,
+  "httpShell": 200,
+  "urlFinale": "/inscription",
+  "requetes": 26,
+  "octetsDeclares": 50801,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 2.4,
+  "capture": "capture-390_inscription.jpeg",
+  "genre": "auth"
+ },
+ {
+  "lang": "fr",
+  "title": "Mot de passe oublié — Akora",
+  "description": "Comparez les fournisseurs de matériaux au prix rendu chantier, livraison calculée depuis votre adresse.",
+  "canonical": "https://akora.fonenako.mg/mot-de-passe-oublie",
+  "robots": "noindex, nofollow",
+  "h1": [
+   "Mot de passe oublié"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 4,
+  "ciblesSous44": 2,
+  "exemplesPetites": [
+   "Akora — accueil 350x36",
+   "Revenir à la connexion 159x19"
+  ],
+  "jsonld": [],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 191,
+  "fcp": 444,
+  "cls": 0,
+  "motsVisibles": 26,
+  "etatVide": false,
+  "chemin": "/mot-de-passe-oublie",
+  "largeur": 390,
+  "httpShell": 200,
+  "urlFinale": "/mot-de-passe-oublie",
+  "requetes": 16,
+  "octetsDeclares": 56585,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 2.1,
+  "genre": "auth"
+ },
+ {
+  "lang": "fr",
+  "title": "Je cherche un matériau — Akora",
+  "description": "Comparez les fournisseurs de matériaux au prix rendu chantier, livraison calculée depuis votre adresse.",
+  "canonical": "https://akora.fonenako.mg/demandes/nouvelle",
+  "robots": "noindex, nofollow",
+  "h1": [
+   "Je cherche…"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 25,
+  "ciblesSous44": 0,
+  "exemplesPetites": [],
+  "jsonld": [],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 186,
+  "fcp": 448,
+  "cls": 0,
+  "motsVisibles": 37,
+  "etatVide": true,
+  "chemin": "/demandes/nouvelle",
+  "largeur": 390,
+  "httpShell": 200,
+  "urlFinale": "/demandes/nouvelle",
+  "requetes": 25,
+  "octetsDeclares": 57715,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 2.1,
+  "genre": "auth?"
+ },
+ {
+  "lang": "fr",
+  "title": "Je cherche un matériau — Akora",
+  "description": "Comparez les fournisseurs de matériaux au prix rendu chantier, livraison calculée depuis votre adresse.",
+  "canonical": "https://akora.fonenako.mg/demandes/nouvelle",
+  "robots": "noindex, nofollow",
+  "h1": [
+   "Je cherche…"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 42,
+  "ciblesSous44": 1,
+  "exemplesPetites": [
+   "Que veut dire vérifié ? 138x16"
+  ],
+  "jsonld": [],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 191,
+  "fcp": 276,
+  "cls": 0,
+  "motsVisibles": 117,
+  "etatVide": true,
+  "chemin": "/demandes/nouvelle",
+  "largeur": 1280,
+  "httpShell": 200,
+  "urlFinale": "/demandes/nouvelle",
+  "requetes": 25,
+  "octetsDeclares": 57715,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 2.0,
+  "genre": "auth?"
+ },
+ {
+  "lang": "fr",
+  "title": "Se connecter — Akora",
+  "description": "Comparez les fournisseurs de matériaux au prix rendu chantier, livraison calculée depuis votre adresse.",
+  "canonical": "https://akora.fonenako.mg/connexion",
+  "robots": "noindex, nofollow",
+  "h1": [
+   "Se connecter"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 7,
+  "ciblesSous44": 3,
+  "exemplesPetites": [
+   "Akora — accueil 350x36",
+   "Mot de passe oublié 308x23",
+   "Créer un compte 121x19"
+  ],
+  "jsonld": [],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 188,
+  "fcp": 248,
+  "cls": 0,
+  "motsVisibles": 39,
+  "etatVide": false,
+  "chemin": "/compte",
+  "largeur": 390,
+  "httpShell": 200,
+  "urlFinale": "/connexion",
+  "requetes": 14,
+  "octetsDeclares": 56585,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 2.0,
+  "genre": "protege"
+ },
+ {
+  "lang": "fr",
+  "title": "Se connecter — Akora",
+  "description": "Comparez les fournisseurs de matériaux au prix rendu chantier, livraison calculée depuis votre adresse.",
+  "canonical": "https://akora.fonenako.mg/connexion",
+  "robots": "noindex, nofollow",
+  "h1": [
+   "Se connecter"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 7,
+  "ciblesSous44": 3,
+  "exemplesPetites": [
+   "Akora — accueil 350x36",
+   "Mot de passe oublié 308x23",
+   "Créer un compte 121x19"
+  ],
+  "jsonld": [],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 192,
+  "fcp": 244,
+  "cls": 0,
+  "motsVisibles": 39,
+  "etatVide": false,
+  "chemin": "/pro",
+  "largeur": 390,
+  "httpShell": 200,
+  "urlFinale": "/connexion",
+  "requetes": 14,
+  "octetsDeclares": 56585,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 1.9,
+  "genre": "protege"
+ },
+ {
+  "lang": "fr",
+  "title": "Se connecter — Akora",
+  "description": "Comparez les fournisseurs de matériaux au prix rendu chantier, livraison calculée depuis votre adresse.",
+  "canonical": "https://akora.fonenako.mg/connexion",
+  "robots": "noindex, nofollow",
+  "h1": [
+   "Se connecter"
+  ],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 7,
+  "ciblesSous44": 3,
+  "exemplesPetites": [
+   "Akora — accueil 350x36",
+   "Mot de passe oublié 308x23",
+   "Créer un compte 121x19"
+  ],
+  "jsonld": [],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 186,
+  "fcp": 248,
+  "cls": 0,
+  "motsVisibles": 39,
+  "etatVide": false,
+  "chemin": "/admin",
+  "largeur": 390,
+  "httpShell": 200,
+  "urlFinale": "/connexion",
+  "requetes": 14,
+  "octetsDeclares": 56585,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 2.0,
+  "genre": "protege"
+ },
+ {
+  "lang": "fr",
+  "title": "Commander — Akora",
+  "description": "Comparez les fournisseurs de matériaux au prix rendu chantier, livraison calculée depuis votre adresse.",
+  "canonical": "https://akora.fonenako.mg/commander",
+  "robots": "noindex, nofollow",
+  "h1": [],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 25,
+  "ciblesSous44": 0,
+  "exemplesPetites": [],
+  "jsonld": [],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 187,
+  "fcp": 436,
+  "cls": 0,
+  "motsVisibles": 10,
+  "etatVide": true,
+  "chemin": "/commander",
+  "largeur": 390,
+  "httpShell": 200,
+  "urlFinale": "/commander",
+  "requetes": 21,
+  "octetsDeclares": 56585,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 2.1,
+  "genre": "protege"
+ },
+ {
+  "lang": "fr",
+  "title": "Page introuvable — Akora",
+  "description": "Comparez les fournisseurs de matériaux au prix rendu chantier, livraison calculée depuis votre adresse.",
+  "canonical": "https://akora.fonenako.mg/fournisseurs/slug-qui-n-existe-pas",
+  "robots": "noindex, nofollow",
+  "h1": [],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 26,
+  "ciblesSous44": 0,
+  "exemplesPetites": [],
+  "jsonld": [],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 186,
+  "fcp": 264,
+  "cls": 0,
+  "motsVisibles": 21,
+  "etatVide": true,
+  "chemin": "/fournisseurs/slug-qui-n-existe-pas",
+  "largeur": 390,
+  "httpShell": 200,
+  "urlFinale": "/fournisseurs/slug-qui-n-existe-pas",
+  "requetes": 23,
+  "octetsDeclares": 56903,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 2.4,
+  "capture": "capture-390_fournisseurs_slug-qui-n-existe-pas.jpeg",
+  "genre": "id-inexistant"
+ },
+ {
+  "lang": "fr",
+  "title": "Commande introuvable — Akora",
+  "description": "Comparez les fournisseurs de matériaux au prix rendu chantier, livraison calculée depuis votre adresse.",
+  "canonical": "https://akora.fonenako.mg/commande/AK-000000",
+  "robots": "noindex, nofollow",
+  "h1": [],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 25,
+  "ciblesSous44": 0,
+  "exemplesPetites": [],
+  "jsonld": [],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 187,
+  "fcp": 460,
+  "cls": 0,
+  "motsVisibles": 16,
+  "etatVide": true,
+  "chemin": "/commande/AK-000000",
+  "largeur": 390,
+  "httpShell": 200,
+  "urlFinale": "/commande/AK-000000",
+  "requetes": 23,
+  "octetsDeclares": 58030,
+  "console": [
+   "error: Failed to load resource: the server responded with a status of 401 ()",
+   "error: Failed to load resource: the server responded with a status of 401 ()",
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [
+   "401 https://lvhnqrnmkajhlohympcs.supabase.co/rest/v1/commandes?select=id%2Cnumero%2Cacheteur_id%2Cnom_contact%2Cte",
+   "401 https://lvhnqrnmkajhlohympcs.supabase.co/rest/v1/commandes?select=id%2Cnumero%2Cacheteur_id%2Cnom_contact%2Cte"
+  ],
+  "dureeS": 2.6,
+  "genre": "id-inexistant"
+ },
+ {
+  "lang": "fr",
+  "title": "Page introuvable — Akora",
+  "description": "Comparez les fournisseurs de matériaux au prix rendu chantier, livraison calculée depuis votre adresse.",
+  "canonical": "https://akora.fonenako.mg/materiaux/famille-inconnue",
+  "robots": "noindex, nofollow",
+  "h1": [],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 26,
+  "ciblesSous44": 0,
+  "exemplesPetites": [],
+  "jsonld": [],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 187,
+  "fcp": 268,
+  "cls": 0,
+  "motsVisibles": 21,
+  "etatVide": true,
+  "chemin": "/materiaux/famille-inconnue",
+  "largeur": 390,
+  "httpShell": 200,
+  "urlFinale": "/materiaux/famille-inconnue",
+  "requetes": 15,
+  "octetsDeclares": 56922,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 2.4,
+  "genre": "id-inexistant"
+ },
+ {
+  "lang": "fr",
+  "title": "Page introuvable — Akora",
+  "description": "Comparez les fournisseurs de matériaux au prix rendu chantier, livraison calculée depuis votre adresse.",
+  "canonical": "https://akora.fonenako.mg/page-inexistante-xyz",
+  "robots": "noindex, nofollow",
+  "h1": [],
+  "main": 1,
+  "debordement": 0,
+  "imgSansAlt": 0,
+  "cibles": 26,
+  "ciblesSous44": 0,
+  "exemplesPetites": [],
+  "jsonld": [],
+  "formsSansLabel": 0,
+  "textesSous12": 0,
+  "ttfb": 190,
+  "fcp": 268,
+  "cls": 0,
+  "motsVisibles": 21,
+  "etatVide": true,
+  "chemin": "/page-inexistante-xyz",
+  "largeur": 390,
+  "httpShell": 200,
+  "urlFinale": "/page-inexistante-xyz",
+  "requetes": 8,
+  "octetsDeclares": 56585,
+  "console": [
+   "warning: Deprecated API for given entry type."
+  ],
+  "echecs": [],
+  "dureeS": 1.9,
+  "capture": "capture-390_page-inexistante-xyz.jpeg",
+  "genre": "404"
+ }
+]

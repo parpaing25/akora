@@ -38,3 +38,42 @@ export async function listerPrixPublies(): Promise<PrixMarche[]> {
   if (error) throw error;
   return (data ?? []) as unknown as PrixMarche[];
 }
+
+/**
+ * L'observatoire des prix : produits actifs du site + relevés anonymisés de
+ * la collecte, fusionnés par la RPC `observatoire_prix` (migration
+ * 20260902091000). Médiane, jamais moyenne. `fiable` = au moins 3 dépôts
+ * distincts — en dessous, le chiffre s'affiche « indicatif », il ne sert
+ * pas d'argument.
+ */
+export interface LigneObservatoire {
+  materiau_ref_id: string;
+  materiau_slug: string;
+  materiau_nom: string;
+  famille_slug: string;
+  unite: string;
+  nb_sources: number;
+  nb_depots: number;
+  prix_min: number;
+  prix_median: number;
+  prix_max: number;
+  dernier_releve: string;
+  fiable: boolean;
+}
+
+export async function lireObservatoire(
+  famille?: string | null,
+  localiteSlug?: string | null,
+): Promise<LigneObservatoire[]> {
+  // `types.ts` n'est pas régénéré depuis la migration : cast local, à retirer
+  // à la prochaine régénération du schéma.
+  const client = supabase as unknown as {
+    rpc(nom: string, args: Record<string, unknown>): PromiseLike<{ data: unknown; error: { message: string } | null }>;
+  };
+  const { data, error } = await client.rpc("observatoire_prix", {
+    _famille: famille ?? null,
+    _localite_slug: localiteSlug ?? null,
+  });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as LigneObservatoire[];
+}
